@@ -1,0 +1,11 @@
+serial_open COM5 DTR= True RTS= False
+[avatar perf] fps=60.0 render_avg=11.61ms r
+[grok perf] geometry_points=66 dirty_max=19824 px full_screen_fallback=no
+[avatar perf] fps=60.0 render_avg=11.07ms render_max=12.37ms frame_avg=16.66ms frame_max=18.00ms
+[grok perf] geometry_points=66 dirty_max=20790 px full_screen_fallback=no
+[avatar perf] fps=60.0 render_avg=11.54ms render_max=12.56ms frame_avg=16.67ms frame_max=18.01ms
+[grok perf] geometry_points=66 dirty_max=19888 px full_screen_fallback=no
+[avatar perf] fps=60.0 render_avg=11.58ms render_max=12.32ms frame_avg=16.67ms frame_max=17.82ms
+[grok perf] geometry_points=66 dirty_max=20584 px full_screen_fallback=no
+[avatar perf] fps=60.0 render_avg=12.04ms render_max=12.85ms frame_avg=16.67ms frame_max=19.14ms
+[grok perf] geometry_points=66 dirty_max=20295 px full_screen_fallback=no

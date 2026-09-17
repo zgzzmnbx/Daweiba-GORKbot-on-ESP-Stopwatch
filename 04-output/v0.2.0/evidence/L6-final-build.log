@@ -1,0 +1,197 @@
+Processing m5stack-stopwatch (platform: espressif32 @ 6.12.0; board: esp32s3box; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32s3box.html
+PLATFORM: Espressif 32 (6.12.0) > Espressif ESP32-S3-Box
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 16MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5 
+ - toolchain-xtensa-esp32s3 @ 8.4.0+2021r2-patch5
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 37 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- M5Unified @ 0.2.20+sha.774d920
+|-- M5GFX @ 0.2.27+sha.93b480b
+|-- M5PM1 @ 1.0.7+sha.be9a545
+|-- M5IOE1 @ 1.0.9+sha.846eec7
+Building in release mode
+Compiling .pio\build\m5stack-stopwatch\src\avatar_engine.cpp.o
+Compiling .pio\build\m5stack-stopwatch\src\grok_geometry.cpp.o
+Compiling .pio\build\m5stack-stopwatch\src\grok_renderer.cpp.o
+Compiling .pio\build\m5stack-stopwatch\src\main.cpp.o
+Building .pio\build\m5stack-stopwatch\bootloader.bin
+esptool.py v4.9.0
+Creating esp32s3 image...
+Merged 1 ELF section
+Successfully created esp32s3 image.
+Generating partitions .pio\build\m5stack-stopwatch\partitions.bin
+Compiling .pio\build\m5stack-stopwatch\lib098\SPI\SPI.cpp.o
+Archiving .pio\build\m5stack-stopwatch\lib098\libSPI.a
+Compiling .pio\build\m5stack-stopwatch\libd59\Wire\Wire.cpp.o
+Archiving .pio\build\m5stack-stopwatch\libd59\libWire.a
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\M5GFX.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\Fonts\IPA\lgfx_font_japan.c.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\Fonts\efont\lgfx_efont_cn.c.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\Fonts\efont\lgfx_efont_ja.c.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\Fonts\efont\lgfx_efont_kr.c.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\Fonts\efont\lgfx_efont_tw.c.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\utility\lgfx_miniz.c.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\utility\lgfx_pngle.c.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\utility\lgfx_qoi.c.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\utility\lgfx_qrcode.c.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\utility\lgfx_tjpgd.c.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\LGFXBase.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\LGFX_Button.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\LGFX_Sprite.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\lgfx_fonts.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\misc\DividedFrameBuffer.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\misc\SpriteBuffer.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\misc\common_function.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\misc\pixelcopy.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_AMOLED.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_Device.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_ED2208.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_EPDiy.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_FrameBufferBase.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_GDEW0154D67.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_GDEW0154M09.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_HasBuffer.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_IT8951.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_LCD.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_M5HDMI.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_M5UnitGLASS.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_M5UnitLCD.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_SSD1306.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_SSD1677.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\panel\Panel_TM1680.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32\Bus_EPD.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32\Bus_I2C.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32\Bus_Parallel8.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32\Bus_SPI.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32\Light_PWM.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32\Panel_CVBS.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32\Panel_EPD.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32\common.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32c3\Bus_Parallel8.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32p4\Bus_DSI.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32p4\Panel_DSI.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32p4\Panel_LT8912B.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32p4\Touch_ST7123.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32s2\Bus_Parallel16.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32s2\Bus_Parallel8.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32s3\Bus_Parallel16.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\esp32s3\Bus_Parallel8.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\framebuffer\Panel_fb.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\framebuffer\common.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\sdl\Panel_sdl.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\platforms\sdl\common.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\touch\Touch_CHSC6540.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\touch\Touch_CSTxxx.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\touch\Touch_FT5x06.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib0de\M5GFX\lgfx\v1\touch\Touch_GT911.cpp.o
+Archiving .pio\build\m5stack-stopwatch\lib0de\libM5GFX.a
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\M5Unified.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\Button_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\I2C_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\IMU_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\LED_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\Log_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\M5IOE1_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\M5Timer.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\Mic_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\PI4IOE5V6408_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\Power_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\RTC_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\Speaker_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\Touch_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\imu\AK8963_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\imu\BMI270_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\imu\BMM150_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\imu\IMU_Base.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\imu\MPU6886_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\imu\SH200Q_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\led\LED_PMIC_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\led\LED_PaperMono_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\led\LED_PowerHub_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\led\LED_Strip_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\power\AW32001_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\power\AXP192_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\power\AXP2101_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\power\BQ27220_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\power\INA226_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\power\INA3221_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\power\IP5306_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\power\M5PM1_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\rtc\PCF8563_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\rtc\RTC_Base.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\rtc\RTC_PowerHub_Class.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib7ed\M5Unified\utility\rtc\RX8130_Class.cpp.o
+Archiving .pio\build\m5stack-stopwatch\lib7ed\libM5Unified.a
+Compiling .pio\build\m5stack-stopwatch\lib373\M5PM1\M5PM1.cpp.o
+Archiving .pio\build\m5stack-stopwatch\lib373\libM5PM1.a
+Compiling .pio\build\m5stack-stopwatch\libfd2\M5IOE1\M5IOE1.cpp.o
+Archiving .pio\build\m5stack-stopwatch\libfd2\libM5IOE1.a
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\Esp.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\FirmwareMSC.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\FunctionalInterrupt.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\HWCDC.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\HardwareSerial.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\IPAddress.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\IPv6Address.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\MD5Builder.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\Print.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\Stream.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\StreamString.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\Tone.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\USB.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\USBCDC.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\USBMSC.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\WMath.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\WString.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\base64.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\cbuf.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-adc.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-bt.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-cpu.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-dac.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-gpio.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-i2c-slave.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-i2c.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-ledc.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-matrix.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-misc.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-psram.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-rgb-led.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-rmt.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-sigmadelta.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-spi.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-time.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-timer.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-tinyusb.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-touch.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\esp32-hal-uart.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\firmware_msc_fat.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\libb64\cdecode.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\libb64\cencode.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\main.cpp.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\stdlib_noniso.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\wiring_pulse.c.o
+Compiling .pio\build\m5stack-stopwatch\FrameworkArduino\wiring_shift.c.o
+Archiving .pio\build\m5stack-stopwatch\libFrameworkArduino.a
+Linking .pio\build\m5stack-stopwatch\firmware.elf
+Retrieving maximum program size .pio\build\m5stack-stopwatch\firmware.elf
+Checking size .pio\build\m5stack-stopwatch\firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [=         ]   9.1% (used 29888 bytes from 327680 bytes)
+Flash: [=         ]  13.8% (used 906229 bytes from 6553600 bytes)
+Building .pio\build\m5stack-stopwatch\firmware.bin
+esptool.py v4.9.0
+Creating esp32s3 image...
+Merged 2 ELF sections
+Successfully created esp32s3 image.
+========================= [SUCCESS] Took 98.40 seconds =========================

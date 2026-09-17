@@ -1,0 +1,16 @@
+# Workspace caches and temporary execution files
+Codex-Temp/
+**/.pio/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/compile_commands.json
+
+# Preserve device recovery material locally; full Flash images may contain
+# Wi-Fi/access configuration and must not be pushed to a public repository.
+04-output/backups/
+04-output/**/preflash/
+
+# Nested source-repository metadata is backed up separately by the outer
+# project repository and is not committed as an embedded Git repository.
+03-Src/stopwatch-grok-avatar/.git/

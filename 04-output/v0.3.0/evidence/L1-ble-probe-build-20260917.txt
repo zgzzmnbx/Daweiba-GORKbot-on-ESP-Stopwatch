@@ -1,0 +1,31 @@
+L1 BLE GATT/security API probe
+Date: 2026-09-17
+
+Result: PASS (compile/link feasibility only)
+
+Probe
+- Temporary project: Codex-Temp/v0.3.0-ble-probe/
+- Used the current project toolchain and Arduino BLE library, without changing
+  the formal framework version.
+- Compiled exact v0.3.0 service, command and status UUIDs.
+- Compiled BLESecurity configuration: secure-connections bonding, encrypted key
+  distribution, 16-byte key size, and only-specified-authentication parameter.
+- Compiled encrypted command write permission and encrypted status read
+  permission with notification descriptor.
+
+Build environment
+- PlatformIO Core 6.1.18
+- espressif32 6.12.0
+- Arduino framework 3.20017.241212+sha.dcc1105b
+- ESP32 BLE Arduino 2.0.0
+- Project and PIO home were mapped to short temporary drive letters because the
+  Xtensa toolchain on this host can fail CreateProcess on deep paths.
+
+Measured probe image
+- RAM: 43,964 / 327,680 bytes (13.4%)
+- Flash: 895,717 / 6,553,600 bytes (13.7%)
+- PlatformIO result: SUCCESS
+
+Not tested here
+- BLE radio runtime, Windows Bleak pairing, encrypted access at runtime,
+  bonding persistence, reconnect, or rejection of an unbound controller.

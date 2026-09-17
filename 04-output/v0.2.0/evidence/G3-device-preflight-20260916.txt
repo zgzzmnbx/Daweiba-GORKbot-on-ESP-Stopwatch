@@ -1,0 +1,46 @@
+KGA-20260916-LUNA-01
+G3 device preflight and recovery check
+Captured: 2026-09-16T17:56:01+08:00
+
+[AUTHORIZATION]
+User authorization received in the active task:
+授权首次烧录 v0.2.0
+
+[PORT SELECTION]
+Serial enumeration: COM3, COM4, COM5
+USB/PnP match: USB\VID_303A&PID_1001&MI_00 ... USB Serial device (COM5)
+Selected upload port: COM5
+COM3 and COM4 are Bluetooth serial ports and were not selected.
+
+[CHIP AND FLASH READ-ONLY IDENTIFICATION]
+esptool: v4.9.0
+Chip: ESP32-S3 (QFN56), revision v0.2
+Features: WiFi, BLE, Embedded PSRAM 8MB (AP_3v3)
+Crystal: 40MHz
+USB mode: USB-Serial/JTAG
+MAC: 28:84:85:44:6c:00
+Flash manufacturer/device: 0x20 / 0x4018
+Detected flash size: 16MB
+Flash type: quad, 3.3V
+
+[RECOVERY IMAGE]
+Project copy: 04-output/backups/2026-09-16-StopWatch-current-state-v0.1.1/StopWatch-current-fullflash-16MB-20260916.bin
+Second copy: C:\Users\zgzzm\Documents\M5Stack-Backups\2026-09-16-StopWatch-current-state-v0.1.1\StopWatch-current-fullflash-16MB-20260916.bin
+Both size: 16777216 bytes
+Both SHA-256: ACC86A969D2C201564A0910654261381A7A7D9F3D579A692908B24799626B87B
+Pre-flash full-device verify_flash: PASS (digest matched)
+
+[SECURITY READ-ONLY CHECK]
+Secure Boot: Disabled
+Flash Encryption: Disabled
+SPI_BOOT_CRYPT_CNT: 0x0
+No eFuse write or security-setting change was performed.
+
+[HARDWARE REVISION BOUNDARY]
+USB/chip commands identify the ESP32-S3 device but cannot read the StopWatch
+sticker revision or distinguish the v1.0 BAT/5V IN labeling issue. The project
+target remains M5Stack StopWatch C152; no external battery was connected.
+
+[G3 DECISION]
+PASS for authorized first-flash preflight. The target MAC, port, 16MB Flash,
+and pre-flash recovery digest matched. The upload was allowed to proceed.

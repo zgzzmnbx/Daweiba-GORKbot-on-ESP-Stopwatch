@@ -1,0 +1,39 @@
+Processing m5stack-stopwatch (platform: espressif32 @ 6.12.0; board: esp32s3box; framework: arduino; board_build.partitions: default_16MB.csv; board_upload.flash_size: 16MB; board_upload.maximum_size: 16777216; board_build.arduino.memory_type: qio_opi; monitor_speed: 115200; build_flags: -DESP32S3, -DBOARD_HAS_PSRAM, -DCORE_DEBUG_LEVEL=3, -DARDUINO_USB_CDC_ON_BOOT=1, -DARDUINO_USB_MODE=1; lib_deps: M5Unified = https://github.com/m5stack/M5Unified.git#774d920cd6851a5231748b56ece1b073645f313f, M5GFX = https://github.com/m5stack/M5GFX.git#93b480bb349749202c8a2a953065c8ae95f58320, M5PM1 = https://github.com/m5stack/M5PM1.git#be9a5456c007c333e7ac963f33bfde1ffa5d82ee, M5IOE1 = https://github.com/m5stack/M5IOE1.git#846eec7d05e25c09013be2acdb8804487f48a62e)
+--------------------------------------------------------------------------------
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32s3box.html
+PLATFORM: Espressif 32 (6.12.0) > Espressif ESP32-S3-Box
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 16MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5 
+ - toolchain-xtensa-esp32s3 @ 8.4.0+2021r2-patch5
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 37 compatible libraries
+Scanning dependencies...
+Warning! Circular dependencies detected between `D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5GFX` and `D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5Unified`
+Dependency Graph
+|-- M5Unified @ 0.2.20+sha.774d920 (License: Unknown, URI: git+https://github.com/m5stack/M5Unified.git#774d920cd6851a5231748b56ece1b073645f313f, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5Unified)
+|   |-- M5GFX @ 0.2.27+sha.93b480b (License: Unknown, URI: git+https://github.com/m5stack/M5GFX.git#93b480bb349749202c8a2a953065c8ae95f58320, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5GFX)
+|   |   |-- SPI @ 2.0.0 (License: Unknown, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\Codex-Temp\pio-home-20260916-proxy\packages\framework-arduinoespressif32\libraries\SPI)
+|   |   |-- Wire @ 2.0.0 (License: Unknown, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\Codex-Temp\pio-home-20260916-proxy\packages\framework-arduinoespressif32\libraries\Wire)
+|-- M5GFX @ 0.2.27+sha.93b480b (License: Unknown, URI: git+https://github.com/m5stack/M5GFX.git#93b480bb349749202c8a2a953065c8ae95f58320, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5GFX)
+|   |-- SPI @ 2.0.0 (License: Unknown, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\Codex-Temp\pio-home-20260916-proxy\packages\framework-arduinoespressif32\libraries\SPI)
+|   |-- Wire @ 2.0.0 (License: Unknown, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\Codex-Temp\pio-home-20260916-proxy\packages\framework-arduinoespressif32\libraries\Wire)
+|-- M5PM1 @ 1.0.7+sha.be9a545 (License: MIT, URI: git+https://github.com/m5stack/M5PM1.git#be9a5456c007c333e7ac963f33bfde1ffa5d82ee, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5PM1)
+|   |-- Wire @ 2.0.0 (License: Unknown, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\Codex-Temp\pio-home-20260916-proxy\packages\framework-arduinoespressif32\libraries\Wire)
+|   |-- M5Unified @ 0.2.20+sha.774d920 (License: Unknown, URI: git+https://github.com/m5stack/M5Unified.git#774d920cd6851a5231748b56ece1b073645f313f, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5Unified)
+|   |   |-- M5GFX @ 0.2.27+sha.93b480b (License: Unknown, URI: git+https://github.com/m5stack/M5GFX.git#93b480bb349749202c8a2a953065c8ae95f58320, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5GFX)
+|   |   |   |-- SPI @ 2.0.0 (License: Unknown, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\Codex-Temp\pio-home-20260916-proxy\packages\framework-arduinoespressif32\libraries\SPI)
+|   |   |   |-- Wire @ 2.0.0 (License: Unknown, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\Codex-Temp\pio-home-20260916-proxy\packages\framework-arduinoespressif32\libraries\Wire)
+|-- M5IOE1 @ 1.0.9+sha.846eec7 (License: MIT, URI: git+https://github.com/m5stack/M5IOE1.git#846eec7d05e25c09013be2acdb8804487f48a62e, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5IOE1)
+|   |-- Wire @ 2.0.0 (License: Unknown, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\Codex-Temp\pio-home-20260916-proxy\packages\framework-arduinoespressif32\libraries\Wire)
+|   |-- M5Unified @ 0.2.20+sha.774d920 (License: Unknown, URI: git+https://github.com/m5stack/M5Unified.git#774d920cd6851a5231748b56ece1b073645f313f, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5Unified)
+|   |   |-- M5GFX @ 0.2.27+sha.93b480b (License: Unknown, URI: git+https://github.com/m5stack/M5GFX.git#93b480bb349749202c8a2a953065c8ae95f58320, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\.pio\libdeps\m5stack-stopwatch\M5GFX)
+|   |   |   |-- SPI @ 2.0.0 (License: Unknown, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\Codex-Temp\pio-home-20260916-proxy\packages\framework-arduinoespressif32\libraries\SPI)
+|   |   |   |-- Wire @ 2.0.0 (License: Unknown, Path: D:\Codex-Temp\260529-ESP-32-M5StopWatch\Codex-Temp\pio-home-20260916-proxy\packages\framework-arduinoespressif32\libraries\Wire)
+Building in release mode
+Building compilation database compile_commands.json
+========================= [SUCCESS] Took 2.57 seconds =========================

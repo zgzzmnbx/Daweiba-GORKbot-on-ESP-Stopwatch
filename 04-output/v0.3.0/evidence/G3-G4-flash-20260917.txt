@@ -1,0 +1,65 @@
+KGA-20260917-BLE-01
+v0.3.0 application flash and G4 pre-check
+Captured: 2026-09-17
+
+[AUTHORIZATION]
+User instruction received in the active task: 执行烧录
+
+[PORT AND TARGET]
+Port enumeration selected COM5:
+- COM3 and COM4: Bluetooth classic serial ports; not the StopWatch target.
+- COM5: USB\VID_303A&PID_1001&MI_00, USB serial device.
+- Chip: ESP32-S3 QFN56, revision v0.2, 8MB PSRAM.
+- MAC: 28:84:85:44:6c:00.
+- Flash: manufacturer 0x20, device 0x4018, detected 16MB, quad 3.3V.
+
+[PARTITION BOUNDARY]
+The project default_16MB.csv app0 slot is 0x10000, size 0x640000.
+Only the application image was targeted. No bootloader, partition table,
+boot_app0, eFuse, secure boot, flash encryption, or --erase-all operation was
+used.
+
+[PRE-FLASH RECOVERY]
+Read back app0 before the update:
+- Address: 0x10000
+- Length: 0x640000 (6553600 bytes)
+- File: 04-output/v0.3.0/preflash/app0-before-v0.3.0-20260917.bin
+- SHA-256: 5B5217C9AF332F9623DA57452113AF797F404F86C00BC5C36D463D1C6C847F22
+The previous v0.2.5 application at 0x10000 returned verify OK (digest matched).
+
+[IMAGE PRECHECK]
+esptool image_info accepted firmware-v0.3.0-gorkbot-ble.bin as a valid ESP32-S3
+image with 1538848 bytes, five segments, and valid checksum/hash fields.
+
+[WRITE]
+Command:
+esptool.py --chip esp32s3 --port COM5 --baud 460800
+  --before default_reset --after hard_reset write_flash --verify
+  0x10000 04-output/v0.3.0/firmware/firmware-v0.3.0-gorkbot-ble.bin
+
+Result:
+- Flash erase range reported by esptool: 0x00010000-0x00187fff.
+- Wrote 1538848 bytes; compressed transfer 972301 bytes.
+- Hash of data verified.
+- Hard reset issued.
+
+[POST-FLASH READBACK]
+The same target and image were checked with verify_flash at 0x10000:
+verify OK (digest matched)
+
+[RUNTIME BOUNDARY]
+COM5 remained enumerated after the write and target re-identification. Opening
+the USB serial monitor caused the observed USB_UART_CHIP_RESET and ROM
+DOWNLOAD message; this is the known USB-Serial/JTAG DTR/RTS boundary and is
+not used as application-start evidence. A final esptool chip_id --after
+hard_reset was issued, and no serial monitor was left open.
+
+The 5-second Bleak scan found no GorkBot-SW because BLE is intentionally OFF by
+default. Device-local Settings -> Bluetooth -> BLE ON -> Pair is still required
+before encrypted pairing and wireless command tests.
+
+[DECISION]
+G3 preflight: PASS.
+v0.3.0 app-only write: PASS.
+Post-write flash readback: PASS.
+G4 wireless pairing/control: pending device-local Pair action; not claimed.

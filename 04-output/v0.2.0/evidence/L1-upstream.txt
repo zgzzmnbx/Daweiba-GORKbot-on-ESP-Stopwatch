@@ -1,0 +1,26 @@
+KGA-20260916-LUNA-01
+L1 formal KK baseline import
+Imported: 2026-09-16
+
+[KK]
+Repository: https://github.com/Trentct/m5stack-stopwatch-avatar
+Locked HEAD: 204963257cb4dc2f3d7501eff900897bac55ef82
+Local branch: kk-grok-v0.2.0
+Pre-provenance import status: CLEAN
+Required files: LICENSE=PASS; THIRD_PARTY_NOTICES.md=PASS; platformio.ini=PASS; src/avatar_engine.h=PASS; src/avatar_engine.cpp=PASS; src/main.cpp=PASS
+Post-import working tree: only the intended UPSTREAM.md provenance file is untracked; no upstream source file was modified.
+
+[GROK]
+Reference repository: https://github.com/blessonism/grok-icon-study
+Locked commit: 647e9bd7c60290c42a738fad586589b3f36a4680
+Local reference clone: Codex-Temp/grok-icon-study-reference
+
+[SAFETY]
+No upload, erase, write_flash, merge_bin, eFuse, secure-boot, flash-encryption, or device-write operation was executed.
+
+[COMMANDS]
+git clone https://github.com/Trentct/m5stack-stopwatch-avatar.git 03-Src/stopwatch-grok-avatar
+git -C 03-Src/stopwatch-grok-avatar checkout 204963257cb4dc2f3d7501eff900897bac55ef82
+git -C 03-Src/stopwatch-grok-avatar switch -c kk-grok-v0.2.0
+git -C 03-Src/stopwatch-grok-avatar rev-parse HEAD
+git -C 03-Src/stopwatch-grok-avatar status --short --branch

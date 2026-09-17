@@ -1,0 +1,26 @@
+v0.3.0 BLE implementation baseline
+Date: 2026-09-17
+
+Scope
+- Existing formal source: 03-Src/stopwatch-grok-avatar/
+- Existing device firmware remains v0.2.5.
+- Existing user changes in the formal source worktree were preserved; no reset,
+  destructive cleanup, device write, pairing, or computer Bluetooth changes were
+  performed in this implementation turn.
+- The v0.3.0 BLE implementation paths were archived locally in source commit
+  08c98cb; unrelated pre-existing dirty paths remain outside that checkpoint.
+
+Locked implementation facts
+- Transport: BLE GATT peripheral, not classic Bluetooth SPP or a virtual COM port.
+- Device name: GorkBot-SW.
+- Service/command/status UUIDs are defined in src/ble_control.h.
+- Default BLE setting is OFF; binding is stored separately from brightness and
+  debug settings in the existing gorkbot NVS namespace.
+- Firmware callbacks only validate bounded bytes and enqueue; the main loop owns
+  AvatarEngine, display, vibration, menu busy rejection, and NVS write-back.
+
+Authorization boundary
+- This evidence does not claim a real StopWatch BLE advertisement, Windows
+  pairing, encrypted write, reconnect, security-negative test, FPS result, or
+  long-run stability result. Those remain G4 hardware gates.
+- No v0.3.0 image was written to the device.

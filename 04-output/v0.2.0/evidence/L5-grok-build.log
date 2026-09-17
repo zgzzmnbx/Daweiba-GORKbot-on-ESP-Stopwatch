@@ -1,0 +1,37 @@
+Processing m5stack-stopwatch (platform: espressif32 @ 6.12.0; board: esp32s3box; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32s3box.html
+PLATFORM: Espressif 32 (6.12.0) > Espressif ESP32-S3-Box
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 16MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5 
+ - toolchain-xtensa-esp32s3 @ 8.4.0+2021r2-patch5
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 37 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- M5Unified @ 0.2.20+sha.774d920
+|-- M5GFX @ 0.2.27+sha.93b480b
+|-- M5PM1 @ 1.0.7+sha.be9a545
+|-- M5IOE1 @ 1.0.9+sha.846eec7
+Building in release mode
+Compiling .pio\build\m5stack-stopwatch\src\avatar_engine.cpp.o
+Compiling .pio\build\m5stack-stopwatch\src\grok_renderer.cpp.o
+Compiling .pio\build\m5stack-stopwatch\src\main.cpp.o
+Linking .pio\build\m5stack-stopwatch\firmware.elf
+Retrieving maximum program size .pio\build\m5stack-stopwatch\firmware.elf
+Checking size .pio\build\m5stack-stopwatch\firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [=         ]   9.1% (used 29888 bytes from 327680 bytes)
+Flash: [=         ]  13.8% (used 906229 bytes from 6553600 bytes)
+Building .pio\build\m5stack-stopwatch\firmware.bin
+esptool.py v4.9.0
+Creating esp32s3 image...
+Merged 2 ELF sections
+Successfully created esp32s3 image.
+========================= [SUCCESS] Took 10.02 seconds =========================

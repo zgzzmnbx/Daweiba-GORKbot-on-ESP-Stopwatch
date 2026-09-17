@@ -1,0 +1,47 @@
+KGA-20260917-BLE-02
+v0.3.0 live BLE pairing and expression-control evidence
+Captured: 2026-09-17
+
+[PAIR AND SERVICE DISCOVERY]
+- Windows client: project-isolated Python 3.14.3 with Bleak.
+- Scan result: GorkBot-SW, BLE address 28:84:85:44:6C:01.
+- Observed RSSI: -45 dBm on the first connection, -41 dBm on reconnect,
+  and -38 dBm during the 23-command run.
+- BleakClient(pair=True) connected successfully.
+- The fixed GATT service was discovered and the status notification was
+  subscribed successfully.
+
+[MENU BUSY GUARD]
+The first `happy` command while the StopWatch was still on the Bluetooth
+settings page returned `ERR:BUSY`, as designed. This confirms the settings
+menu owns the display/interaction path while it is open.
+
+[LIVE COMMANDS]
+The following commands returned a successful `OK:` receipt over the encrypted
+GATT command characteristic:
+- `happy` -> `OK:HAPPY`
+- `thinking` -> `OK:THINKING`
+- `once celebrate` -> `OK:CELEBRATE`
+- `loop curious` -> `OK:CURIOUS`
+- `pingpong happy` -> `OK:HAPPY`
+- `idle` -> `OK:IDLE`
+- `sleepy` -> `OK:DROWSY` (source alias)
+
+All 23 standard expression commands were then sent in one connected session;
+all returned an `OK:` receipt:
+idle, listening, thinking, happy, excited, curious, confused, angry,
+surprised, sad, sleepy, dizzy, sleeping, waking, searching, working, bored,
+suspicious, proud, shy, laughing, scared, celebrate.
+The expected aliases returned `sleepy -> DROWSY` and `dizzy -> PLAYFUL`.
+
+[RECONNECT]
+After the first console session was closed, a fresh scan found the same
+GorkBot-SW address and a new BleakClient(pair=True) connection succeeded.
+`sleepy` returned `OK:DROWSY` on that reconnected session.
+
+[NOT YET CLAIMED]
+The live run did not yet use a second unbound controller for the negative
+write test, nor did it measure ten reconnect cycles, command P95, BLE-connected
+FPS, power draw, or a 30-minute stability window. These remain G4 follow-up
+items; the core encrypted pairing, discovery, receipt, menu guard, command
+coverage, and one reconnect have been verified.

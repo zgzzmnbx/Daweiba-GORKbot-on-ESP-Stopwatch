@@ -1,0 +1,15 @@
+bounds idle: x=44.0..422.0 y=44.3..421.7 radius=189.0/221.0 PASS
+bounds listening: x=44.0..422.0 y=40.1..417.5 radius=193.2/221.0 PASS
+bounds thinking: x=44.0..422.0 y=38.6..416.2 radius=194.6/221.0 PASS
+bounds happy: x=40.2..425.8 y=42.4..427.4 radius=194.6/221.0 PASS
+bounds excited: x=32.6..433.4 y=37.6..437.7 radius=205.0/221.0 PASS
+bounds curious: x=44.0..422.0 y=41.8..418.6 radius=191.8/221.0 PASS
+bounds confused: x=44.0..422.0 y=41.8..419.5 radius=191.3/221.0 PASS
+bounds angry: x=44.0..422.0 y=46.1..423.6 radius=190.8/221.0 PASS
+bounds surprised: x=36.4..429.6 y=37.6..430.2 radius=197.5/221.0 PASS
+bounds sad: x=44.0..422.0 y=46.1..423.6 radius=190.8/221.0 PASS
+bounds sleepy: x=45.9..420.1 y=54.5..428.2 radius=195.5/221.0 PASS
+bounds dizzy: x=40.2..425.8 y=38.0..423.4 radius=195.1/221.0 PASS
+rendered 12 previews to D:\Codex-Temp\260529-ESP-32-M5StopWatch\04-output\v0.2.0\previews
+implemented eye groups: 0, 1, 2, 3, 4, 5, 6, 7, 3, 7, 7, 2
+source eye groups: 8, 10, 14, 2, 17, 7, 23, 4

@@ -1,0 +1,51 @@
+KGA-20260916-LUNA-01
+L0 environment and safety baseline
+Captured: 2026-09-16T14:57:17+08:00
+
+[CONTEXT]
+G0-01=PASS
+Read as UTF-8: AGENTS.md; README.md; CHANGELOG.md; 00-docs/00-PRD/01-产品总览PRD.md; 00-docs/00-PRD/02-当前版本计划.md; 00-docs/00-PRD/03-v0.2.0-KK-Grok-Avatar开发PRD-【codex】.md; 00-docs/00-PRD/04-Luna-Max目标模式开发任务书-【codex】.md; 00-docs/00-PRD/05-v0.2.0实施进度与验收记录-【codex】.md.
+
+[WORKSPACE]
+G0-02=PASS
+Project root: D:\Codex-Temp\260529-ESP-32-M5StopWatch
+Root Git repository: NO (.git absent)
+Formal source directory before L1: ABSENT (03-Src contained README.md only)
+Existing user files were preserved; no source or backup was overwritten.
+03-Src baseline: 03-Src/README.md
+
+[RECOVERY-BACKUPS-READ-ONLY]
+Project copy: 04-output/backups/2026-09-16-StopWatch-current-state-v0.1.1/StopWatch-current-fullflash-16MB-20260916.bin
+Project copy size: 16777216 bytes
+Project copy SHA-256: ACC86A969D2C201564A0910654261381A7A7D9F3D579A692908B24799626B87B
+Project recorded SHA-256: ACC86A969D2C201564A0910654261381A7A7D9F3D579A692908B24799626B87B
+Project hash match: PASS
+Second copy: C:\Users\zgzzm\Documents\M5Stack-Backups\2026-09-16-StopWatch-current-state-v0.1.1\StopWatch-current-fullflash-16MB-20260916.bin
+Second copy size: 16777216 bytes
+Second copy SHA-256: ACC86A969D2C201564A0910654261381A7A7D9F3D579A692908B24799626B87B
+Second copy hash match: PASS
+No backup was moved, renamed, modified, or re-read from the device in L0.
+
+[TOOLS-AND-PORTS]
+Python: 3.14.3 (C:\Users\zgzzm\AppData\Local\Python\bin\python.exe)
+Git: 2.53.0.windows.2 (C:\Program Files\Git\cmd\git.exe)
+PlatformIO: NOT_FOUND at baseline
+Serial enumeration: COM3, COM4, COM5
+The port list is an enumeration only; no port is treated as the current StopWatch port or MAC before G3 re-identification.
+
+[SAFETY]
+G0-03=PASS
+No upload, erase, write_flash, merge_bin, eFuse, secure-boot, flash-encryption, or device-write operation was executed.
+G0-04=PASS
+The implementation progress file was started before L1.
+Authorized scope: source import, tool installation, local build, Python tests, desktop previews, and static checks.
+Forbidden until explicit authorization: device flashing, flash erase, partition changes, eFuse access/modification, and public release.
+
+[BASELINE-COMMANDS]
+Get-ChildItem -Force
+Test-Path .git
+Test-Path 03-Src/stopwatch-grok-avatar
+Get-FileHash 04-output/backups/.../StopWatch-current-fullflash-16MB-20260916.bin -Algorithm SHA256
+[System.IO.Ports.SerialPort]::GetPortNames()
+python --version
+git --version

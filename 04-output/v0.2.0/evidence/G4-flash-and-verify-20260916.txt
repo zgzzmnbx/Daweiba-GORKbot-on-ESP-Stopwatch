@@ -1,0 +1,54 @@
+KGA-20260916-LUNA-01
+G4 first flash and post-flash verification
+Captured: 2026-09-16T17:56:01+08:00
+
+[WRITE COMMAND]
+pio run -e m5stack-stopwatch -j 1 -t upload --upload-port COM5 -v
+
+Resolved esptool write command:
+esptool.py --chip esp32s3 --port COM5 --baud 921600
+  --before default_reset --after hard_reset write_flash -z
+  --flash_mode dio --flash_freq 80m --flash_size 16MB
+  0x0000 bootloader-v0.2.0-grok-avatar.bin
+  0x8000 partitions-v0.2.0-grok-avatar.bin
+  0xe000 boot_app0.bin
+  0x10000 firmware-v0.2.0-grok-avatar.bin
+
+[WRITE RESULT]
+PlatformIO result: SUCCESS, exit code 0, 24.56 seconds
+Bootloader: 15104 bytes, hash verified
+Partition table: 3072 bytes, hash verified
+boot_app0: 8192 bytes, hash verified
+Application: 906592 bytes, hash verified
+The uploader erased only the sectors covering these four written regions as
+required by write_flash. No erase_flash/full-chip erase command was run.
+The partition table written is the existing default_16MB.csv layout; its
+layout was not changed during this run.
+No eFuse, secure boot, or flash-encryption operation was run.
+
+[POST-FLASH READBACK]
+Command: esptool.py ... verify_flash --flash_size 16MB
+  0x0000 bootloader-v0.2.0-grok-avatar.bin
+  0x8000 partitions-v0.2.0-grok-avatar.bin
+  0xe000 boot_app0.bin
+  0x10000 firmware-v0.2.0-grok-avatar.bin
+Result: PASS, exit code 0
+All four regions returned: verify OK (digest matched)
+
+[POST-FLASH DEVICE ID]
+Chip: ESP32-S3 (QFN56), revision v0.2
+MAC: 28:84:85:44:6c:00
+Flash: 16MB
+USB/PnP port after reset: COM5, VID_303A:PID_1001
+
+[APPLICATION-RUN BOUNDARY]
+esptool run with hard reset returned exit code 0. A serial capture did not
+produce the expected application startup markers: USB CDC DTR/RTS handling
+can place this native USB port into ROM DOWNLOAD mode, so the capture is not
+treated as proof of application failure or success. True display, touch,
+button, vibration, IMU, serial-performance and 30-minute stability checks
+remain pending manual hardware observation.
+
+[CONCLUSION]
+Flash delivery and readback verification: PASS.
+Hardware functional acceptance: NOT YET COMPLETE.

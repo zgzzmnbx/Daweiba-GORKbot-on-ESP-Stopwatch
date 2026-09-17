@@ -1,0 +1,38 @@
+L2/L3 firmware and Windows client static evidence
+Date: 2026-09-17
+
+Firmware implementation
+- Added src/ble_control.h and src/ble_control.cpp.
+- Added Bluetooth page to the existing Settings flow with BLE OFF/ON, local
+  Pair window, binding display, and two-touch binding clear.
+- BLE and USB use the same AvatarEngine::showFromCommand semantic parser.
+- Menu-open BLE commands return ERR:BUSY and are not cached for later playback.
+- Unknown, malformed, oversized, or queue-full BLE input does not change the
+  avatar and does not vibrate.
+
+Windows client implementation
+- tools/ble-expression-console.py uses one foreground service-filtered Bleak
+  scan, BLEDevice instances, pair=True, response=True writes, status notify,
+  disconnected_callback, status read fallback, and one bounded retry.
+- No fixed MAC, COM port, background scan, credential, or virtual COM path is
+  embedded.
+- tools/start-ble-expression-console.cmd creates .venv-ble and installs the
+  locked tools/requirements-ble.txt dependency.
+
+Automated result
+- Command: python tools/test_ble_expression_console.py
+- Result: 5 tests passed.
+- Coverage includes command normalization and 20-byte boundary, status parsing,
+  service UUID filtering, mock connect/notify/write receipt, and response=True.
+
+Formal firmware build
+- Clean PlatformIO build result: SUCCESS.
+- RAM: 62,544 / 327,680 bytes (19.1%).
+- Flash: 1,538,485 / 6,553,600 bytes (23.5%).
+- Build used the current formal source and locked project toolchain through the
+  short-path drive mapping described in the L1 evidence.
+
+Not tested here
+- No device image was written. G4 pairing, security-negative testing,
+  reconnect, 23-command hardware behavior, FPS, power, and 30-minute stability
+  remain NOT RUN.

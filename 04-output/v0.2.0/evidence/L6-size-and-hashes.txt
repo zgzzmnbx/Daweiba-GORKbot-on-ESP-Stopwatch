@@ -1,0 +1,23 @@
+KGA-20260916-LUNA-01 final artifact sizes and SHA-256
+Build memory summary:
+RAM:   [=         ]   9.1% (used 29872 bytes from 327680 bytes)
+Flash: [=         ]  13.4% (used 881457 bytes from 6553600 bytes)
+RAM:   [=         ]   9.1% (used 29888 bytes from 327680 bytes)
+Flash: [=         ]  13.8% (used 906229 bytes from 6553600 bytes)
+Static delta: RAM +16 bytes; Flash +24772 bytes (2.81% versus baseline map usage).
+Artifact sizes:
+bootloader-v0.2.0-grok-avatar.bin	15104 bytes
+firmware-v0.2.0-grok-avatar.bin	906592 bytes
+firmware-v0.2.0-grok-avatar.elf	16707688 bytes
+firmware-v0.2.0-grok-avatar.map	12376030 bytes
+partitions-v0.2.0-grok-avatar.bin	3072 bytes
+Artifact hashes:
+2A71D69B471E20C2BAC7FB469F3C6A807B3EBEE780E348E5889DB0DA849CA363	D:\Codex-Temp\260529-ESP-32-M5StopWatch\04-output\v0.2.0\firmware\bootloader-v0.2.0-grok-avatar.bin
+47C72B834883DE457995B15F024EEA4C8F625AA762E563F1952A350145FAB1CD	D:\Codex-Temp\260529-ESP-32-M5StopWatch\04-output\v0.2.0\firmware\firmware-v0.2.0-grok-avatar.bin
+CCC8DA5D5394DA5BCEAD3425DCBE388E6F2111BF26F58169EA6B30D244339B01	D:\Codex-Temp\260529-ESP-32-M5StopWatch\04-output\v0.2.0\firmware\firmware-v0.2.0-grok-avatar.elf
+D2EE42A5E8A59F956B306BC25311FBC22AA0DC5E6DD5CE71D9EAE3F318E8B6AF	D:\Codex-Temp\260529-ESP-32-M5StopWatch\04-output\v0.2.0\firmware\firmware-v0.2.0-grok-avatar.map
+BD0F7954ACA2EF7D925EE21AAA1F3DC8822D1D6CE5CBBD26A135E5886BFFF6CE	D:\Codex-Temp\260529-ESP-32-M5StopWatch\04-output\v0.2.0\firmware\partitions-v0.2.0-grok-avatar.bin
+Generated source hashes:
+ED0D915C0800D0A25F0C48F18A5855F25688273A9438ABF2C15B46DACC6F7453	D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\src\grok_geometry.h
+746C1F146174F5189A5F801764CEFDFFDCCFB757347573F12C365FF7D038D7CD	D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\src\grok_geometry.cpp
+C69A500C322CA84E06A732728C3011D9B8CDDFFD2B283D981BD292D119C01543	D:\Codex-Temp\260529-ESP-32-M5StopWatch\03-Src\stopwatch-grok-avatar\assets\source-grok-study\grok_geometry_manifest.json

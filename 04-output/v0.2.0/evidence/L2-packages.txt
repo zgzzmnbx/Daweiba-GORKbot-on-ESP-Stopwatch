@@ -1,0 +1,24 @@
+KGA-20260916-LUNA-01
+PlatformIO Core: 6.1.18
+Platform: espressif32 @ 6.12.0
+Board: esp32s3box
+Framework: arduino
+
+Packages resolved by the m5stack-stopwatch environment:
+- framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b
+- tool-esptoolpy @ 2.40900.250804 (4.9.0)
+- toolchain-riscv32-esp @ 8.4.0+2021r2-patch5
+- toolchain-xtensa-esp32s3 @ 8.4.0+2021r2-patch5
+
+Pinned libraries:
+- M5GFX @ 0.2.27+sha.93b480b (93b480bb349749202c8a2a953065c8ae95f58320)
+- M5IOE1 @ 1.0.9+sha.846eec7 (846eec7d05e25c09013be2acdb8804487f48a62e)
+- M5PM1 @ 1.0.7+sha.be9a545 (be9a5456c007c333e7ac963f33bfde1ffa5d82ee)
+- M5Unified @ 0.2.20+sha.774d920 (774d920cd6851a5231748b56ece1b073645f313f)
+
+Build command:
+pio run -e m5stack-stopwatch -j 1 -v
+
+Host note: the build was run through the project-scoped X: temporary drive to
+avoid Windows CreateProcess command-line length failure caused by the long
+workspace path. No device upload or flash operation was executed.

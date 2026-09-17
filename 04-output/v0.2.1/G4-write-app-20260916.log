@@ -1,0 +1,57 @@
+esptool.py v4.9.0
+Serial port COM5
+WARNING: Pre-connection option "no_reset" was selected. Connection may fail if the chip is not in bootloader or flasher stub mode.
+Connecting...
+Chip is ESP32-S3 (QFN56) (revision v0.2)
+Features: WiFi, BLE, Embedded PSRAM 8MB (AP_3v3)
+Crystal is 40MHz
+USB mode: USB-Serial/JTAG
+MAC: 28:84:85:44:6c:00
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00010000 to 0x000e9fff...
+Compressed 890016 bytes to 568681...
+Writing at 0x00010000... (2 %)
+Writing at 0x00016a33... (5 %)
+Writing at 0x0001befd... (8 %)
+Writing at 0x000213e3... (11 %)
+Writing at 0x000267a3... (14 %)
+Writing at 0x0002bd72... (17 %)
+Writing at 0x000312dc... (20 %)
+Writing at 0x00036778... (22 %)
+Writing at 0x0003b836... (25 %)
+Writing at 0x000409d4... (28 %)
+Writing at 0x00045e49... (31 %)
+Writing at 0x0004b70b... (34 %)
+Writing at 0x000508e0... (37 %)
+Writing at 0x00055bbe... (40 %)
+Writing at 0x0005b201... (42 %)
+Writing at 0x00060359... (45 %)
+Writing at 0x00068621... (48 %)
+Writing at 0x00073f56... (51 %)
+Writing at 0x00082e66... (54 %)
+Writing at 0x000885e1... (57 %)
+Writing at 0x0008e264... (60 %)
+Writing at 0x00093a97... (62 %)
+Writing at 0x00099542... (65 %)
+Writing at 0x0009e98e... (68 %)
+Writing at 0x000a4005... (71 %)
+Writing at 0x000a9a45... (74 %)
+Writing at 0x000aeea5... (77 %)
+Writing at 0x000b44de... (80 %)
+Writing at 0x000b9c03... (82 %)
+Writing at 0x000bf251... (85 %)
+Writing at 0x000c76e9... (88 %)
+Writing at 0x000d0369... (91 %)
+Writing at 0x000da149... (94 %)
+Writing at 0x000df7e1... (97 %)
+Writing at 0x000e522e... (100 %)
+Wrote 890016 bytes (568681 compressed) at 0x00010000 in 4.6 seconds (effective 1546.1 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...

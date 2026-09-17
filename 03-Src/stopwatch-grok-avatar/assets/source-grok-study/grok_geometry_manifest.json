@@ -1,0 +1,339 @@
+{
+  "body": {
+    "triangles": 94,
+    "vertices": 96
+  },
+  "converter": {
+    "curveSamplesPerCubicSegment": 8,
+    "geometryScale": 100,
+    "pathCommands": "MLCZ absolute uppercase only",
+    "triangulation": "ear clipping"
+  },
+  "counts": {
+    "eyeGroups": 25,
+    "palette": 11,
+    "shapes": 18
+  },
+  "eyes": [
+    {
+      "index": 0,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 1,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 2,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 3,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 4,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 5,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 6,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 7,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 8,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 9,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 10,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 11,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 12,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 13,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 14,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 15,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 16,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 17,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 18,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 19,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 20,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 21,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 22,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 23,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    },
+    {
+      "index": 24,
+      "left": {
+        "triangles": 46,
+        "vertices": 48
+      },
+      "right": {
+        "triangles": 46,
+        "vertices": 48
+      }
+    }
+  ],
+  "paletteNames": [
+    "black",
+    "brown",
+    "red",
+    "orange",
+    "yellow",
+    "green",
+    "cyan",
+    "blue",
+    "violet",
+    "magenta",
+    "gray"
+  ],
+  "shapeNames": [
+    "blob",
+    "pebble",
+    "bean",
+    "egg",
+    "squircle",
+    "tablet",
+    "capsule",
+    "cylinder",
+    "hex",
+    "gem",
+    "crystal",
+    "wedge",
+    "shield",
+    "dome",
+    "arch",
+    "cloud",
+    "teardrop",
+    "leaf"
+  ],
+  "source": {
+    "commit": "647e9bd7c60290c42a738fad586589b3f36a4680",
+    "file": "replica/geometry-data.js",
+    "repository": "https://github.com/blessonism/grok-icon-study",
+    "sha256": "ef9ed55e5d4c6ce3212c34a67d3e322211d8c772c2598d86096ea5c861319225"
+  },
+  "viewBox": {
+    "height": 259.0,
+    "minX": -15.0,
+    "minY": -15.0,
+    "width": 259.0
+  }
+}

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Grok avatar v0.2.0 previews</title>
+<style>
+  :root { color-scheme: dark; background: #080b10; color: #e9edf2; font: 15px/1.4 system-ui, sans-serif; }
+  body { margin: 0; padding: 28px; }
+  h1 { margin: 0 0 8px; font-size: 24px; }
+  .note { color: #9da8b6; margin: 0 0 24px; }
+  .grid { display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap: 18px; max-width: 1100px; }
+  article { background: #111720; border: 1px solid #253140; border-radius: 14px; padding: 12px; }
+  img { display: block; width: 100%; aspect-ratio: 1; border-radius: 10px; background: #080b10; }
+  h2 { margin: 10px 0 2px; font-size: 16px; }
+  p { margin: 0; color: #8e9aa8; font-size: 12px; }
+  .transitions { display: grid; grid-template-columns: repeat(3, minmax(240px, 1fr)); gap: 18px; max-width: 1100px; }
+  figure { margin: 0; background: #111720; border: 1px solid #253140; border-radius: 14px; padding: 12px; }
+  .transitions img { aspect-ratio: 3 / 1; }
+  figcaption { margin-top: 8px; color: #e9edf2; font-size: 14px; }
+</style></head><body>
+<h1>Grok avatar geometry review · v0.2.0</h1>
+<p class="note">Offline previews from the locked source geometry. White body, black eyes, 466 × 466 render space.</p>
+<main class="grid"><article><img src='status-01-idle.svg' alt='idle'><h2>01 · idle</h2><p>implemented eye group 0 · source eye group 8 · expression 0</p></article>
+<article><img src='status-02-listening.svg' alt='listening'><h2>02 · listening</h2><p>implemented eye group 1 · source eye group 10 · expression 1</p></article>
+<article><img src='status-03-thinking.svg' alt='thinking'><h2>03 · thinking</h2><p>implemented eye group 2 · source eye group 14 · expression 2</p></article>
+<article><img src='status-04-happy.svg' alt='happy'><h2>04 · happy</h2><p>implemented eye group 3 · source eye group 2 · expression 3</p></article>
+<article><img src='status-05-excited.svg' alt='excited'><h2>05 · excited</h2><p>implemented eye group 4 · source eye group 17 · expression 4</p></article>
+<article><img src='status-06-curious.svg' alt='curious'><h2>06 · curious</h2><p>implemented eye group 5 · source eye group 7 · expression 5</p></article>
+<article><img src='status-07-confused.svg' alt='confused'><h2>07 · confused</h2><p>implemented eye group 6 · source eye group 23 · expression 6</p></article>
+<article><img src='status-08-angry.svg' alt='angry'><h2>08 · angry</h2><p>implemented eye group 7 · source eye group 4 · expression 7</p></article>
+<article><img src='status-09-surprised.svg' alt='surprised'><h2>09 · surprised</h2><p>implemented eye group 3 · source eye group 2 · expression 8</p></article>
+<article><img src='status-10-sad.svg' alt='sad'><h2>10 · sad</h2><p>implemented eye group 7 · source eye group 4 · expression 9</p></article>
+<article><img src='status-11-sleepy.svg' alt='sleepy'><h2>11 · sleepy</h2><p>implemented eye group 7 · source eye group 4 · expression 10</p></article>
+<article><img src='status-12-dizzy.svg' alt='dizzy'><h2>12 · dizzy</h2><p>implemented eye group 2 · source eye group 14 · expression 11</p></article></main>
+<h1 style="margin-top:32px">Keyframe comparisons</h1>
+<section class="transitions">
+  <figure><img src="transition-idle-happy.svg" alt="idle to happy keyframes"><figcaption>idle → happy</figcaption></figure>
+  <figure><img src="transition-idle-thinking.svg" alt="idle to thinking keyframes"><figcaption>idle → thinking</figcaption></figure>
+  <figure><img src="transition-idle-dizzy.svg" alt="idle to dizzy keyframes"><figcaption>idle → dizzy</figcaption></figure>
+</section>
+</body></html>

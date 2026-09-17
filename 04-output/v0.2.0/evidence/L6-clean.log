@@ -1,0 +1,6 @@
+Processing m5stack-stopwatch (platform: espressif32 @ 6.12.0; board: esp32s3box; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+Removing .pio\build\m5stack-stopwatch
+Done cleaning
+========================= [SUCCESS] Took 0.73 seconds =========================

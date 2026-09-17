@@ -1,0 +1,13 @@
+test_all_polygons_triangulate_without_area_loss (tools.test_grok_geometry.GrokGeometryTests.test_all_polygons_triangulate_without_area_loss) ... ok
+test_fixed_point_output_stays_in_int16_range (tools.test_grok_geometry.GrokGeometryTests.test_fixed_point_output_stays_in_int16_range) ... ok
+test_geometry_outside_fixed_point_range_is_rejected (tools.test_grok_geometry.GrokGeometryTests.test_geometry_outside_fixed_point_range_is_rejected) ... ok
+test_missing_eye_groups_are_rejected (tools.test_grok_geometry.GrokGeometryTests.test_missing_eye_groups_are_rejected) ... ok
+test_missing_geometry_is_rejected (tools.test_grok_geometry.GrokGeometryTests.test_missing_geometry_is_rejected) ... ok
+test_path_parser_samples_curves_and_closes (tools.test_grok_geometry.GrokGeometryTests.test_path_parser_samples_curves_and_closes) ... ok
+test_source_counts (tools.test_grok_geometry.GrokGeometryTests.test_source_counts) ... ok
+test_unsupported_lowercase_command_is_rejected (tools.test_grok_geometry.GrokGeometryTests.test_unsupported_lowercase_command_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.056s
+
+OK
