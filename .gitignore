@@ -2,6 +2,7 @@
 Codex-Temp/
 **/.pio/
 **/.venv/
+**/.venv-*/
 **/__pycache__/
 **/*.pyc
 **/compile_commands.json
