@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace {
 
@@ -379,8 +380,20 @@ const AvatarEngine::MotionProfile kBotNoMotion = makeMotion(
 #include "grok_bot_catalog.inc"
 
 static_assert(sizeof(kExpressions) / sizeof(kExpressions[0]) ==
-                  static_cast<size_t>(ExpressionId::Count),
-              "Expression catalog must match ExpressionId");
+                  static_cast<size_t>(ExpressionId::Count) - 1,
+               "Expression catalog must match ExpressionId");
+
+// Keep the exported HAPPY eye timeline intact; the writing scene is a local
+// firmware-only layer, not a mutation of the source Studio catalog.
+const AvatarEngine::ExpressionSpec kHappyWorkExpression = {
+    "HAPPY-WORK",
+    kExpressions[static_cast<size_t>(ExpressionId::Happy)].keyframes,
+    kExpressions[static_cast<size_t>(ExpressionId::Happy)].keyframeCount,
+    AvatarEngine::PlaybackMode::Once,
+    kExpressions[static_cast<size_t>(ExpressionId::Happy)].blink,
+    kExpressions[static_cast<size_t>(ExpressionId::Happy)].motion,
+    false,
+};
 
 float clamp01(float value) {
   return std::max(0.0f, std::min(1.0f, value));
@@ -550,13 +563,14 @@ bool AvatarEngine::begin() {
   Serial.printf("Avatar renderer: %d x %d, normalized scale %.3f, dirty rects\n",
                 M5.Display.width(), M5.Display.height(),
                 std::min(M5.Display.width(), M5.Display.height()) / kDesignSize);
-  Serial.println("Grok bot: 27 source presets, 23 playable sequences");
+  Serial.println("Grok bot: 23 source sequences + HAPPY-WORK derivative");
   return ready_;
 }
 
 const AvatarEngine::ExpressionSpec& AvatarEngine::spec(ExpressionId expression) {
+  if (expression == ExpressionId::HappyWork) return kHappyWorkExpression;
   const size_t index = std::min(static_cast<size_t>(expression),
-                                static_cast<size_t>(ExpressionId::Count) - 1);
+                                static_cast<size_t>(ExpressionId::Count) - 2);
   return kExpressions[index];
 }
 
@@ -752,6 +766,8 @@ bool AvatarEngine::showFromCommand(const String& rawCommand, uint32_t nowMs) {
     expression = ExpressionId::Thinking;
   } else if (command == "happy" || command == "smile") {
     expression = ExpressionId::Happy;
+  } else if (command == "happy-work") {
+    expression = ExpressionId::HappyWork;
   } else if (command == "excited" || command == "excite") {
     expression = ExpressionId::Excited;
   } else if (command == "curious" || command == "curiosity") {
@@ -987,6 +1003,8 @@ void AvatarEngine::invalidate() {
   forceRender_ = true;
   requiresFullClear_ = true;
   previousGrokBounds_.valid = false;
+  previousHappyWorkBounds_.valid = false;
+  previousBubbleBounds_.valid = false;
   previousLeftBounds_.valid = false;
   previousRightBounds_.valid = false;
   nextFrameUs_ = 0;
@@ -996,6 +1014,34 @@ void AvatarEngine::setDebugLabelEnabled(bool enabled) {
   if (debugLabelEnabled_ == enabled) return;
   debugLabelEnabled_ = enabled;
   invalidate();
+}
+
+void AvatarEngine::setBubbleText(const char* utf8, size_t length,
+                                 uint32_t nowMs) {
+  if (utf8 == nullptr || length == 0 || length > 72) return;
+  memset(bubbleLine1_, 0, sizeof(bubbleLine1_));
+  memset(bubbleLine2_, 0, sizeof(bubbleLine2_));
+  size_t lineBytes[2] = {};
+  uint8_t characters = 0;
+  for (size_t index = 0; index < length;) {
+    const uint8_t lead = static_cast<uint8_t>(utf8[index]);
+    const size_t width = lead < 0x80 ? 1 : (lead < 0xE0 ? 2 : 3);
+    const uint8_t line = characters < 12 ? 0 : 1;
+    char* destination = line == 0 ? bubbleLine1_ : bubbleLine2_;
+    memcpy(destination + lineBytes[line], utf8 + index, width);
+    lineBytes[line] += width;
+    index += width;
+    ++characters;
+  }
+  bubbleActive_ = true;
+  bubbleExpiresAtMs_ = nowMs + 10000;
+  forceRender_ = true;
+}
+
+void AvatarEngine::clearBubbleText() {
+  if (!bubbleActive_) return;
+  bubbleActive_ = false;
+  forceRender_ = true;
 }
 
 void AvatarEngine::scheduleNextBlink(uint32_t nowMs, bool useInitialDelay) {
@@ -1301,6 +1347,67 @@ void AvatarEngine::clearDirtyRect(const DirtyRect& rect) {
   }
 }
 
+void AvatarEngine::drawHappyWorkOverlay(uint32_t nowMs) {
+  // The page stays still while the pen traces a new line every 2.6 seconds.
+  // Everything fits inside the black circular body on the 466 px display.
+  const float screenScale =
+      std::min(M5.Display.width(), M5.Display.height()) / 466.0f;
+  const auto px = [screenScale](int value) {
+    return static_cast<int>(lroundf(value * screenScale));
+  };
+  const uint32_t phaseMs = (nowMs - expressionStartedMs_) % 2600;
+  const float progress = std::min(1.0f, phaseMs / 1900.0f);
+  const int penX = 165 + lroundf(127.0f * progress);
+  const int penY = 352 + lroundf(sinf(progress * 20.0f) * 2.0f);
+
+  M5.Display.drawRoundRect(px(143), px(320), px(184), px(65), px(7),
+                           TFT_LIGHTGREY);
+  M5.Display.drawFastHLine(px(158), px(341), px(151), 0x8410);
+  M5.Display.drawFastHLine(px(158), px(369), px(151), 0x8410);
+  for (int x = 165; x < penX; x += 4) {
+    const int nextX = std::min(x + 4, penX);
+    const int y0 = 352 + lroundf(sinf((x - 165) * 0.19f) * 3.0f);
+    const int y1 = 352 + lroundf(sinf((nextX - 165) * 0.19f) * 3.0f);
+    M5.Display.drawLine(px(x), px(y0), px(nextX), px(y1), TFT_WHITE);
+  }
+
+  // A small white glove grips the angled pen; the tip tracks the ink edge.
+  M5.Display.drawWideLine(px(penX), px(penY), px(penX + 22),
+                          px(penY - 27), std::max(1, px(3)), TFT_WHITE);
+  M5.Display.fillCircle(px(penX + 24), px(penY - 29),
+                        std::max(2, px(11)), TFT_WHITE);
+  M5.Display.drawLine(px(penX + 19), px(penY - 23), px(penX + 24),
+                      px(penY - 29), TFT_BLACK);
+  M5.Display.fillCircle(px(penX), px(penY), std::max(1, px(2)), TFT_LIGHTGREY);
+}
+
+void AvatarEngine::drawBubble() const {
+  const float scale =
+      std::min(M5.Display.width(), M5.Display.height()) / 466.0f;
+  const auto px = [scale](int value) {
+    return static_cast<int>(lroundf(value * scale));
+  };
+  constexpr uint16_t kBubbleFill = 0x2124;
+  M5.Display.fillRoundRect(px(58), px(61), px(350), px(68), px(18),
+                           kBubbleFill);
+  M5.Display.drawRoundRect(px(58), px(61), px(350), px(68), px(18),
+                           TFT_WHITE);
+  M5.Display.fillTriangle(px(221), px(127), px(245), px(127), px(233),
+                          px(142), kBubbleFill);
+  M5.Display.drawLine(px(221), px(128), px(233), px(142), TFT_WHITE);
+  M5.Display.drawLine(px(233), px(142), px(245), px(128), TFT_WHITE);
+  M5.Display.setFont(&fonts::efontCN_16);
+  M5.Display.setTextSize(1);
+  M5.Display.setTextColor(TFT_WHITE, kBubbleFill);
+  M5.Display.setTextDatum(middle_center);
+  if (bubbleLine2_[0] == '\0') {
+    M5.Display.drawString(bubbleLine1_, px(233), px(96));
+  } else {
+    M5.Display.drawString(bubbleLine1_, px(233), px(84));
+    M5.Display.drawString(bubbleLine2_, px(233), px(107));
+  }
+}
+
 void AvatarEngine::render(uint32_t nowMs) {
   const uint32_t renderStartedUs = micros();
   updateInteraction(nowMs);
@@ -1423,11 +1530,29 @@ void AvatarEngine::render(uint32_t nowMs) {
       grokFrameBounds.height,
       grokFrameBounds.valid,
   };
+  const DirtyRect writingBounds =
+      targetExpression_ == ExpressionId::HappyWork
+          ? DirtyRect{static_cast<int16_t>(lroundf(width * 120.0f / 466.0f)),
+                      static_cast<int16_t>(lroundf(height * 305.0f / 466.0f)),
+                      static_cast<int16_t>(lroundf(width * 226.0f / 466.0f)),
+                      static_cast<int16_t>(lroundf(height * 86.0f / 466.0f)),
+                      true}
+          : DirtyRect{};
+  const DirtyRect bubbleBounds =
+      bubbleActive_
+          ? DirtyRect{static_cast<int16_t>(lroundf(width * 54.0f / 466.0f)),
+                      static_cast<int16_t>(lroundf(height * 57.0f / 466.0f)),
+                      static_cast<int16_t>(lroundf(width * 358.0f / 466.0f)),
+                      static_cast<int16_t>(lroundf(height * 88.0f / 466.0f)),
+                      true}
+          : DirtyRect{};
+  const DirtyRect activeBounds =
+      mergeRects(grokBounds, mergeRects(writingBounds, bubbleBounds));
   const uint16_t grokGeometryPoints =
       GrokRenderer::geometryPointCount(grokFrame.expressionIndex);
   const bool fullScreenFallback =
-      !requiresFullClear_ && grokBounds.width >= width &&
-      grokBounds.height >= height;
+      !requiresFullClear_ && activeBounds.width >= width &&
+      activeBounds.height >= height;
 
   M5.Display.startWrite();
   if (requiresFullClear_) {
@@ -1437,8 +1562,11 @@ void AvatarEngine::render(uint32_t nowMs) {
   } else {
     clearDirtyRect(mergeRects(previousLeftBounds_, leftBounds));
     clearDirtyRect(mergeRects(previousRightBounds_, rightBounds));
+    clearDirtyRect(mergeRects(previousHappyWorkBounds_, writingBounds));
+    clearDirtyRect(mergeRects(previousBubbleBounds_, bubbleBounds));
   }
   grokRenderer_.draw(grokFrame);
+  if (writingBounds.valid) drawHappyWorkOverlay(nowMs);
   if (debugLabelEnabled_) {
     const int labelX = width / 2;
     const int labelY = 42;
@@ -1449,12 +1577,15 @@ void AvatarEngine::render(uint32_t nowMs) {
     M5.Display.setTextDatum(middle_center);
     M5.Display.drawString(activeName(), labelX, labelY);
   }
+  if (bubbleBounds.valid) drawBubble();
   M5.Display.endWrite();
 
   previousGrokBounds_ = grokBounds;
+  previousHappyWorkBounds_ = writingBounds;
+  previousBubbleBounds_ = bubbleBounds;
   previousLeftBounds_ = leftBounds;
   previousRightBounds_ = rightBounds;
-  recordRenderMetrics(nowMs, renderStartedUs, micros(), grokBounds,
+  recordRenderMetrics(nowMs, renderStartedUs, micros(), activeBounds,
                       grokGeometryPoints, fullScreenFallback);
 }
 
@@ -1514,6 +1645,11 @@ void AvatarEngine::recordRenderMetrics(uint32_t nowMs,
 
 void AvatarEngine::update(uint32_t nowMs) {
   if (!ready_) return;
+
+  if (bubbleActive_ &&
+      static_cast<int32_t>(nowMs - bubbleExpiresAtMs_) >= 0) {
+    clearBubbleText();
+  }
 
   const uint32_t elapsed = nowMs - transitionStartedMs_;
   if (transitionDurationMs_ > 0 && elapsed < transitionDurationMs_) {

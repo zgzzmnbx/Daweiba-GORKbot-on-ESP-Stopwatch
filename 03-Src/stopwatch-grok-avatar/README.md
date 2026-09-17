@@ -71,6 +71,31 @@ notifications, received receipts for all 23 standard expressions, and
 reconnected once. Unbound-controller rejection, ten-cycle reconnect,
 latency/FPS and long-run stability remain G4 follow-up checks.
 
+## v0.4.0 happy-work derivative (included in v0.5.0 upload)
+
+`happy-work` is a firmware-local 24th callable expression. It references the
+unchanged four-keyframe `happy` eye sequence and adds a procedural monochrome
+paper, pen, gloved hand, and progressing ink stroke in the lower safe area of
+the circular screen. The 23 source sequences and generated catalog remain
+untouched. Default playback returns to `idle`; explicit `loop happy-work` and
+`pingpong happy-work` continue. USB serial and BLE consoles accept the new
+hyphenated name (19 bytes in the longest command). Local tests and PlatformIO
+build pass. The v0.5.0 app upload includes this expression; visual quality,
+residue-free transitions, and FPS still require physical acceptance.
+
+## v0.5.0 BLE chat bubble (uploaded, readback verified)
+
+The Windows BLE console accepts `:say <text>` and `:clear`. `:say` transfers up
+to 24 printable BMP Unicode characters (72 UTF-8 bytes maximum) in sequenced,
+acknowledged GATT packets of no more than 20 bytes each. The device validates
+and commits the complete text in its main loop. A two-line bubble is rendered
+above the avatar with the bundled 16 px Chinese font and clears automatically
+after about 10 seconds. This retains the original BLE service, bonding policy,
+expression control, and v0.4.0 `happy-work`. Emoji are not supported. The new
+firmware builds and client tests pass. The app-only upload and independent
+flash readback verification pass; Chinese glyph appearance, clipping, residue,
+and frame rate still need physical QA.
+
 The local build and data tests pass. v0.2.1 has been uploaded as an app-only update and verified by flash readback. A user photo shows the black body and white eyes; 23 serial sequence entries respond and the optimized idle renderer reaches 60 FPS. Full animation, input and long-run hardware acceptance remains pending.
 
 ## Interaction map

@@ -236,7 +236,8 @@ void BLEControl::clearBinding() {
 }
 
 bool BLEControl::takeCommand(char* out, size_t outCapacity,
-                             uint16_t* connectionId) {
+                             uint16_t* connectionId,
+                             uint8_t* payloadLength) {
   if (out == nullptr || outCapacity == 0) return false;
 
   portENTER_CRITICAL(&queueMux_);
@@ -251,6 +252,7 @@ bool BLEControl::takeCommand(char* out, size_t outCapacity,
   }
   memcpy(out, event.value, event.length + 1);
   if (connectionId != nullptr) *connectionId = event.connectionId;
+  if (payloadLength != nullptr) *payloadLength = event.length;
   commandHead_ = (commandHead_ + 1) % kCommandQueueCapacity;
   --commandCount_;
   portEXIT_CRITICAL(&queueMux_);
@@ -337,6 +339,7 @@ bool BLEControl::validCommandBytes(const uint8_t* data, size_t length) const {
       }
       continue;
     }
+    if (character == '-') continue;
     if (character < 'a' || character > 'z') return false;
   }
   return true;
@@ -467,7 +470,11 @@ void BLEControl::CommandCallbacks::onWrite(
     owner_->enqueueStatus(connectionId, "ERR:BAD_LEN");
     return;
   }
-  if (!owner_->validCommandBytes(param->write.value, param->write.len)) {
+  const bool textPacket = param->write.len > 0 &&
+      param->write.value[0] >= BLEControl::kTextBegin &&
+      param->write.value[0] <= BLEControl::kTextClear;
+  if (!textPacket &&
+      !owner_->validCommandBytes(param->write.value, param->write.len)) {
     owner_->enqueueStatus(connectionId, "ERR:BAD_CMD");
     return;
   }

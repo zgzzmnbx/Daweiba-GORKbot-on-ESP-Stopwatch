@@ -20,6 +20,10 @@ class BLEControl {
       "48f1a003-8a75-4db6-9c18-590f7e9b0a01";
   static constexpr uint8_t kPeerAddressLength = 6;
   static constexpr uint8_t kMaxCommandLength = 20;
+  static constexpr uint8_t kTextBegin = 0xF0;
+  static constexpr uint8_t kTextChunk = 0xF1;
+  static constexpr uint8_t kTextCommit = 0xF2;
+  static constexpr uint8_t kTextClear = 0xF3;
   static constexpr uint8_t kMaxStatusLength = 20;
   static constexpr uint8_t kCommandQueueCapacity = 8;
   static constexpr uint8_t kStatusQueueCapacity = 4;
@@ -37,7 +41,8 @@ class BLEControl {
   bool openPairingWindow(uint32_t nowMs);
   void clearBinding();
 
-  bool takeCommand(char* out, size_t outCapacity, uint16_t* connectionId);
+  bool takeCommand(char* out, size_t outCapacity, uint16_t* connectionId,
+                   uint8_t* payloadLength);
   void publishResult(uint16_t connectionId, const char* status);
   bool takeNewBinding(uint8_t* outPeer, size_t outCapacity);
 

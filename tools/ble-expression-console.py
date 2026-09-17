@@ -21,12 +21,20 @@ COMMAND_UUID = "48f1a002-8a75-4db6-9c18-590f7e9b0a01"
 STATUS_UUID = "48f1a003-8a75-4db6-9c18-590f7e9b0a01"
 MAX_COMMAND_BYTES = 20
 STATUS_TIMEOUT_SECONDS = 2.0
+TEXT_MAX_BYTES = 72
+TEXT_MAX_CHARACTERS = 24
+TEXT_CHUNK_BYTES = 17
+TEXT_BEGIN = 0xF0
+TEXT_CHUNK = 0xF1
+TEXT_COMMIT = 0xF2
+TEXT_CLEAR = 0xF3
 
 EXPRESSIONS = (
     "idle",
     "listening",
     "thinking",
     "happy",
+    "happy-work",
     "excited",
     "curious",
     "confused",
@@ -81,8 +89,8 @@ def normalize_command(text: str) -> str:
     command = text.strip().lower()
     if not command:
         raise BleConsoleError("命令不能为空")
-    if any(character not in "abcdefghijklmnopqrstuvwxyz " for character in command):
-        raise BleConsoleError("命令只能包含英文小写字母和单个空格")
+    if any(character not in "abcdefghijklmnopqrstuvwxyz -" for character in command):
+        raise BleConsoleError("命令只能包含英文小写字母、连字符和单个空格")
     if command.startswith("loop ") or command.startswith("once "):
         mode, expression = command.split(" ", 1)
         if expression not in _EXPRESSION_SET:
@@ -118,6 +126,35 @@ def parse_status(payload: bytes | bytearray | str) -> str:
     if not status or len(encoded) > 20:
         raise BleConsoleError("设备返回了无效状态")
     return status
+
+
+def text_packets(text: str, transaction_id: int) -> list[tuple[bytes, str]]:
+    """Split one UTF-8 bubble into acknowledged writes of at most 20 bytes."""
+
+    message = text.strip()
+    if not message or not all(character.isprintable() for character in message):
+        raise BleConsoleError("文字不能为空，也不能包含换行或控制字符")
+    if len(message) > TEXT_MAX_CHARACTERS or any(ord(c) > 0xFFFF for c in message):
+        raise BleConsoleError("气泡最多 24 个字符，暂不支持 emoji")
+    encoded = message.encode("utf-8")
+    if len(encoded) > TEXT_MAX_BYTES:
+        raise BleConsoleError("文字的 UTF-8 编码最多 72 字节")
+    if not 1 <= transaction_id <= 255:
+        raise ValueError("transaction_id must be in 1..255")
+    packets = [
+        (bytes((TEXT_BEGIN, transaction_id, len(encoded))),
+         f"OK:BEGIN:{transaction_id}")
+    ]
+    for sequence, start in enumerate(range(0, len(encoded), TEXT_CHUNK_BYTES)):
+        payload = encoded[start : start + TEXT_CHUNK_BYTES]
+        packets.append(
+            (bytes((TEXT_CHUNK, transaction_id, sequence)) + payload,
+             f"OK:PART:{transaction_id}:{sequence}")
+        )
+    packets.append(
+        (bytes((TEXT_COMMIT, transaction_id)), f"OK:TEXT:{transaction_id}")
+    )
+    return packets
 
 
 def _advertised_service_uuids(advertisement: Any) -> set[str]:
@@ -190,6 +227,7 @@ class BleExpressionClient:
         self.status_characteristic: Any = STATUS_UUID
         self._status_queue: Optional[asyncio.Queue[str]] = None
         self._disconnected = False
+        self._next_text_id = 1
 
     @property
     def connected(self) -> bool:
@@ -283,6 +321,45 @@ class BleExpressionClient:
                 raise BleConsoleError("等待设备状态回执超时")
         raise BleConsoleError("BLE 命令未获得回执")
 
+    async def _send_text_packet(self, payload: bytes, expected_status: str) -> str:
+        if not self.connected or self._status_queue is None:
+            raise BleConsoleError("尚未连接 StopWatch")
+        while not self._status_queue.empty():
+            self._status_queue.get_nowait()
+        try:
+            await self.client.write_gatt_char(
+                self.command_characteristic, payload, response=True
+            )
+        except Exception as exc:
+            raise BleConsoleError(f"文字写入失败：{exc}") from exc
+        deadline = asyncio.get_running_loop().time() + self._status_timeout
+        while True:
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                raise BleConsoleError("等待文字回执超时；本次显示结果未确认")
+            try:
+                status = await asyncio.wait_for(self._status_queue.get(), remaining)
+            except asyncio.TimeoutError as exc:
+                raise BleConsoleError("等待文字回执超时；本次显示结果未确认") from exc
+            if status == expected_status:
+                return status
+            if status.startswith("ERR:"):
+                if status == "ERR:BAD_CMD":
+                    raise BleConsoleError("设备不支持文字气泡；请先写入 v0.5.0 固件")
+                raise BleConsoleError(f"设备拒绝文字：{status}")
+
+    async def send_text(self, text: str) -> str:
+        transaction_id = self._next_text_id
+        packets = text_packets(text, transaction_id)
+        self._next_text_id = 1 if transaction_id == 255 else transaction_id + 1
+        receipt = ""
+        for payload, expected in packets:
+            receipt = await self._send_text_packet(payload, expected)
+        return receipt
+
+    async def clear_text(self) -> str:
+        return await self._send_text_packet(bytes((TEXT_CLEAR,)), "OK:CLEAR")
+
     async def disconnect(self) -> None:
         if self.client is None:
             return
@@ -326,8 +403,10 @@ async def _choose_target(targets: list[Target], address: Optional[str]) -> Targe
 
 def _print_help() -> None:
     print(":help  显示帮助")
-    print(":list  列出 23 个可用表情")
+    print(":list  列出 24 个可用表情")
     print(":q     断开并退出")
+    print(":say 文字   在角色头上显示气泡约 10 秒（最多 24 字符）")
+    print(":clear      立即清除气泡")
     print("命令示例：happy / loop happy / once happy / pingpong happy")
 
 
@@ -354,7 +433,14 @@ async def run_console(address: Optional[str] = None, scan_timeout: float = 10.0)
                 print("  " + "  ".join(EXPRESSIONS))
                 continue
             try:
-                status = await controller.send_command(line)
+                if line.startswith(":say "):
+                    status = await controller.send_text(line[5:])
+                elif line == ":say":
+                    raise BleConsoleError("用法：:say 你好，今天加油")
+                elif line == ":clear":
+                    status = await controller.clear_text()
+                else:
+                    status = await controller.send_command(line)
                 print(f"<- {status}")
             except BleConsoleError as exc:
                 print(f"错误：{exc}")

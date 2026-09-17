@@ -4,6 +4,7 @@
 #include <M5IOE1.h>
 #include <M5Unified.h>
 #include <Preferences.h>
+#include <cstring>
 
 #include "avatar_engine.h"
 #include "ble_control.h"
@@ -33,6 +34,18 @@ constexpr uint16_t kSwipeTransitionMs = 160;
 constexpr char kBleEnabledKey[] = "ble";
 constexpr char kBleBoundKey[] = "ble_bound";
 constexpr char kBlePeerKey[] = "ble_peer";
+constexpr uint8_t kBubbleMaxBytes = 72;
+constexpr uint8_t kBubbleMaxCharacters = 24;
+constexpr uint32_t kTextTransferTimeoutMs = 5000;
+
+struct TextTransfer {
+  uint8_t id = 0;
+  uint8_t expected = 0;
+  uint8_t received = 0;
+  uint8_t nextChunk = 0;
+  uint32_t updatedAtMs = 0;
+  uint8_t data[kBubbleMaxBytes] = {};
+};
 
 enum class GestureAxis : uint8_t { None, Horizontal, Vertical };
 enum class PanelPage : uint8_t { Settings, Hardware, Bluetooth };
@@ -41,6 +54,7 @@ M5IOE1 ioe;
 AvatarEngine avatar;
 Preferences settings;
 BLEControl bleControl;
+TextTransfer textTransfer;
 bool vibrationReady = false;
 bool settingsReady = false;
 bool menuOpen = false;
@@ -512,13 +526,108 @@ void persistBleBindingIfNeeded() {
   Serial.println("BLE controller bound after encrypted pairing");
 }
 
+bool validBubbleUtf8(const uint8_t* data, uint8_t length) {
+  uint8_t characters = 0;
+  for (uint8_t index = 0; index < length;) {
+    const uint8_t lead = data[index];
+    uint8_t width = 0;
+    if (lead >= 0x20 && lead <= 0x7E) {
+      width = 1;
+    } else if (lead >= 0xC2 && lead <= 0xDF) {
+      width = 2;
+    } else if (lead >= 0xE0 && lead <= 0xEF) {
+      width = 3;
+    } else {
+      return false;
+    }
+    if (index + width > length) return false;
+    for (uint8_t offset = 1; offset < width; ++offset) {
+      if ((data[index + offset] & 0xC0) != 0x80) return false;
+    }
+    if (width == 3 &&
+        ((lead == 0xE0 && data[index + 1] < 0xA0) ||
+         (lead == 0xED && data[index + 1] >= 0xA0))) {
+      return false;
+    }
+    index += width;
+    if (++characters > kBubbleMaxCharacters) return false;
+  }
+  return characters != 0;
+}
+
+void handleBleTextPacket(const uint8_t* packet, uint8_t length,
+                         uint32_t nowMs, char* status, size_t statusCapacity) {
+  if (textTransfer.expected != 0 &&
+      nowMs - textTransfer.updatedAtMs > kTextTransferTimeoutMs) {
+    textTransfer = {};
+  }
+  const uint8_t operation = packet[0];
+  if (operation == BLEControl::kTextClear && length == 1) {
+    textTransfer = {};
+    avatar.clearBubbleText();
+    snprintf(status, statusCapacity, "OK:CLEAR");
+    return;
+  }
+  if (operation == BLEControl::kTextBegin && length == 3 && packet[1] != 0 &&
+      packet[2] > 0 && packet[2] <= kBubbleMaxBytes) {
+    textTransfer = {};
+    textTransfer.id = packet[1];
+    textTransfer.expected = packet[2];
+    textTransfer.updatedAtMs = nowMs;
+    snprintf(status, statusCapacity, "OK:BEGIN:%u", packet[1]);
+    return;
+  }
+  if (textTransfer.expected == 0 || length < 2 ||
+      packet[1] != textTransfer.id) {
+    snprintf(status, statusCapacity, "ERR:TEXT_STATE");
+    return;
+  }
+  if (operation == BLEControl::kTextChunk && length >= 4 &&
+      packet[2] == textTransfer.nextChunk &&
+      textTransfer.received + length - 3 <= textTransfer.expected) {
+    memcpy(textTransfer.data + textTransfer.received, packet + 3, length - 3);
+    textTransfer.received += length - 3;
+    textTransfer.updatedAtMs = nowMs;
+    snprintf(status, statusCapacity, "OK:PART:%u:%u", packet[1], packet[2]);
+    ++textTransfer.nextChunk;
+    return;
+  }
+  if (operation == BLEControl::kTextCommit && length == 2 &&
+      textTransfer.received == textTransfer.expected) {
+    if (!validBubbleUtf8(textTransfer.data, textTransfer.expected)) {
+      textTransfer = {};
+      snprintf(status, statusCapacity, "ERR:TEXT_UTF8");
+      return;
+    }
+    avatar.setBubbleText(reinterpret_cast<const char*>(textTransfer.data),
+                         textTransfer.expected, nowMs);
+    snprintf(status, statusCapacity, "OK:TEXT:%u", packet[1]);
+    textTransfer = {};
+    return;
+  }
+  textTransfer = {};
+  snprintf(status, statusCapacity, "ERR:TEXT_SEQ");
+}
+
 void processBleCommands(uint32_t nowMs) {
   char command[BLEControl::kMaxCommandLength + 1] = {};
   uint16_t connectionId = 0;
-  while (bleControl.takeCommand(command, sizeof(command), &connectionId)) {
+  uint8_t payloadLength = 0;
+  while (bleControl.takeCommand(command, sizeof(command), &connectionId,
+                                &payloadLength)) {
     if (menuOpen) {
+      textTransfer = {};
       bleControl.publishResult(connectionId, "ERR:BUSY");
       Serial.println("BLE command rejected: settings menu is open");
+      continue;
+    }
+
+    if (payloadLength > 0 &&
+        static_cast<uint8_t>(command[0]) >= BLEControl::kTextBegin) {
+      char status[BLEControl::kMaxStatusLength + 1] = {};
+      handleBleTextPacket(reinterpret_cast<const uint8_t*>(command),
+                          payloadLength, nowMs, status, sizeof(status));
+      bleControl.publishResult(connectionId, status);
       continue;
     }
 
@@ -754,7 +863,7 @@ void setup() {
   Serial.println("Expression device started");
   Serial.println(
       "Commands: idle listening thinking happy excited curious confused "
-      "angry surprised sad sleepy dizzy");
+      "angry surprised sad sleepy dizzy happy-work");
   Serial.println("Playback test: once|loop|pingpong <expression>");
   Serial.println("Hold A+B for settings, Bluetooth, and hardware diagnostics");
 }

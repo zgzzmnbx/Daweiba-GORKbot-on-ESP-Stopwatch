@@ -8,4 +8,8 @@
 
 双击 `start-ble-expression-console.cmd` 可创建独立的 `.venv-ble` 并安装锁定版本的 Bleak，然后扫描带目标 GATT Service UUID 的 `GorkBot-SW`。首次连接前必须在设备 `Settings → Bluetooth` 中打开 BLE，再点击 `Pair` 开启 120 秒本地配对窗口；设备完成绑定后，后续仅允许该已绑定控制端写入。客户端使用 GATT 写入回执与状态通知，不使用固定 MAC、不创建蓝牙虚拟串口，也不后台扫描。
 
+v0.4.0 源码新增 `happy-work`（开心眼睛 + 下半部写字动画）：串口与 BLE 控制台均支持 `happy-work`、`once happy-work`、`loop happy-work` 和 `pingpong happy-work`。该功能已随 v0.5.0 写入设备，真机显示仍待验收。
+
+v0.5.0 BLE 控制台新增 `:say 你好，今天加油！`：在表情画面上方显示两行聊天气泡，约 10 秒后自动消失；输入 `:clear` 可提前清除。文字最多 24 个可打印 BMP 字符、UTF-8 编码最多 72 字节，支持中文和英文，不支持 emoji。控制台会自动分包并逐包等待回执。v0.5.0 已写入设备并读回校验，实际显示效果待验收；更新脚本后请关闭并重新打开控制台。
+
 手工运行测试：`python tools/test_ble_expression_console.py`。测试仅覆盖客户端协议、服务筛选、回执和 mock GATT，不等价于真机配对、安全负向测试或稳定性验收；这些属于获得明确烧录授权后的 G4 门禁。

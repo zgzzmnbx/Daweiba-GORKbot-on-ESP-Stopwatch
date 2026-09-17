@@ -5,14 +5,14 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $expressions = @(
-    'idle', 'listening', 'thinking', 'happy', 'excited', 'curious',
+    'idle', 'listening', 'thinking', 'happy', 'happy-work', 'excited', 'curious',
     'confused', 'angry', 'surprised', 'sad', 'sleepy', 'dizzy',
     'sleeping', 'waking', 'searching', 'working', 'bored', 'suspicious',
     'proud', 'shy', 'laughing', 'scared', 'celebrate'
 )
 
 function Show-Help {
-    Write-Host 'Commands: happy | thinking | celebrate | idle'
+    Write-Host 'Commands: happy | happy-work | thinking | celebrate | idle'
     Write-Host 'Playback: once happy | loop happy | pingpong happy'
     Write-Host 'Type :list for all expressions, :q to quit.'
     Write-Host 'Use 115200 baud; close Settings on the device first.'

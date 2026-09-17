@@ -30,6 +30,7 @@ enum class ExpressionId : uint8_t {
   Laughing,
   Scared,
   Celebrate,
+  HappyWork,
   Count,
 };
 
@@ -127,6 +128,8 @@ class AvatarEngine {
                      float motionLeadX = 0.0f, float motionLeadY = 0.0f);
   void setShakeTarget(float normalizedX, float normalizedY, float intensity);
   void setDebugLabelEnabled(bool enabled);
+  void setBubbleText(const char* utf8, size_t length, uint32_t nowMs);
+  void clearBubbleText();
   void invalidate();
 
   ExpressionId activeExpression() const { return targetExpression_; }
@@ -168,6 +171,8 @@ class AvatarEngine {
   void scheduleNextBlink(uint32_t nowMs, bool useInitialDelay);
   void updateInteraction(uint32_t nowMs);
   void render(uint32_t nowMs);
+  void drawHappyWorkOverlay(uint32_t nowMs);
+  void drawBubble() const;
   void drawEye(const EyePose& eye, float centerX, float centerY, float blink);
   void drawDizzyEyePattern(const EyePose& eye, float centerX, float centerY,
                            int8_t side, uint32_t nowMs);
@@ -185,6 +190,10 @@ class AvatarEngine {
 
   bool ready_ = false;
   bool debugLabelEnabled_ = false;
+  bool bubbleActive_ = false;
+  uint32_t bubbleExpiresAtMs_ = 0;
+  char bubbleLine1_[73] = {};
+  char bubbleLine2_[73] = {};
   bool forceRender_ = true;
   bool requiresFullClear_ = true;
   Pose currentPose_{};
@@ -255,6 +264,8 @@ class AvatarEngine {
   bool grokFullScreenFallback_ = false;
   GrokRenderer grokRenderer_{};
   DirtyRect previousGrokBounds_{};
+  DirtyRect previousHappyWorkBounds_{};
+  DirtyRect previousBubbleBounds_{};
   DirtyRect previousLeftBounds_{};
   DirtyRect previousRightBounds_{};
 };
