@@ -1,5 +1,11 @@
 # CHANGELOG 历史归档
 
+## v0.2.6 - 2026-09-17（Windows 表情串口控制台）
+
+- 新增可双击的 `tools/start-expression-console.cmd` 与 PowerShell 串口控制脚本；自动识别 StopWatch USB 串口，不写死 COM5，使用 115200 波特率。
+- 支持 23 个固件表情名、`once/loop/pingpong` 播放前缀、`:list` 和 `:q`；关闭 Settings 后使用，不与其他串口程序同时运行。
+- PowerShell 语法、端口识别及真机发送测试通过：`happy` 获得 `Command accepted: HAPPY`。工具窗口已启动；本版未修改或重烧设备固件，设备仍为 v0.2.5。
+
 ## v0.2.5 - 2026-09-17（调试小字移至顶部，已写入待真机验收）
 
 - 调试模式动画名由头像底部移至黑色圆体顶部，中心 y=42；字体、颜色、开关与表情切换逻辑不变。

@@ -1,0 +1,6 @@
+# Local-only endpoints. No credentials or model paths belong here.
+port = 8766
+voice_url = "http://127.0.0.1:8765"
+# Optional preselection within a fresh BLE scan; never automatically connects.
+device_address = ""
+request_timeout = 60.0

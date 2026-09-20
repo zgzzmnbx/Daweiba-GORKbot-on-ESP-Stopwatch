@@ -2,6 +2,10 @@
 
 用于项目维护、构建辅助、设备探测和验证脚本。
 
+v0.6.0 新增电脑语音网页工作台，根目录双击 `start-voice-companion.cmd`；使用说明在 `03-Src/stopwatch-voice-companion/README.md`。语音工作台与旧蓝牙控制台不要同时占用设备。
+
+BLE 协议现在由 `stopwatch_ble.py` 提供，`ble-expression-console.py` 保留原命令行入口。表情/文字/清屏串行并严格匹配通知；超时或写入结果未知时断开，不读取旧状态当作成功。旧控制台遇到断线请 `:q` 后重开；工作台可有限重连 2 次。
+
 新增脚本必须使用项目相对路径，不得写死 `COM5` 或本机绝对路径；涉及擦除、烧录、eFuse 或外部发送的动作必须明确标注并设置安全门槛。
 
 双击 `start-expression-console.cmd` 可打开 StopWatch 表情串口控制台。它自动识别 `USB\VID_303A&PID_1001` 的唯一串口，以 115200 波特率发送带换行的已支持命令；也可用 `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\stopwatch-expression-console.ps1 -Port COMx` 显式指定端口。输入 `:list` 查看表情、`:help` 查看示例、`:q` 退出。请先关闭设备上的 Settings 菜单，且不要让 M5Burner 等程序同时占用串口。

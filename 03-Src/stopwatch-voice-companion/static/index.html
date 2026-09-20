@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StopWatch · 语音工作台</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<header><a class="wordmark" href="/">STOPWATCH<span> / COMPANION</span></a><span class="version">LOCAL WORKSPACE · 0.6.0</span></header>
+<main>
+  <section class="intro"><div><p class="eyebrow">听见 · 编辑 · 回读</p><h1>把话说给小人听。</h1><p class="subtitle">电脑负责收音与出声，StopWatch 用表情回应。<br>这是跟读工作台，暂不接入 AI 问答。</p></div><div class="avatar" aria-hidden="true"><i></i><i></i></div></section>
+  <div class="layout">
+    <section class="workspace panel" aria-labelledby="work-title">
+      <div class="section-head"><h2 id="work-title">对话练习</h2><span id="phase" class="badge">未连接</span></div>
+      <div class="record-zone"><div class="sound" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><p id="record-hint">连接语音服务后，开始第一轮。</p><div class="actions"><button id="record" class="primary" disabled>开始录音</button><button id="finish" hidden>结束并转写</button><button id="stop" class="stop" disabled>停止</button></div><small>录音最长 30 秒 · PCM16 / 16 kHz · 不保存录音文件</small></div>
+      <label for="transcript" class="editor-label">识别文字 / 回读内容 <span id="count">0 / 300</span></label>
+      <textarea id="transcript" maxlength="300" placeholder="识别结果会显示在这里，也可以直接输入文字。回读前可以自由修改。" spellcheck="false"></textarea>
+      <div class="editor-footer"><span>设备气泡仅显示前 24 字，回读使用完整文字。</span><button id="speak" class="primary" disabled>回读文字 <span aria-hidden="true">↗</span></button></div>
+      <div id="message" class="message" role="status" aria-live="polite">请先在右侧连接独立语音服务。</div>
+    </section>
+    <aside>
+      <section class="panel connection"><div class="section-head"><h2>连接</h2><button id="refresh" class="text-button">刷新</button></div><div class="status-row"><span>语音服务</span><span id="voice-status">检查中</span></div><code id="service-url">127.0.0.1:8765</code><p id="engine-status" class="muted">正在读取引擎状态…</p><div class="actions compact"><button id="connect" class="primary">连接会话</button><button id="release" hidden>退出会话</button><button id="takeover" class="danger" hidden>接管已有会话</button></div>
+      <div class="divider"></div><div class="status-row"><span>StopWatch</span><span id="robot-status">未连接 · 不影响语音</span></div><p class="muted">设备开启 BLE；首次在 Bluetooth 设置进入 Pair，然后退出 Settings。关闭其他蓝牙控制台。</p><button id="scan" disabled>扫描设备</button><div class="device-picker"><label class="sr-only" for="device">选择 StopWatch</label><select id="device" disabled><option value="">扫描后选择设备</option></select><button id="pair" disabled>连接</button><button id="unpair" disabled>断开</button></div><small id="receipt">未收到设备回执</small></section>
+      <section class="panel routing"><h2>声音与隐私</h2><p class="muted">默认全部本地。推荐：本地识别 + 云端回读；首次使用云端仍需单独授权。</p><div class="routing-grid"><label>语音识别<select id="asr"><option value="local">本地 ASR</option><option value="cloud">云端 ASR</option></select></label><label>文字回读<select id="tts"><option value="local">本地 TTS</option><option value="cloud">云端 TTS</option></select></label></div><label class="consent"><input type="checkbox" id="audio-consent"><span>允许上传录音<small>本次会话的云端识别使用，可能产生费用；可随时撤销。</small></span></label><label class="consent"><input type="checkbox" id="text-consent"><span>允许上传回读文字<small>本次会话的云端回读使用；与录音许可独立，可随时撤销。</small></span></label><button id="apply" disabled>应用设置</button><span id="settings-status" class="muted">本地 / 本地 · 上传关闭</span></section>
+    </aside>
+  </div>
+  <footer><span>录音与文字仅留在当前会话内存；云端模式按上述独立许可上传。</span><span>固件 v0.5.0 · 本轮无需烧录</span></footer>
+</main><script type="module" src="/static/app.js"></script>
+</body></html>

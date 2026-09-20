@@ -15,3 +15,7 @@ Codex-Temp/
 # Nested source-repository metadata is backed up separately by the outer
 # project repository and is not committed as an embedded Git repository.
 03-Src/stopwatch-grok-avatar/.git/
+
+# Computer companion local routing/device preferences and test caches
+03-Src/stopwatch-voice-companion/config.local.toml
+**/.pytest_cache/
