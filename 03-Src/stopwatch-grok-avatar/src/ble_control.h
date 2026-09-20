@@ -6,6 +6,9 @@
 #include <stdint.h>
 
 #include <BLEDevice.h>
+#include <atomic>
+
+class AudioProbe;
 
 // BLE remains an optional runtime feature.  The firmware owns the GATT
 // protocol, while the main loop owns avatar state, rendering, and NVS.
@@ -51,6 +54,13 @@ class BLEControl {
   bool connected() const { return connected_; }
   bool authorized() const { return authorized_; }
   bool hasBoundPeer() const { return hasBoundPeer_; }
+  void setAudioProbe(AudioProbe* probe) { audioProbe_ = probe; }
+  uint32_t linkEpoch() const { return linkEpoch_.load(); }
+  uint16_t connectionId() const { return connectionId_; }
+  bool audioPeerAllowed(uint16_t id) const {
+    return enabled_ && initialized_ && connected_ && authorized_ &&
+           !disconnectRequested_ && id == connectionId_ && currentPeerAllowed();
+  }
   bool pairingWindowOpen(uint32_t nowMs) const;
   uint16_t pairingSecondsRemaining(uint32_t nowMs) const;
 
@@ -121,6 +131,8 @@ class BLEControl {
   void resetQueues();
 
   BLEServer* server_ = nullptr;
+  AudioProbe* audioProbe_ = nullptr;
+  std::atomic<uint32_t> linkEpoch_{0};
   BLEService* service_ = nullptr;
   BLECharacteristic* commandCharacteristic_ = nullptr;
   BLECharacteristic* statusCharacteristic_ = nullptr;
@@ -129,8 +141,8 @@ class BLEControl {
   SecurityCallbacks securityCallbacks_;
   BLESecurity security_;
 
-  bool enabled_ = false;
-  bool initialized_ = false;
+  std::atomic<bool> enabled_{false};
+  std::atomic<bool> initialized_{false};
   bool advertising_ = false;
   bool pairingWindow_ = false;
   uint32_t pairingEndsAtMs_ = 0;
@@ -140,12 +152,12 @@ class BLEControl {
   bool pendingBinding_ = false;
   uint8_t pendingPeer_[kPeerAddressLength] = {};
 
-  bool connected_ = false;
-  bool authorized_ = false;
-  bool disconnectRequested_ = false;
+  std::atomic<bool> connected_{false};
+  std::atomic<bool> authorized_{false};
+  std::atomic<bool> disconnectRequested_{false};
   bool rejectConnectionRequested_ = false;
   uint16_t rejectConnectionId_ = 0;
-  uint16_t connectionId_ = 0;
+  std::atomic<uint16_t> connectionId_{0};
   uint8_t connectedPeer_[kPeerAddressLength] = {};
 
   CommandEvent commandQueue_[kCommandQueueCapacity] = {};

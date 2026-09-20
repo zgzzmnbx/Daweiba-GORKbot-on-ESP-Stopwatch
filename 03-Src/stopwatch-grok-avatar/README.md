@@ -11,6 +11,19 @@ KK is a procedural avatar built for the M5Stack StopWatch's circular AMOLED disp
 
 > Community project. Not affiliated with or endorsed by M5Stack.
 
+## v0.7.0-P0 BLE audio probe (built, NOT flashed)
+
+An opt-in `Settings → Audio test` page exercises the official StopWatch
+microphone/speaker using half-duplex PCM16. The PC bench arms one capture;
+hold A to record, release to finish, B to stop. Audio never starts from the
+avatar page. The separate encrypted audio GATT service has bounded PSRAM,
+connection/session/transfer isolation, physical cancellation, and a heartbeat
+lease. `../../tools/stopwatch_audio.py` supports tone, WAV playback, explicit
+WAV recording, and BLE round-trip echo. This is a credit-one transport probe,
+not a real-time stream or integrated speech assistant. The PC voice workbench
+remains v0.6.0 and uses PC audio. Hardware sound quality, throughput, security,
+and product regression acceptance are pending; the device still runs v0.5.0.
+
 ## Highlights
 
 - 12 procedural expressions: `idle`, `listening`, `thinking`, `happy`, `excited`, `curious`, `confused`, `angry`, `surprised`, `sad`, `sleepy` and `dizzy`;

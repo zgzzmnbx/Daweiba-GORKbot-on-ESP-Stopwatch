@@ -8,6 +8,7 @@
 
 #include "avatar_engine.h"
 #include "ble_control.h"
+#include "audio_probe.h"
 
 namespace {
 
@@ -48,12 +49,13 @@ struct TextTransfer {
 };
 
 enum class GestureAxis : uint8_t { None, Horizontal, Vertical };
-enum class PanelPage : uint8_t { Settings, Hardware, Bluetooth };
+enum class PanelPage : uint8_t { Settings, Hardware, Bluetooth, Audio };
 
 M5IOE1 ioe;
 AvatarEngine avatar;
 Preferences settings;
 BLEControl bleControl;
+AudioProbe audioProbe(bleControl);
 TextTransfer textTransfer;
 bool vibrationReady = false;
 bool settingsReady = false;
@@ -166,6 +168,7 @@ void drawSettingsFrame() {
   drawDebugControls();
   drawPanelButton(123, 300, 220, "Bluetooth");
   drawPanelButton(123, 352, 220, "Hardware Check");
+  drawPanelButton(170, 404, 126, "Audio test");
 }
 
 void drawBluetoothFrame() {
@@ -684,6 +687,7 @@ void refreshDiagnosticSensors() {
 }
 
 void setMenuOpen(bool enabled) {
+  audioProbe.leave();
   menuOpen = enabled;
   stopVibration();
   if (menuOpen) {
@@ -715,6 +719,13 @@ void handleSettingsInput(uint32_t nowMs) {
                touch.x >= 110 && touch.x < 356) {
       panelPage = PanelPage::Hardware;
       drawDiagnosticFrame();
+    } else if (touch.y >= 400 && touch.y < 440 &&
+               touch.x >= 160 && touch.x < 306) {
+      panelPage = PanelPage::Audio;
+      drawPanelFrame("BLE Audio v0.7.0-P0");
+      drawPanelButton(170, 396, 126, "Back");
+      audioProbe.enter();
+      return;
     }
   }
   if (nowMs - lastBatteryRefreshMs >= kBatteryRefreshIntervalMs) {
@@ -821,6 +832,10 @@ void setup() {
   auto config = M5.config();
   config.serial_baudrate = 115200;
   M5.begin(config);
+  // M5.begin configures the official pins/callbacks. Audio is not left active
+  // at boot and is started only by the explicit diagnostic session/gesture.
+  M5.Mic.end();
+  M5.Speaker.end();
   Serial.begin(115200);
 
   M5.Display.setRotation(0);
@@ -855,6 +870,7 @@ void setup() {
   }
   avatar.setDebugLabelEnabled(debugMode);
 
+  bleControl.setAudioProbe(&audioProbe);
   if (!bleControl.begin(bleEnabled, bleBound, blePeer)) {
     Serial.println("BLE control failed to initialize; kept OFF");
     if (settingsReady) settings.putBool(kBleEnabledKey, false);
@@ -877,12 +893,21 @@ void loop() {
   persistBleBindingIfNeeded();
   handleSerialCommands(nowMs);
   processBleCommands(nowMs);
+  audioProbe.update(nowMs);
 
   if (menuOpen) {
     if (panelPage == PanelPage::Settings) {
       handleSettingsInput(nowMs);
     } else if (panelPage == PanelPage::Bluetooth) {
       handleBluetoothInput(nowMs);
+    } else if (panelPage == PanelPage::Audio) {
+      const auto touch = M5.Touch.getDetail(0);
+      if (touch.wasPressed() && touch.y >= 390 && touch.y < 440 &&
+          touch.x >= 160 && touch.x < 306) {
+        audioProbe.leave();
+        panelPage = PanelPage::Settings;
+        drawSettingsFrame();
+      }
     } else {
       handleDiagnosticInput(nowMs);
     }

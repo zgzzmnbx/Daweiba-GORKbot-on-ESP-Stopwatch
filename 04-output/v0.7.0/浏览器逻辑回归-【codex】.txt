@@ -1,0 +1,13 @@
+✔ 48k stereo-downmixed floats become real 16k mono PCM WAV (1.3348ms)
+✔ sample saturation and 30-second maximum (9.9187ms)
+✔ 20 intermediate stops invalidate old playback/HTTP generations (0.4271ms)
+✔ actual UI handlers: 20 canceled TTS responses never start a player (8.2699ms)
+✔ actual UI handlers: 20 active players stop before server cancellation (2.5037ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 89.4902

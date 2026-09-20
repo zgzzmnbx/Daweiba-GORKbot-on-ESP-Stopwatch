@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 #include "ble_control.h"
+#include "audio_probe.h"
 
 #include <Arduino.h>
 #include <BLE2902.h>
@@ -65,6 +66,7 @@ bool BLEControl::initializeStack() {
   if (initialized_) return true;
 
   BLEDevice::init(std::string(kDeviceName));
+  BLEDevice::setMTU(247);
   BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
   BLEDevice::setSecurityCallbacks(&securityCallbacks_);
 
@@ -116,6 +118,10 @@ bool BLEControl::initializeStack() {
   statusCharacteristic_->addDescriptor(statusDescriptor);
   statusCharacteristic_->setValue("READY");
 
+  if (audioProbe_ && !audioProbe_->attach(server_)) {
+    BLEDevice::deinit(false);
+    return false;
+  }
   service_->start();
   BLEAdvertising* advertising = server_->getAdvertising();
   advertising->addServiceUUID(kServiceUuid);
@@ -434,6 +440,7 @@ void BLEControl::ServerCallbacks::onConnect(
     return;
   }
   owner_->connected_ = true;
+  owner_->linkEpoch_.fetch_add(1);
   owner_->authorized_ = false;
   owner_->disconnectRequested_ = false;
   owner_->advertising_ = false;
@@ -450,6 +457,7 @@ void BLEControl::ServerCallbacks::onDisconnect(
     return;
   }
   owner_->connected_ = false;
+  owner_->linkEpoch_.fetch_add(1);
   owner_->authorized_ = false;
   owner_->disconnectRequested_ = false;
   owner_->connectionId_ = 0;

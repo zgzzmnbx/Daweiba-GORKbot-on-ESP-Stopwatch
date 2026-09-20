@@ -2,6 +2,14 @@
 
 > 仅保留最近 5 个版本；更早记录转入 `CHANGELOG-历史归档.md`。
 
+## v0.7.0-P0 - 2026-09-21（纯 BLE 设备音频探针；未烧录）
+
+- 在现有固件新增 Settings → Audio test，电脑 ARM 后本地按住 A 录音，松开结束、B 停止；16 kHz PCM16 单声道、最长 10 秒，录放互斥。使用锁定的官方 M5Unified StopWatch 驱动，不改底层引脚、电源或分区配置。
+- 新增独立加密音频 GATT、定向通知、连接/会话/事务隔离、4 包固定队列、480 KB PSRAM 上限、取消优先和 15 秒租约；信用窗口 1，协商 20–244 bytes，尚不宣称实时吞吐。
+- 新增 Windows `start-ble-audio-test.cmd` 与测试工具：测试音、设备→电脑→设备 echo、完整短 WAV 播放、显式保存录音。无 Wi-Fi、云端或语音服务请求，不改变 8766 电脑音频模式。
+- 固件编译通过，新增 16 项客户端/协议模拟测试，保留原 45 项回归；真实录放、BLE 吞吐/安全及 P3 服务集成待后续门禁。设备仍 v0.5.0，工作台仍 v0.6.0。
+- 更新 README、AGENTS、PRD/当前计划、协议/操作文档与实施记录；不计算例行文件哈希、不自动烧录、不推送 GitHub。
+
 ## v0.6.0 - 2026-09-20（电脑语音工作台；不更换固件）
 
 - 完成当前 16 MB Flash 开发前备份，两次独立读取逐字节一致，应用区对应 v0.5.0；备份仅本地保存，不计算文件 SHA-256。本轮无设备写入。
@@ -31,9 +39,3 @@
 - 新增 Windows Bleak 控制台、双击启动脚本、锁定依赖和 mock GATT 测试；5 项客户端测试通过。L1 探针与正式 PlatformIO 构建通过，正式镜像 RAM 19.1%、Flash 23.5%。
 - 已完成 G3 预检，并在获得“执行烧录”授权后仅写入 `0x10000` 应用区；写后 `verify_flash` 返回 `verify OK (digest matched)`。未整片擦除、未改 bootloader、分区表、eFuse 或安全配置。
 - 设备本地打开 `BLE ON` 并点击 `Pair` 后，Windows `BleakClient(pair=True)` 已发现并连接 `GorkBot-SW`，状态通知、菜单 `ERR:BUSY`、23/23 标准命令、播放前缀和一次断线重连均通过；陌生端拒绝、10 次重连、P95/FPS、功耗和 30 分钟稳定性仍待补测。
-
-## v0.2.7 - 2026-09-17（v0.3.0 BLE PRD 与 Luna Max 交接，历史）
-
-- 新增 `07-v0.3.0-BLE表情操控开发PRD-【codex】.md`：明确本电脑内置蓝牙 + StopWatch BLE GATT、23 表情、Windows Bleak 控制台、配对安全、USB 回退及 L0—L6/G0—G5 门禁。
-- 本机确认 Windows 11 build 26200、Intel Wireless Bluetooth 与 Microsoft BLE 枚举器状态 OK、Python 3.14.3 和 Bleak 3.0.2；尚未建立 StopWatch BLE 广播、配对或无线控制。
-- 更新 README、项目 AGENTS 与当前版本计划。文档版本 v0.2.7，设备固件仍 v0.2.5；本轮未改固件、未烧录或改变电脑蓝牙配对。

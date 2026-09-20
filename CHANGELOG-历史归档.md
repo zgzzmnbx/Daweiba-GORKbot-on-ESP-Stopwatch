@@ -1,5 +1,11 @@
 # CHANGELOG 历史归档
 
+## v0.2.7 - 2026-09-17（v0.3.0 BLE PRD 与 Luna Max 交接，历史）
+
+- 新增 `07-v0.3.0-BLE表情操控开发PRD-【codex】.md`：明确本电脑内置蓝牙 + StopWatch BLE GATT、23 表情、Windows Bleak 控制台、配对安全、USB 回退及 L0—L6/G0—G5 门禁。
+- 本机确认 Windows 11 build 26200、Intel Wireless Bluetooth 与 Microsoft BLE 枚举器状态 OK、Python 3.14.3 和 Bleak 3.0.2；尚未建立 StopWatch BLE 广播、配对或无线控制。
+- 更新 README、项目 AGENTS 与当前版本计划。文档版本 v0.2.7，设备固件仍 v0.2.5；本轮未改固件、未烧录或改变电脑蓝牙配对。
+
 ## v0.2.6 - 2026-09-17（Windows 表情串口控制台）
 
 - 新增可双击的 `tools/start-expression-console.cmd` 与 PowerShell 串口控制脚本；自动识别 StopWatch USB 串口，不写死 COM5，使用 115200 波特率。

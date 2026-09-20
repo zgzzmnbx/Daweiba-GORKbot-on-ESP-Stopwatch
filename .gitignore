@@ -19,3 +19,6 @@ Codex-Temp/
 # Computer companion local routing/device preferences and test caches
 03-Src/stopwatch-voice-companion/config.local.toml
 **/.pytest_cache/
+
+# P0 audio probe build products stay local; source/tests/docs are versioned.
+04-output/v0.7.0/firmware/
