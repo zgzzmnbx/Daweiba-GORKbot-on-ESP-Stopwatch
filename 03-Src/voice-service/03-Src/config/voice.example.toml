@@ -1,0 +1,66 @@
+# v0.3.0: local by default. Cloud requires a dedicated key and separate session upload permissions.
+schema_version = 1
+
+[service]
+host = "127.0.0.1"
+port = 8765
+max_active_sessions = 1
+max_queued_requests = 2
+max_recording_seconds = 30
+max_upload_bytes = 2097152
+max_tts_characters = 300
+
+[asr]
+mode = "local"
+local_provider = "sherpa_sensevoice"
+model_directory = "Codex-Temp/voice-runtime/models/sensevoice"
+execution_provider = "cpu"
+num_threads = 4
+hard_timeout_seconds = 15
+
+[tts]
+mode = "local"
+local_provider = "sherpa_kokoro"
+model_directory = "Codex-Temp/voice-runtime/models/kokoro"
+execution_provider = "cpu"
+num_threads = 4
+speaker_id = 3
+hard_timeout_seconds = 20
+
+[cloud]
+allow_audio_upload = false
+allow_text_upload = false
+api_key_env = "ZHISUAN_VOICE_DASHSCOPE_API_KEY"
+region = "beijing"
+workspace_id = ""
+asr_model = "qwen3-asr-flash"
+tts_model = "qwen3-tts-flash"
+asr_base_url = ""
+tts_base_url = ""
+tts_voice = "Cherry"
+request_timeout_seconds = 20
+max_attempts = 1
+# Placeholder ceiling for a live benchmark session, not a currency estimate.
+session_request_limit = 60
+
+[business]
+enabled = false
+base_url = "http://127.0.0.1:8000"
+allow_read_only = true
+allow_write = false
+timeout_seconds = 30
+
+[device]
+enabled = false
+ble_enabled = false
+wifi_audio_enabled = false
+protocol_version = 1
+pcm_sample_rate = 16000
+pcm_channels = 1
+pcm_sample_width_bits = 16
+frame_duration_ms = 20
+
+[privacy]
+retain_raw_audio = false
+log_transcripts = false
+log_business_text = false

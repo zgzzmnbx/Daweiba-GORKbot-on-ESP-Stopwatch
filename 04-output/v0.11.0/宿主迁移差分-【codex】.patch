@@ -1,0 +1,76 @@
+--- a/03-Src/stopwatch-voice-companion/companion/service_manager.py
++++ b/03-Src/stopwatch-voice-companion/companion/service_manager.py
+@@ -1,4 +1,4 @@
+-"""Own-or-reuse lifecycle for the separately installed loopback voice service."""
++"""Own-or-reuse lifecycle for the project-local loopback voice service."""
+ import os
+ from pathlib import Path
+ import subprocess
+@@ -11,8 +11,12 @@
+ class VoiceServiceManager:
+     def __init__(self, config, client=None, popen=None, sleeper=None):
+         self.url = config.get("voice_url", "http://127.0.0.1:8765").rstrip("/")
+-        self.command = config.get("voice_service_command", [])
+-        self.cwd = config.get("voice_service_cwd", "")
++        project = Path(__file__).resolve().parents[3]
++        module = project / "03-Src" / "voice-service"
++        python = project / "Codex-Temp" / "voice-runtime" / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
++        self.bundled_config = module / "03-Src" / "config" / "voice.example.toml" if "voice_service_command" not in config else None
++        self.command = config.get("voice_service_command", [str(python), str(module / "tools" / "serve_managed.py")])
++        self.cwd = config.get("voice_service_cwd", "" if "voice_service_command" in config else str(module))
+         self.client = client or httpx.Client(timeout=2, trust_env=False)
+         self.popen = popen or subprocess.Popen
+         self.sleeper = sleeper or time.sleep
+@@ -58,7 +62,10 @@
+             raise ValueError("语音服务入口和工作目录必须是已存在的绝对路径")
+         flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+         self.mode = "starting"
+-        self.process = self.popen(self.command, cwd=str(cwd), stdin=subprocess.PIPE,
++        environment = os.environ.copy()
++        if self.bundled_config is not None:
++            environment["VOICE_CONFIG"] = str(self.bundled_config)
++        self.process = self.popen(self.command, cwd=str(cwd), stdin=subprocess.PIPE, env=environment,
+             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=flags)
+         for _ in range(75):
+             if self.stopping.is_set():
+--- a/03-Src/stopwatch-voice-companion/config.example.toml
++++ b/03-Src/stopwatch-voice-companion/config.example.toml
+@@ -5,13 +5,12 @@
+ device_address = ""
+ request_timeout = 60.0
+ 
+-# Optional managed startup. Leave empty to reuse an already running service only.
+-# Both paths must be absolute; the command is executed directly without a shell.
+-voice_service_command = []
+-voice_service_cwd = ""
+-# Point to the independent voice project's Python and tools/serve_managed.py.
+-# Keep machine-specific absolute paths in ignored config.local.toml only.
+-# Managed entry keeps stdin open; pipe EOF shuts down its inference worker.
++# By default, Gork owns the bundled 03-Src/voice-service module and uses
++# Codex-Temp/voice-runtime/.venv plus the project-local model directory.
++# Omit both keys for project-local startup; set command=[] for reuse-only mode.
++# Custom commands must be absolute and are executed directly, without a shell.
++# voice_service_command = []
++# voice_service_cwd = ""
+ 
+ # Optional OpenAI-compatible text-only answer provider. The secret itself is never stored here.
+ answer_base_url = ""
+--- a/tools/check_voice_autostart.py
++++ b/tools/check_voice_autostart.py
+@@ -1,6 +1,6 @@
+ """Opt-in local lifecycle check. No sessions, microphone, BLE or cloud requests.
+ 
+-Run with the voice project's Python (httpx + psutil), --voice-project PATH.
++Run with Codex-Temp/voice-runtime/.venv Python (httpx + psutil).
+ An isolated free port is required; only this check's own child is stopped.
+ """
+ import argparse
+@@ -18,7 +18,7 @@
+ 
+ def main():
+     parser = argparse.ArgumentParser()
+-    parser.add_argument('--voice-project', type=Path, required=True)
++    parser.add_argument('--voice-project', type=Path, default=ROOT / '03-Src/voice-service')
+     parser.add_argument('--port', type=int, default=8875)
+     args = parser.parse_args()
+     project = args.voice_project.resolve()

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>智算语音桥 · 本地语音工作台</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<div class="shell">
+  <header class="topbar"><a class="brand" href="/" aria-label="智算语音桥首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>智算语音桥<small>VOICE WORKSPACE</small></span></a><div class="top-meta"><span class="offline"><span class="dot"></span><span id="runMode">本地模式</span></span><span class="version">v0.3.0</span></div></header>
+  <main>
+    <div class="intro"><div><p class="eyebrow">声音与文字之间</p><h1>说出来，也读给你听。</h1><p class="intro-copy">识别与朗读，分别选择本地或云端。先试一句，再看它的表现。</p></div><div class="service-state"><span class="status-dot" id="serviceDot"></span><div><strong id="serviceState">正在连接服务</strong><small id="engineSummary">正在检查本地语音模型</small></div></div></div>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+    <div id="takeoverBar" class="takeover" hidden><span>另一个页面正在使用语音服务。</span><button id="takeover" class="button small">接管会话</button></div>
+    <section class="routing-panel" aria-label="本地与云端选择">
+      <div class="routing-heading"><strong>选择声音的处理方式</strong><span id="cloudStatus">正在检查云端配置…</span></div>
+      <div class="routing-options"><label>语音识别<select id="asrMode"><option value="local">本地 · SenseVoice</option><option value="cloud">云端 · 百炼 Qwen ASR</option></select></label><label>语音朗读<select id="ttsMode"><option value="local">本地 · Kokoro</option><option value="cloud">云端 · 百炼 Qwen TTS</option></select></label><button id="applyRouting" class="button">应用到下一轮</button></div>
+      <div class="upload-permissions"><label><input id="allowAudio" type="checkbox">允许将录音上传到百炼北京地域识别</label><label><input id="allowText" type="checkbox">允许将播报文字上传到百炼北京地域合成</label></div>
+      <p id="routeSummary">当前使用本地识别与朗读，不上传内容。</p>
+      <details><summary>如何配置云端</summary><p>在项目目录双击“配置云端语音.cmd”，在本机窗口输入北京地域的百炼 API Key，随后刷新本页。密钥不需要发到聊天里，也不经过本网页。配置完成后仍需选择云端并勾选对应上传权限。关闭权限会取消该类正在执行的云端请求。</p><p>云端会产生服务商用量；每会话最多 60 次请求，不自动重试。当前先比较完整 WAV 延迟，尚未提供流式首段播报。</p></details>
+    </section>
+    <div class="workspace">
+      <section class="panel listening" aria-labelledby="listenHeading">
+        <div class="panel-head"><div><span class="step">01 / LISTEN</span><h2 id="listenHeading">把声音变成文字</h2></div><span id="asrBadge" class="engine-badge">SenseVoice · 加载中</span></div>
+        <div class="record-stage"><canvas id="waveform" width="720" height="96" aria-label="麦克风实时波形"></canvas><div class="record-state"><span id="recordState">等待开始</span><time id="recordTime">00:00</time></div>
+          <button id="holdRecord" class="record-button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg><span>按住说话</span></button>
+          <div class="record-options"><button id="toggleRecord" class="text-button" disabled>点击开始录音</button><span>·</span><label class="text-button upload-label">上传 WAV<input id="upload" type="file" accept=".wav,audio/wav" disabled></label></div>
+          <p class="caption">最长 30 秒 · 松开后识别 · 录音默认不保存</p>
+        </div>
+        <div class="editor-label"><label for="transcript">识别文字</label><div><button id="copyText" class="text-button" disabled>复制</button><button id="useText" class="text-button" disabled>送去朗读 ↗</button></div></div>
+        <textarea id="transcript" class="transcript" placeholder="识别结果会出现在这里，也可以手动修正。" aria-label="识别文字"></textarea>
+        <div class="panel-foot"><span id="asrDetail">支持普通话及中英文表达</span><span id="asrTime">—</span></div>
+      </section>
+      <section class="panel speaking" aria-labelledby="speakHeading">
+        <div class="panel-head"><div><span class="step">02 / SPEAK</span><h2 id="speakHeading">把文字读给你听</h2></div><span id="ttsBadge" class="engine-badge">Kokoro · 加载中</span></div>
+        <div class="speak-editor"><label class="sr-only" for="speakText">播报文字</label><textarea id="speakText" maxlength="300" placeholder="输入想听的文字…">你好，我是智算语音桥。现在可以在这台电脑上听你说话，也把文字读给你听。</textarea><div class="text-counter"><button id="sampleText" class="text-button">换一句试试</button><span><span id="charCount">0</span> / 300</span></div></div>
+        <div class="voice-settings"><label>声音<select id="speaker"><option value="3">中文女声 · 3</option></select><span id="cloudVoice" hidden>芊悦 · Cherry（云端）</span></label><label>语速<select id="speed"><option value="0.85">舒缓 · 0.85×</option><option value="1" selected>自然 · 1.0×</option><option value="1.15">轻快 · 1.15×</option></select></label></div>
+        <div class="playback-actions"><button id="synthesize" class="button primary" disabled><span aria-hidden="true">▶</span> 合成并试听</button><button id="stop" class="button stop"><span aria-hidden="true">■</span> 停止</button></div>
+        <div class="playback-status"><span class="play-indicator" id="playIndicator"></span><p id="playState" aria-live="polite">等待试听</p><button id="replay" class="text-button" disabled>重新播放</button></div>
+        <div class="panel-foot"><span id="ttsPrivacy">电脑扬声器 · 不上传文字</span><span id="ttsTime">—</span></div>
+      </section>
+    </div>
+    <section class="diagnostics" aria-label="本轮诊断"><div class="diagnostic-heading"><div><span class="step">OBSERVATION</span><h2>每一次等待，都看得清。</h2></div><button id="exportMetrics" class="text-button" disabled>导出本页指标 ↓</button></div><div class="metrics"><div><span>识别处理</span><strong id="metricAsr">—</strong><small>音频 → 文字</small></div><div><span>合成处理</span><strong id="metricTts">—</strong><small>文字 → 完整音频</small></div><div><span>本轮排队</span><strong id="metricQueue">—</strong><small>本机等待时间</small></div><div><span>首个可播放音频</span><strong id="metricPlayable">—</strong><small>提交 → 完成解码</small></div></div><details><summary>查看诊断详情与运行边界</summary><div class="diagnostic-notes"><p>本版为完整音频合成，未提供流式播报。指标来自实际请求，不包含尚未接入的业务问答。</p><p>云端耗时包含网络与服务端处理，不等同于模型推理耗时。造价智算和 StopWatch 尚未接入；当前使用电脑音频。按 Escape 可停止当前交互。</p><p id="technicalStatus">准备连接…</p><pre id="requestInfo">尚无请求</pre></div></details></section>
+  </main>
+  <footer><span>ZHISUAN VOICE / 本地语音实验室</span><span>本地模式不出站；云端模式按上方权限上传。原始录音不写入本机磁盘。</span></footer>
+</div><script type="module" src="/static/app.js"></script>
+</body></html>
