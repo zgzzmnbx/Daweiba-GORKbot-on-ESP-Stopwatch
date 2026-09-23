@@ -1,0 +1,909 @@
+--- a/03-Src/gork-desktop/main.js
++++ b/03-Src/gork-desktop/main.js
+@@ -94,6 +94,16 @@
+   ipcMain.handle('gork:hide-avatar', () => avatarWindow.hide());
+   ipcMain.handle('gork:stop-all', () => stopAll());
+   ipcMain.handle('gork:get-state', () => sharedState);
++  ipcMain.handle('gork:avatar-visible', (event) => {
++    if (event.sender !== consoleWindow?.webContents) throw new Error('Only the console can inspect visibility');
++    return Boolean(avatarWindow && !avatarWindow.isDestroyed() && avatarWindow.isVisible());
++  });
++  ipcMain.handle('gork:set-avatar-visible', (event, visible) => {
++    if (event.sender !== consoleWindow?.webContents || typeof visible !== 'boolean') throw new Error('Invalid visibility request');
++    if (!avatarWindow || avatarWindow.isDestroyed()) throw new Error('Avatar window unavailable');
++    if (visible) avatarWindow.showInactive(); else avatarWindow.hide();
++    return avatarWindow.isVisible();
++  });
+ 
+   app.whenReady().then(async () => {
+     const allowedOrigin = BACKEND_URL;
+--- a/03-Src/gork-desktop/package-lock.json
++++ b/03-Src/gork-desktop/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "gork-robot-console",
+-  "version": "0.9.0",
++  "version": "0.10.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "gork-robot-console",
+-      "version": "0.9.0",
++      "version": "0.10.0",
+       "devDependencies": {
+         "@electron/packager": "20.3.0",
+         "electron": "44.4.3"
+--- a/03-Src/gork-desktop/package.json
++++ b/03-Src/gork-desktop/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "gork-robot-console",
+-  "version": "0.9.0",
++  "version": "0.10.0",
+   "private": true,
+   "description": "Windows desktop shell for the Gork robot console",
+   "main": "main.js",
+--- a/03-Src/gork-desktop/preload.js
++++ b/03-Src/gork-desktop/preload.js
+@@ -4,6 +4,8 @@
+   openConsole: () => ipcRenderer.invoke('gork:open-console'),
+   hideAvatar: () => ipcRenderer.invoke('gork:hide-avatar'),
+   stopAll: () => ipcRenderer.invoke('gork:stop-all'),
++  getAvatarVisible: () => ipcRenderer.invoke('gork:avatar-visible'),
++  setAvatarVisible: (visible) => ipcRenderer.invoke('gork:set-avatar-visible', visible),
+   getState: () => ipcRenderer.invoke('gork:get-state'),
+   onState: (callback) => {
+     const listener = (_event, state) => callback(state);
+--- a/03-Src/stopwatch-voice-companion/companion/__init__.py
++++ b/03-Src/stopwatch-voice-companion/companion/__init__.py
+@@ -1 +1 @@
+-__version__ = "0.9.0-dev"
++__version__ = "0.10.0-dev"
+--- a/03-Src/stopwatch-voice-companion/static/app.js
++++ b/03-Src/stopwatch-voice-companion/static/app.js
+@@ -3,7 +3,14 @@
+ 
+ const $ = id => document.getElementById(id);
+ const face = window.GorkAvatar?.mount($('gork-face'));
+-const characterFace = window.GorkAvatar?.mount($('character-face'));
++const characterFace = face;
++let manualPreview = false, lastFaceState = '', renderedPage = '';
++let appliedTts = '';
++let recordingPending = false, connectionPending = false, previewSerial = 0;
++for (const id of ['auto-read', 'expression-follow']) {
++  try { $(id).checked = window.localStorage?.getItem('gork.' + id) !== 'false'; } catch { $(id).checked = true; }
++}
++$('tts').value = 'cloud';
+ const consentIds = ['audio-consent','text-consent','answer-consent'];
+ for (const id of consentIds) {
+   let saved = null;
+@@ -29,38 +36,68 @@
+     if (['local','cloud'].includes(value)) $(id).value = value;
+   }
+ } catch {}
++if (!$('text-consent').checked) $('tts').value = 'local';
++if (!$('audio-consent').checked) $('asr').value = 'local';
+ $('voice-speed').value = String(savedSpeech.speed);
+ const labels = {idle: '待机', listening: '正在聆听', processing: '处理中', speaking: '正在回读', ready: '文字已就绪', error: '请检查连接'};
+ 
+ function message(text, error = false) { $('message').textContent = text; $('message').className = 'message' + (error ? ' error' : ''); }
++function addMessage(role, text) {
++  if (!document.createElement) return;
++  $('empty-chat')?.remove();
++  const row = document.createElement('article'); row.className = 'chat-message ' + role;
++  const label = document.createElement('small'); label.textContent = role === 'user' ? '你' : 'Gork';
++  const content = document.createElement('div'); content.textContent = text;
++  row.append(label, content);
++  if (role === 'assistant') {
++    const actions = document.createElement('div'); actions.className = 'actions compact';
++    const read = document.createElement('button'); read.textContent = '朗读';
++    read.onclick = () => speak(false, text);
++    const copy = document.createElement('button'); copy.textContent = '复制';
++    copy.onclick = async () => { try { await navigator.clipboard.writeText(text); message('已复制。'); } catch { message('无法访问剪贴板，请选择文字复制。', true); } };
++    actions.append(read, copy); row.append(actions);
++  }
++  $('chat-log').append(row); $('chat-log').scrollTop = $('chat-log').scrollHeight;
++}
+ function navigate() {
+   if (!globalThis.location) return;
+   const page = ['dialogue', 'character', 'watch', 'settings'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dialogue';
+   if (location.hash !== `#${page}`) history.replaceState(null, '', `#${page}`);
+   document.querySelectorAll?.('[data-page]').forEach(item => { item.hidden = item.dataset.page !== page; });
+-  document.querySelectorAll?.('[data-page-link]').forEach(item => item.classList.toggle('active', item.dataset.pageLink === page));
++  document.querySelectorAll?.('[data-page-link]').forEach(item => {
++    const active = item.dataset.pageLink === page;
++    item.classList.toggle('active', active); item.setAttribute('aria-selected', String(active)); item.tabIndex = active ? 0 : -1;
++  });
++  if (renderedPage && renderedPage !== page && (phase === 'listening' || recordingPending)) stop();
++  renderedPage = page;
+ }
+ function render(next = phase) {
+   phase = next; document.body.dataset.phase = phase;
+-  face?.set(next);
++  const faceState = $('expression-follow').checked ? next : 'idle';
++  if (!manualPreview && faceState !== lastFaceState) { face?.set(faceState); lastFaceState = faceState; }
++  $('companion-phase').textContent = labels[phase] || '待机';
++  $('robot-voice-summary').textContent = connected ? labels[phase] : '未连接';
++  $('robot-device-summary').textContent = robotConnected ? '已连接' : '未连接';
++  $('robot-route-summary').textContent = (appliedTts || $('tts').value) === 'cloud' ? '云端朗读' : '本地朗读';
++  $('quick-connect').textContent = connected ? '语音已连接' : '连接语音';
++  $('quick-connect').disabled = connected || connectionPending;
+   $('phase').textContent = connected ? labels[phase] : '未连接';
+   const busy = ['listening', 'processing', 'speaking'].includes(phase);
+   $('voice-preview').disabled = !connected || dirty || busy || delayBusy;
+-  $('voice-apply').disabled = !connected;
+   $('voice-stop').disabled = !connected;
+   $('voice-start').disabled = serviceStarting;
+-  $('record').disabled = !connected || dirty; $('record').hidden = phase === 'listening';
++  $('record').disabled = !connected || !appliedTts || busy || delayBusy; $('record').hidden = phase === 'listening';
+   $('finish').hidden = phase !== 'listening'; $('stop').disabled = !connected;
+-  $('speak').disabled = !connected || dirty || busy || !$('transcript').value.trim();
+-  $('speak-label').textContent = $('interaction-mode').value === 'answer' ? '回答并朗读' : '朗读文字';
++  $('speak').disabled = !connected || !appliedTts || busy || delayBusy || !$('transcript').value.trim();
++  $('speak-label').textContent = $('interaction-mode').value === 'answer' ? ($('auto-read').checked ? '回答并朗读' : '发送') : '朗读文字';
+   $('transcript').readOnly = busy;
+   $('connect').hidden = connected; $('release').hidden = !connected;
+-  $('scan').disabled = !connected; $('apply').disabled = !connected;
+-  $('clear-answer').disabled = !connected;
++  $('scan').disabled = !workspace; $('apply').disabled = !connected;
++  $('clear-answer').disabled = busy || delayBusy;
+   $('sound-preview').disabled = busy;
+-  $('sound-play').disabled = busy || !connected || !robotConnected;
++  $('sound-play').disabled = busy || !workspace || !robotConnected;
+   $('sound-stop').disabled = !robotConnected && !previewPlayer.playing;
+-  $('sound-volume').disabled = busy || !connected || !robotConnected;
++  $('sound-volume').disabled = busy || !workspace || !robotConnected;
+   $('delay-start').disabled = busy || delayBusy || !connected || !robotConnected;
+   $('delay-cancel').disabled = !delayBusy;
+   $('count').textContent = `${Array.from($('transcript').value).length} / 300`;
+@@ -92,7 +129,7 @@
+   if (oldContext && oldContext.state !== 'closed') { oldContext.suspend().catch(() => {}); oldContext.close().catch(() => {}); }
+ }
+ function stopPreview() {
+-  previewPlayer.stop();
++  previewSerial++; previewPlayer.stop();
+   if (previewPlayback) { previewPlayback.onended = null; try { previewPlayback.stop(); } catch {} previewPlayback.disconnect(); previewPlayback = null; }
+   const audio = previewContext; previewContext = null;
+   if (audio && audio.state !== 'closed') audio.close().catch(() => {});
+@@ -100,14 +137,14 @@
+ }
+ function failed(error, gen) {
+   if (error.name === 'AbortError' || (gen !== undefined && !epoch.valid(gen))) return;
+-  localStop();
++  recordingPending = false; localStop();
+   if (error.status === 401) { connected = false; epoch.next(); $('takeover').hidden = true; }
+   render('error'); message(error.message || '连接中断，请检查服务后重试。', true);
+   if (connected && gen !== undefined && epoch.valid(gen)) state('error', gen).catch(() => {});
+ }
+ async function stop() {
+   turnReady = false;
+-  localStop(); const gen = epoch.next(); render('idle'); message('已停止本地录音与播放，正在取消服务请求。');
++  recordingPending = false; localStop(); const gen = epoch.next(); render('idle'); message('已停止本地录音与播放，正在取消服务请求。');
+   const deviceCancel = robotConnected ? api('/device/audio', 'DELETE').catch(() => {}) : Promise.resolve();
+   if (connected) {
+     try { await api('/stop', 'POST', {generation: gen}); if (epoch.valid(gen)) message('已停止。旧结果不会继续播放；已提交的云端请求可能仍产生费用。'); }
+@@ -117,19 +154,22 @@
+   delayBusy = false; render();
+ }
+ async function stopAll() {
++  stopPreview();
+   await stop();
+-  try { await api('/desktop/stop', 'POST'); message('已停止电脑音频、在途语音与设备操作；设备停止回执以实际返回为准。'); }
++  try { const result = await api('/desktop/stop', 'POST'); if (Number.isInteger(result.generation)) epoch.value = Math.max(epoch.value, result.generation); message('已停止电脑音频、在途语音与设备操作；设备停止回执以实际返回为准。'); }
+   catch (error) { message(error.message, true); }
+ }
+ async function state(name, gen) { await api('/state', 'POST', {generation: gen, state: name}, {signal: epoch.abort.signal}); }
+ async function begin() {
+-  localStop(); const gen = epoch.next();
++  manualPreview = false; localStop(); const gen = epoch.next();
+   await api('/begin', 'POST', {generation: gen}, {signal: epoch.abort.signal});
+   if (!epoch.valid(gen)) throw new DOMException('旧操作', 'AbortError');
+   turnReady = true;
+   return gen;
+ }
+ async function record() {
++  if (!connected || !appliedTts || delayBusy || ['listening','processing','speaking'].includes(phase)) return;
++  recordingPending = true; render('processing');
+   let gen;
+   try {
+     gen = await begin(); render('processing');
+@@ -137,7 +177,7 @@
+     if (!recorderStarted || !epoch.valid(gen)) return;
+     await state('listening', gen);
+     if (!epoch.valid(gen)) return;
+-    render('listening'); message('正在收音。结束后可编辑识别文字，再点击回读。');
++    recordingPending = false; render('listening'); message('正在收音。结束后可编辑识别文字，再点击回读。');
+     const started = performance.now();
+     tick = setInterval(() => { $('record-hint').textContent = `正在录音 ${Math.min(30, (performance.now() - started) / 1000).toFixed(1)} / 30 秒`; }, 100);
+     deadline = setTimeout(finish, 30000);
+@@ -155,9 +195,12 @@
+     message(result.text ? '文字已就绪，可以编辑后回读。' : '没有识别到文字，请重新录音。');
+   } catch (error) { failed(error, gen); }
+ }
+-async function speak(preview = false) {
+-  const text = preview ? '你好，我是 Gork。这是当前音色的试听。' : $('transcript').value.trim();
++async function speak(preview = false, explicitText = null) {
++  if (!connected || !appliedTts || (preview && dirty) || delayBusy || ['listening','processing','speaking'].includes(phase)) return;
++  const text = preview ? '你好，我是 Gork。这是当前音色的试听。' : (explicitText ?? $('transcript').value.trim());
+   if (!text || Array.from(text).length > 300) { message('回读内容需要 1–300 字，请先编辑。', true); return; }
++  manualPreview = false; render('processing');
++  if (!preview && explicitText === null) addMessage('user', text);
+   let gen;
+   // Resume inside the click gesture so delayed network audio is playable.
+   localStop(); const audio = new AudioContext(); context = audio;
+@@ -169,14 +212,14 @@
+     turnReady = true;
+     await resumed; render('processing');
+     let spoken = text;
+-    if (!preview && $('interaction-mode').value === 'answer') {
++    if (!preview && explicitText === null && $('interaction-mode').value === 'answer') {
+       message('正在请求回答；内容仅发送给已配置的文字回答服务。');
+       const result = await api('/answer', 'POST', {generation: gen, text}, {signal: epoch.abort.signal});
+       if (!epoch.valid(gen)) return;
+-      spoken = result.text; $('transcript').value = spoken; render('processing');
+-      if (Array.from(spoken).length > 300) {
+-        $('interaction-mode').value = 'read'; render('ready');
+-        message('回答超过 300 字，已完整显示但未朗读。请编辑到 300 字内后按“朗读文字”。', true);
++      spoken = result.text; addMessage('assistant', spoken); render('processing');
++      if (!$('auto-read').checked || Array.from(spoken).length > 300) {
++        localStop(); render('ready');
++        message(Array.from(spoken).length > 300 ? '回答已完整显示，超过 300 字未自动朗读；可复制片段后朗读。' : '回答已显示；自动朗读已关闭。');
+         return;
+       }
+     }
+@@ -221,8 +264,10 @@
+   } catch (error) { $('voice-status').textContent = '工作台断开'; failed(error); }
+ }
+ function fillVoices() {
++  const cloud = $('tts').value === 'cloud';
++  $('voice-speed').disabled = cloud;
++  $('voice-speed').value = cloud ? '1' : String(savedSpeech.speed);
+   if (!capabilities) return;
+-  const cloud = $('tts').value === 'cloud';
+   const list = cloud ? capabilities.cloud?.voices || [] : capabilities.tts?.speakers || [];
+   const select = $('voice-select');
+   select.replaceChildren();
+@@ -252,9 +297,10 @@
+   render();
+ }
+ async function previewSound() {
+-  stopPreview();
++  stopPreview(); const serial = previewSerial;
+   try {
+     const bytes = await api(`/sounds/${$('sound-select').value}/preview`, 'GET', undefined, {audio: true});
++    if (serial !== previewSerial) return;
+     await previewPlayer.play(bytes, () => { render(); message('电脑试听完成；未向设备发送命令。'); });
+     render(); message('电脑正在试听内置声音样本。');
+   } catch (error) { stopPreview(); message(error.message || '电脑试听失败。', true); }
+@@ -300,7 +346,7 @@
+     delayBusy = true; render('processing'); gen = await begin();
+     const mode = $('delay-mode').value;
+     if (mode === 'pc-device') {
+-      const text = $('transcript').value.trim(); if (!text) throw new Error('请先输入 1–300 字文字');
++      const text = $('delay-text').value.trim(); if (!text) throw new Error('请先输入 1–300 字文字');
+       message('正在合成完整 WAV，随后发送到设备。');
+       const wav = await api('/tts', 'POST', {generation:gen,text}, {signal:epoch.abort.signal,audio:true});
+       const job = await api('/device/audio/play', 'POST', wav, {headers:{'Content-Type':'audio/wav'}});
+@@ -328,51 +374,56 @@
+   finally { delayBusy = false; render(); }
+ }
+ async function connect(replace = false) {
++  if (connectionPending) return;
+   if (replace && !confirm('接管会使已有语音会话失效。确认接管？')) return;
+-  localStop(); epoch.next(); client = crypto.randomUUID(); $('connect').disabled = true;
+-  try {
+-    await api('/session', 'POST', {replace}); epoch.value = 0; connected = true; workspace = true; dirty = true; turnReady = false;
++  connectionPending = true; localStop(); epoch.next(); $('connect').disabled = true; render();
++  try {
++    await api('/session', 'POST', {replace}); epoch.value = 0; connected = true; workspace = true; dirty = true; appliedTts = ''; turnReady = false;
+     $('takeover').hidden = true;
+     await apply();
+     $('record-hint').textContent = '准备好时，开始录音。';
+   } catch (error) { if (error.code === 'SESSION_BUSY' || error.code === 'WORKSPACE_BUSY') $('takeover').hidden = false; failed(error); }
+-  finally { $('connect').disabled = false; }
+-}
+-async function apply() {
++  finally { connectionPending = false; $('connect').disabled = false; render(); }
++}
++async function apply(revoking = false) {
+   const routing = {asr: $('asr').value, tts: $('tts').value, allow_audio_upload: $('audio-consent').checked, allow_text_upload: $('text-consent').checked};
+   if ((routing.asr === 'cloud' && !routing.allow_audio_upload) || (routing.tts === 'cloud' && !routing.allow_text_upload)) { message('请单独勾选所选云端路径的上传许可，或切回本地。', true); return; }
+   localStop(); const gen = epoch.next();
+   try {
+     const speech = speechSettings();
+-    await api('/settings', 'PATCH', {generation: gen, routing, allow_answer_upload: $('answer-consent').checked, speech});
++    await api('/settings', 'PATCH', {generation: gen, routing, allow_answer_upload: $('answer-consent').checked, speech: revoking ? null : speech});
+     if (!epoch.valid(gen)) return;
+-    savedSpeech = {...speech, speed: routing.tts === 'cloud' ? savedSpeech.speed : speech.speed};
++    if (!revoking) savedSpeech = {...speech, speed: routing.tts === 'cloud' ? savedSpeech.speed : speech.speed};
+     try {
+       window.localStorage?.setItem('gork.speech', JSON.stringify(savedSpeech));
+       for (const id of ['asr','tts']) window.localStorage?.setItem('gork.' + id, routing[id]);
+     } catch {}
+-    dirty = false; render('idle'); $('settings-status').textContent = `${routing.asr === 'local' ? '本地' : '云端'} / ${routing.tts === 'local' ? '本地' : '云端'} · 已应用`;
+-    message('设置已应用。新请求使用新路径，旧结果不会播放。');
+-  } catch (error) { failed(error, gen); }
++    dirty = Boolean(revoking); appliedTts = routing.tts; render('idle'); $('settings-status').textContent = `${routing.asr === 'local' ? '本地' : '云端'} / ${routing.tts === 'local' ? '本地' : '云端'} · 已应用`;
++    if (revoking) { $('settings-status').textContent = '上传许可已撤销 · 音色草稿仍需保存'; message('上传许可已撤销，相关路径已停止。'); }
++    else message('设置已应用。新请求使用新路径，旧结果不会播放。');
++  } catch (error) { appliedTts = ''; failed(error, gen); }
+ }
+ async function release() {
+   localStop(); epoch.next(); connected = false; render('idle');
+   try { await api('/voice/session', 'DELETE'); message('已释放语音会话；角色和 StopWatch 控制权保留。'); } catch (error) { message(error.message, true); }
+ }
+ async function acquireWorkspace(replace = false) {
++  if (replace && !confirm('接管会使另一窗口的操作失效。确认接管工作台？')) return;
+   try {
+     const result = await api('/workspace', 'POST', {replace}); workspace = true;
++    if (Number.isInteger(result.generation)) epoch.value = Math.max(epoch.value, result.generation);
+     $('character-status').textContent = result.voice_connected ? '工作台与语音已连接' : '工作台控制中';
+-    render(); message('已取得工作台控制权；语音服务仍按需连接。');
++    $('workspace-takeover').hidden = true; render(); message('已取得工作台控制权；语音服务仍按需连接。');
+   } catch (error) {
+-    if (error.code === 'WORKSPACE_BUSY') message('另一窗口正在控制。请在需要时明确接管。', true);
++    if (error.code === 'WORKSPACE_BUSY') { $('workspace-takeover').hidden = false; message('另一窗口正在控制；如需接管，请点击“接管工作台”。', true); }
+     else message(error.message, true);
+   }
+ }
+ function characterOptions() {
+   const names = [...new Set([...(window.GorkCatalog?.sequences || []).map(item => item.id), 'happy-work'])];
+   const select = $('character-expression'); select.replaceChildren();
+-  for (const name of names) select.add(new Option(name === 'happy-work' ? 'happy-work（仅 StopWatch）' : name, name));
++  const chinese = {waking:'醒来',searching:'搜索',working:'工作',suspicious:'怀疑',idle:'待机',listening:'聆听',thinking:'思考',happy:'开心',excited:'兴奋',surprised:'惊讶',confused:'疑惑',angry:'生气',sleeping:'睡觉',drowsy:'困倦',love:'喜爱',wink:'眨眼',curious:'好奇',focused:'专注',bored:'无聊',tired:'疲惫',proud:'得意',shy:'害羞',sad:'难过',laughing:'大笑',scared:'害怕',playful:'俏皮',celebrate:'庆祝','happy-work':'开心工作（仅 StopWatch）'};
++  for (const name of names) select.add(new Option((chinese[name] || name) + ' · ' + name, name));
+   if (names.includes('idle')) select.value = 'idle';
+ }
+ function characterTarget() { return $('character-target').value; }
+@@ -383,7 +434,8 @@
+ }
+ async function previewCharacter() {
+   const name = $('character-expression').value;
+-  characterFace?.set(name);
++  if (name === 'happy-work') { message('开心工作包含设备专属纸笔层，请发送到 StopWatch 查看。'); return; }
++  manualPreview = true; characterFace?.set(name, {mode:$('character-mode').value, force:true});
+   $('character-status').textContent = `正在本地预览：${name}`;
+ }
+ async function playCharacter() {
+@@ -394,6 +446,8 @@
+ }
+ async function bubble(send) {
+   const target = characterTarget();
++  const text = $('character-bubble').value.trim();
++  if (send && target !== 'desktop' && (Array.from(text).length > 24 || new TextEncoder().encode(text).length > 72)) { message('StopWatch 气泡最多 24 字、72 UTF-8 字节，请缩短后发送。', true); return; }
+   try {
+     const result = send ? await api('/character/bubble', 'POST', {text:$('character-bubble').value.trim(), target}) :
+       await api('/character/bubble', 'DELETE', {target});
+@@ -415,27 +469,22 @@
+   catch (error) { workspace = false; render(); message(`工作台控制权已失效。${error.message}`, true); }
+   finally { polling = false; }
+ }
+-for (const id of ['asr', 'tts', 'audio-consent', 'text-consent', 'answer-consent']) $(id).addEventListener('change', () => {
++for (const id of ['asr', 'tts', 'audio-consent', 'text-consent', 'answer-consent']) $(id).addEventListener('change', async () => {
+   if (consentIds.includes(id)) {
+     try { window.localStorage?.setItem('gork.' + id, String($(id).checked)); } catch {}
+   }
+-  dirty = true; $('settings-status').textContent = '尚未应用 · 已停止当前操作';
+-  stop(); render();
+-  // Revocation is immediate at the service too, even before Apply. Selected routes
+-  // fall back to local when their independent permission was revoked.
+-  if (connected && (id === 'audio-consent' || id === 'text-consent' || id === 'answer-consent') && !$(id).checked) {
+-    if (id === 'audio-consent') $('asr').value = 'local'; else if (id === 'text-consent') $('tts').value = 'local'; else $('interaction-mode').value = 'read';
+-    if (id === 'text-consent') fillVoices();
+-    apply();
+-  }
++  dirty = true; $('settings-status').textContent = '有未保存设置 · 当前会话仍使用已应用设置';
++  if (consentIds.includes(id) && !$(id).checked) {
++    if (id === 'audio-consent') $('asr').value = 'local';
++    if (id === 'text-consent') { $('tts').value = 'local'; fillVoices(); }
++    if (id === 'answer-consent') $('interaction-mode').value = 'read';
++    await stop();
++    if (connected) await apply(true);
++  }
++  render();
+ });
+ $('record').onclick = record; $('finish').onclick = finish; $('stop').onclick = stop; $('speak').onclick = () => speak();
+-$('record').addEventListener('pointerdown', event => { if (event.pointerType !== 'mouse' || event.button === 0) record(); });
+-$('record').addEventListener('pointerup', () => { if (phase === 'listening') finish(); });
+-$('record').addEventListener('pointercancel', () => { if (phase === 'listening') finish(); });
+-$('record').addEventListener('lostpointercapture', () => { if (phase === 'listening') finish(); });
+ $('voice-preview').onclick = () => speak(true);
+-$('voice-apply').onclick = apply;
+ $('voice-stop').onclick = stop;
+ $('voice-start').onclick = async () => {
+   serviceStarting = true; render(); $('voice-lifecycle').textContent = '正在启动语音服务…';
+@@ -448,20 +497,20 @@
+ $('tts').addEventListener('change', fillVoices);
+ $('connect').onclick = () => connect(); $('takeover').onclick = () => connect(true); $('release').onclick = release;
+ $('voice-release').onclick = release; $('workspace-acquire').onclick = () => acquireWorkspace();
+-$('apply').onclick = apply; $('refresh').onclick = refresh; $('transcript').oninput = () => render();
++$('apply').onclick = () => apply(); $('refresh').onclick = refresh; $('transcript').oninput = () => render();
+ $('transcript').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); speak(); } });
+ $('interaction-mode').onchange = () => { render(); message($('interaction-mode').value === 'answer' ? 'AI 对话只会在独立许可已应用后发送当前文字。' : '当前为跟读/朗读，不调用回答服务。'); };
+-$('clear-answer').onclick = async () => { try { await api('/answer/history', 'DELETE'); message('回答上下文已从内存清空。'); } catch (error) { message(error.message, true); } };
++$('clear-answer').onclick = async () => { try { if (connected) await api('/answer/history', 'DELETE'); $('chat-log').replaceChildren(); message('会话记录与回答上下文已清空。'); } catch (error) { message(error.message, true); } };
+ $('sound-preview').onclick = previewSound;
+ $('sound-play').onclick = () => deviceSound('POST', '/device/sound', {sound_id: Number($('sound-select').value)});
+-$('sound-stop').onclick = () => { stopPreview(); return deviceSound('DELETE', '/device/sound'); };
++$('sound-stop').onclick = () => { stopPreview(); if (workspace && robotConnected) return deviceSound('DELETE', '/device/sound'); };
+ $('sound-volume').oninput = () => { $('sound-volume-label').textContent = `${$('sound-volume').value}%`; };
+ $('sound-volume').onchange = () => deviceSound('PUT', '/device/sound/volume', {volume: Number($('sound-volume').value)});
+ $('delay-start').onclick = delayedAudio;
+ $('delay-cancel').onclick = stop;
+ $('global-stop').onclick = stopAll;
+ $('character-preview').onclick = previewCharacter; $('character-play').onclick = playCharacter;
+-$('character-idle').onclick = async () => { try { await api('/character', 'DELETE'); characterFace?.set('idle'); $('character-status').textContent = '已返回自动联动'; } catch (error) { message(error.message, true); } };
++$('character-idle').onclick = async () => { try { if (workspace) await api('/character', 'DELETE'); manualPreview = false; lastFaceState = ''; render(); $('character-status').textContent = '已返回自动联动'; } catch (error) { message(error.message, true); } };
+ $('character-expression').onchange = previewCharacter;
+ $('character-bubble').oninput = () => { $('bubble-count').textContent = `${Array.from($('character-bubble').value).length} / 300`; render(); };
+ $('bubble-send').onclick = () => bubble(true); $('bubble-clear').onclick = () => bubble(false);
+@@ -479,9 +528,41 @@
+ $('pair').onclick = async () => { $('pair').disabled = true; try { paintRobot(await api('/device', 'POST', {address: $('device').value})); message('蓝牙已连接；回执不等于实屏效果，请看设备。'); } catch (error) { message(error.message, true); } finally { $('pair').disabled = false; } };
+ $('unpair').onclick = async () => { try { paintRobot(await api('/device', 'DELETE')); } catch (error) { message(error.message, true); } };
+ window.addEventListener('hashchange', navigate);
++window.addEventListener('blur', () => { if (phase === 'listening' || recordingPending) stop(); });
++$('character-acquire').onclick = () => acquireWorkspace();
++$('workspace-takeover').onclick = () => acquireWorkspace(true);
+ window.addEventListener('pagehide', () => { stopPreview(); localStop(); epoch.next(); if (workspace) api('/workspace', 'DELETE', undefined, {keepalive: true}).catch(() => {}); });
+ if (window.gorkDesktop?.onStopAll) window.gorkDesktop.onStopAll(() => {
+   stopPreview(); localStop(); epoch.next(); delayBusy = false; render('idle'); message('已由桌面控制台停止本地录音、播放和在途任务。');
+ });
+-characterOptions(); navigate(); render(); refresh(); setInterval(heartbeat, 1000); setInterval(workspaceHeartbeat, 1000);
++characterOptions(); fillVoices(); navigate(); render(); refresh(); setInterval(heartbeat, 1000); setInterval(workspaceHeartbeat, 1000);
+ setInterval(refresh, 5000);
++
++$('quick-connect').onclick = () => connect();
++for (const id of ['auto-read','expression-follow']) $(id).onchange = () => {
++  try { window.localStorage?.setItem('gork.' + id, String($(id).checked)); } catch {}
++  if (id === 'expression-follow') { manualPreview = false; lastFaceState = ''; }
++  render();
++};
++document.querySelectorAll?.('[data-page-link]').forEach((tab, index, tabs) => {
++  tab.addEventListener('keydown', event => {
++    let target;
++    if (event.key === 'ArrowRight') target = (index + 1) % tabs.length;
++    if (event.key === 'ArrowLeft') target = (index + tabs.length - 1) % tabs.length;
++    if (event.key === 'Home') target = 0;
++    if (event.key === 'End') target = tabs.length - 1;
++    if (target !== undefined) { event.preventDefault(); tabs[target].focus(); location.hash = tabs[target].dataset.pageLink; }
++  });
++});
++async function refreshDesktopVisibility() {
++  if (!window.gorkDesktop?.getAvatarVisible) return;
++  try { $('desktop-visible').checked = await window.gorkDesktop.getAvatarVisible(); $('desktop-visible').disabled = false; $('desktop-hint').textContent = '显示独立桌面窗口'; }
++  catch { $('desktop-visible').disabled = true; }
++}
++$('desktop-visible').onchange = async () => {
++  $('desktop-visible').disabled = true;
++  try { await window.gorkDesktop.setAvatarVisible($('desktop-visible').checked); }
++  catch (error) { message(error.message || '无法切换桌面小人', true); }
++  await refreshDesktopVisibility();
++};
++refreshDesktopVisibility(); setInterval(refreshDesktopVisibility, 2000);
+--- a/03-Src/stopwatch-voice-companion/static/index.html
++++ b/03-Src/stopwatch-voice-companion/static/index.html
+@@ -5,50 +5,62 @@
+ <header class="app-header">
+   <a class="wordmark" href="#dialogue">GORK<span> / ROBOT CONSOLE</span></a>
+   <div class="global-status" aria-live="polite"><span id="global-voice">语音：检查中</span><span id="global-watch">Watch：未连接</span><span id="global-operation">待机</span><button id="global-stop" class="stop">停止全部</button></div>
+-  <span class="version">LOCAL WORKSPACE · 0.9.0-dev</span>
++  <span class="version">LOCAL WORKSPACE · 0.10.0-dev</span>
+ </header>
+ <main>
+-  <section class="intro compact-intro"><div><p class="eyebrow">桌面角色 · 语音 · 设备</p><h1>Gork 机器人控制台。</h1><p class="subtitle">对话、角色、StopWatch 和设置各归其位。</p></div><canvas id="gork-face" class="avatar" aria-label="Grok bot"></canvas></section>
+-  <nav class="primary-nav" aria-label="主导航"><a href="#dialogue" data-page-link="dialogue">对话</a><a href="#character" data-page-link="character">角色</a><a href="#watch" data-page-link="watch">StopWatch</a><a href="#settings" data-page-link="settings">设置</a></nav>
++  <aside class="companion-stage" aria-label="常驻机器人">
++    <span class="eyebrow">桌面伙伴</span>
++    <div class="companion-portrait"><canvas id="gork-face" class="avatar" aria-label="Grok bot 动画"></canvas><h1>Gork</h1><p id="companion-phase">待机 · 陪着你</p></div>
++    <section class="robot-console" aria-label="机器人状态与开关">
++      <div class="status-row"><span>语音会话</span><strong id="robot-voice-summary">未连接</strong></div>
++      <div class="status-row"><span>StopWatch</span><strong id="robot-device-summary">未连接</strong></div>
++      <div class="status-row"><span>朗读路径</span><strong id="robot-route-summary">云端朗读</strong></div>
++      <label class="switch-row"><span>自动朗读<small>收到 AI 回答后朗读</small></span><input id="auto-read" type="checkbox" role="switch" checked></label>
++      <label class="switch-row"><span>表情联动<small>页面机器人跟随对话状态</small></span><input id="expression-follow" type="checkbox" role="switch" checked></label>
++      <label class="switch-row"><span>桌面小人<small id="desktop-hint">仅桌面客户端可用</small></span><input id="desktop-visible" type="checkbox" role="switch" disabled></label>
++      <button id="quick-connect" class="primary">连接语音</button>
++    </section>
++  </aside>
++  <div class="work-area">
++  <nav class="primary-nav" role="tablist" aria-label="功能模块"><a href="#dialogue" data-page-link="dialogue" role="tab" id="tab-dialogue" aria-controls="page-dialogue">对话</a><a href="#character" data-page-link="character" role="tab" id="tab-character" aria-controls="page-character">角色</a><a href="#watch" data-page-link="watch" role="tab" id="tab-watch" aria-controls="page-watch">StopWatch</a><a href="#settings" data-page-link="settings" role="tab" id="tab-settings" aria-controls="page-settings">设置</a></nav>
+ 
+-  <section class="page" data-page="dialogue" aria-labelledby="dialogue-title">
+-    <section class="workspace panel">
+-      <div class="section-head"><div><p class="eyebrow">电脑语音</p><h2 id="dialogue-title">对话</h2></div><span id="phase" class="badge">未连接</span></div>
+-      <div class="record-zone"><div class="sound" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><p id="record-hint">连接语音服务后，开始第一轮。</p><div class="actions"><button id="record" class="primary" disabled>按住说话</button><button id="finish" hidden>结束并转写</button><button id="stop" class="stop" disabled>停止</button></div><small>录音最长 30 秒 · PCM16 / 16 kHz · 不保存录音文件</small></div>
+-      <div class="interaction-mode"><label for="interaction-mode">文字用途</label><select id="interaction-mode"><option value="read">跟读 / 朗读</option><option id="answer-option" value="answer" disabled>AI 对话（未配置）</option></select><small id="answer-status">未配置回答服务；当前只做跟读/朗读。</small></div>
+-      <label for="transcript" class="editor-label">识别文字 / 输入内容 <span id="count">0 / 300</span></label>
+-      <textarea id="transcript" maxlength="300" placeholder="识别结果会显示在这里，也可以直接输入文字。Enter 发送，Shift+Enter 换行。" spellcheck="false"></textarea>
+-      <div class="editor-footer"><span>发送前可编辑。设备气泡由“角色”页单独发送。</span><button id="speak" class="primary" disabled><span id="speak-label">朗读文字</span> <span aria-hidden="true">↗</span></button></div>
+-      <div class="actions compact"><button id="clear-answer" disabled>清空会话</button><button id="release" hidden>释放语音会话</button></div>
+-      <div id="message" class="message" role="status" aria-live="polite">可先取得工作台控制权，再按需连接独立语音服务。</div>
++  <section class="page" data-page="dialogue" role="tabpanel" id="page-dialogue" aria-labelledby="dialogue-title">
++    <div class="chat-toolbar"><h2 id="dialogue-title">当前会话</h2><span id="phase" class="badge">未连接</span><button id="clear-answer" class="text-button">新会话</button><button id="release" hidden>释放会话</button></div>
++    <div id="chat-log" class="chat-log" role="log" aria-label="对话记录" aria-live="polite"><div class="empty-chat" id="empty-chat"><h3>想说些什么？</h3><p>输入文字，或者录音后确认文字。<br>Gork 会一直在左边陪着你。</p></div></div>
++    <section class="composer" aria-label="输入与录音">
++      <div class="interaction-mode"><label class="sr-only" for="interaction-mode">文字用途</label><select id="interaction-mode"><option value="read">朗读文字</option><option id="answer-option" value="answer" disabled>AI 对话（未配置）</option></select><small id="answer-status">电脑麦克风 / 扬声器</small></div>
++      <label for="transcript" class="sr-only">输入文字</label><textarea id="transcript" maxlength="300" placeholder="输入文字，或点击录音…" spellcheck="false"></textarea>
++      <div class="editor-footer"><span id="count">0 / 300</span><div class="actions"><button id="record" disabled>录音</button><button id="finish" hidden>结束录音</button><button id="stop" class="stop" disabled>停止</button><button id="speak" class="primary" disabled><span id="speak-label">朗读文字</span></button></div></div>
++      <small id="record-hint">Enter 发送 · Shift+Enter 换行 · 录音最多 30 秒</small>
+     </section>
+   </section>
+ 
+-  <section class="page" data-page="character" aria-labelledby="character-title" hidden>
++  <section class="page" data-page="character" role="tabpanel" id="page-character" aria-labelledby="character-title" hidden>
+     <div class="two-column">
+-      <section class="panel character-preview"><div class="section-head"><div><p class="eyebrow">正式 Grok bot 数据</p><h2 id="character-title">角色</h2></div><span id="character-status" class="badge">本地预览</span></div><canvas id="character-face" class="avatar character-avatar" aria-label="角色动画预览"></canvas><p id="character-note" class="muted">点选表情只在本页预览；发送到目标需要工作台控制权。</p></section>
+-      <section class="panel"><h2>手动播放</h2><label for="character-expression">表情</label><select id="character-expression"></select><label for="character-mode">播放方式</label><select id="character-mode"><option value="once">播放一次后回待机</option><option value="loop">持续循环</option></select><label for="character-target">发送目标</label><select id="character-target"><option value="desktop">桌面小人</option><option value="watch">StopWatch</option><option value="both">两端</option></select><div class="actions compact"><button id="character-preview">预览</button><button id="character-play" class="primary">播放到目标</button><button id="character-idle">返回自动联动</button></div><p id="character-result" class="muted">桌面接收和设备回执分别显示。</p></section>
++      <section class="panel character-preview"><div class="section-head"><div><p class="eyebrow">正式 Grok bot 数据</p><h2 id="character-title">角色</h2></div><span id="character-status" class="badge">本地预览</span></div><p id="character-note" class="muted">点选表情在左侧机器人预览；发送到目标需要工作台控制权。</p></section>
++      <section class="panel"><div class="section-head"><h2>手动播放</h2><button id="character-acquire">取得控制权</button></div><label for="character-expression">表情</label><select id="character-expression"></select><label for="character-mode">播放方式</label><select id="character-mode"><option value="once">播放一次后回待机</option><option value="loop">持续循环</option></select><label for="character-target">发送目标</label><select id="character-target"><option value="desktop">桌面小人</option><option value="watch">StopWatch</option><option value="both">两端</option></select><div class="actions compact"><button id="character-preview">预览</button><button id="character-play" class="primary">播放到目标</button><button id="character-idle">返回自动联动</button></div><p id="character-result" class="muted">桌面接收和设备回执分别显示。</p></section>
+     </div>
+     <section class="panel bubble-panel"><div class="section-head"><h2>气泡</h2><span id="bubble-count" class="muted">0 / 300</span></div><textarea id="character-bubble" maxlength="300" rows="3" placeholder="纯文本气泡：桌面最多 300 字；发送到 Watch 时会校验 24 字和 72 UTF-8 字节。"></textarea><div class="actions compact"><button id="bubble-send" class="primary">发送气泡</button><button id="bubble-clear">清除气泡</button></div><p class="muted">桌面气泡 8 秒后自动消失；StopWatch 是否清除以设备回执为准。</p></section>
+   </section>
+ 
+-  <section class="page" data-page="watch" aria-labelledby="watch-title" hidden>
++  <section class="page" data-page="watch" role="tabpanel" id="page-watch" aria-labelledby="watch-title" hidden>
+     <div class="watch-grid">
+       <section class="panel connection"><div class="section-head"><div><p class="eyebrow">单一 BLE 客户端</p><h2 id="watch-title">StopWatch</h2></div><button id="workspace-acquire" class="text-button">取得控制权</button></div><div class="status-row"><span>设备连接</span><span id="robot-status">未连接</span></div><p class="muted">显式扫描本次可用设备；不要同时运行旧蓝牙控制台。</p><button id="scan" disabled>扫描设备</button><div class="device-picker"><label class="sr-only" for="device">选择 StopWatch</label><select id="device" disabled><option value="">扫描后选择设备</option></select><button id="pair" disabled>连接</button><button id="unpair" disabled>断开</button></div><small id="receipt">未收到设备回执</small></section>
+       <section class="panel"><h2>内置声音</h2><p class="muted">电脑试听和设备播放标明不同输出端。设备播放需已连接 Watch。</p><div class="sound-controls"><select id="sound-select" aria-label="选择内置声音"><option value="1">启动</option><option value="2">确认</option><option value="3">思考</option><option value="4">成功</option><option value="5">错误</option><option value="6">再见</option></select><button id="sound-preview">电脑试听</button><button id="sound-play" disabled>设备播放</button><button id="sound-stop" disabled>停止</button></div><label class="volume-control" for="sound-volume"><span>设备音量</span><output id="sound-volume-label">20%</output><input id="sound-volume" type="range" min="0" max="100" step="5" value="20" disabled></label><small>设备没有读取接口时，界面只显示本次已确认的提交值。</small></section>
+     </div>
+-    <details class="panel delay"><summary>实验功能：延迟设备语音</summary><p class="muted warning">非实时，短音频也可能等待数十秒。设备录音前须进入 Settings → Audio test，看到 ARM 后再按住 A。</p><label for="delay-mode" class="sr-only">延迟音频模式</label><select id="delay-mode"><option value="pc-device">电脑文字 → 设备播放</option><option value="device-pc">设备录音 → 电脑播放</option><option value="device-process-device">设备录音 → 处理 → 设备播放</option></select><div class="actions compact"><button id="delay-start" disabled>开始延迟任务</button><button id="delay-cancel" disabled>取消传输</button></div><progress id="delay-progress" max="100" value="0"></progress><small id="delay-status">未开始 · 私人 PCM 仅保存在内存</small></details>
++    <details class="panel delay"><summary>实验功能：延迟设备语音</summary><p class="muted warning">非实时，短音频也可能等待数十秒。设备录音前须进入 Settings → Audio test，看到 ARM 后再按住 A。</p><label for="delay-mode" class="sr-only">延迟音频模式</label><select id="delay-mode"><option value="pc-device">电脑文字 → 设备播放</option><option value="device-pc">设备录音 → 电脑播放</option><option value="device-process-device">设备录音 → 处理 → 设备播放</option></select><label for="delay-text">设备朗读文字</label><textarea id="delay-text" maxlength="300" rows="2" placeholder="输入要交给设备朗读的文字"></textarea><div class="actions compact"><button id="delay-start" disabled>开始延迟任务</button><button id="delay-cancel" disabled>取消传输</button></div><progress id="delay-progress" max="100" value="0"></progress><small id="delay-status">未开始 · 私人 PCM 仅保存在内存</small></details>
+     <details class="panel diagnostics"><summary>诊断详情</summary><p id="watch-diagnostics" class="muted">连接、回执和实验任务的详细状态会显示在这里。</p></details>
+   </section>
+ 
+-  <section class="page" data-page="settings" aria-labelledby="settings-title" hidden>
++  <section class="page" data-page="settings" role="tabpanel" id="page-settings" aria-labelledby="settings-title" hidden>
+     <div class="settings-grid">
+       <section class="panel"><div class="section-head"><div><p class="eyebrow">按需连接</p><h2 id="settings-title">语音</h2></div><button id="refresh" class="text-button">刷新状态</button></div><div class="status-row"><span>语音服务</span><span id="voice-status">检查中</span></div><code id="service-url">127.0.0.1:8765</code><p id="engine-status" class="muted">正在读取引擎状态…</p><div class="actions compact"><button id="connect" class="primary">连接语音会话</button><button id="takeover" class="danger" hidden>接管会话</button><button id="voice-start">启动 / 重试语音服务</button></div><p id="voice-lifecycle" class="muted">正在检查服务托管状态…</p></section>
+-      <section class="panel routing"><h2>路由、音色与试听</h2><p class="muted">应用后保存；试听使用固定句，不调用 AI、不覆盖对话输入。</p><div class="routing-grid"><label>语音识别<select id="asr"><option value="local">本地 ASR</option><option value="cloud">云端 ASR</option></select></label><label>文字回读<select id="tts"><option value="local">本地 TTS</option><option value="cloud">云端 TTS</option></select></label></div><label for="voice-select">当前音色</label><select id="voice-select" disabled><option value="">等待语音服务</option></select><label for="voice-speed">语速</label><select id="voice-speed"><option value="0.85">舒缓 · 0.85×</option><option value="1" selected>自然 · 1.0×</option><option value="1.15">轻快 · 1.15×</option></select><p id="voice-hint" class="muted">连接后读取支持的音色。</p><div class="actions compact"><button id="apply" disabled>应用并保存</button><button id="voice-apply" disabled>应用音色</button><button id="voice-preview" disabled>试听当前音色</button><button id="voice-stop" disabled>停止试听</button></div><span id="settings-status" class="muted">默认授权 · 连接时应用</span></section>
++      <section class="panel routing"><h2>路由、音色与试听</h2><p class="muted">应用后保存；试听使用固定句，不调用 AI、不覆盖对话输入。</p><div class="routing-grid"><label>语音识别<select id="asr"><option value="local">本地 ASR</option><option value="cloud">云端 ASR</option></select></label><label>文字回读<select id="tts"><option value="local">本地 TTS</option><option value="cloud" selected>云端 TTS</option></select></label></div><label for="voice-select">当前音色</label><select id="voice-select" disabled><option value="">等待语音服务</option></select><label for="voice-speed">语速</label><select id="voice-speed"><option value="0.85">舒缓 · 0.85×</option><option value="1" selected>自然 · 1.0×</option><option value="1.15">轻快 · 1.15×</option></select><p id="voice-hint" class="muted">连接后读取支持的音色。</p><div class="actions compact"><button id="apply" disabled>应用并保存</button><button id="voice-preview" disabled>试听当前音色</button><button id="voice-stop" disabled>停止试听</button></div><span id="settings-status" class="muted">默认授权 · 连接时应用</span></section>
+       <section class="panel privacy"><h2>隐私与上下文</h2><p class="muted">勾选只代表许可，不会开始录音或发起云端请求。撤销立即停止相关路径。</p><label class="consent"><input type="checkbox" id="audio-consent" checked><span>允许上传录音<small>仅云端识别使用，可能产生费用。</small></span></label><label class="consent"><input type="checkbox" id="text-consent" checked><span>允许上传回读文字<small>仅云端回读使用。</small></span></label><label class="consent"><input type="checkbox" id="answer-consent" checked><span>允许向回答服务发送文字<small>仅 AI 对话使用。</small></span></label></section>
+       <details class="panel"><summary>服务与诊断</summary><p class="muted">服务 URL、实例和错误详情只在本机显示。释放语音会话不会释放角色和 StopWatch 的工作台控制权。</p><button id="voice-release">仅释放语音会话</button><p id="diagnostics" class="muted"></p></details>
+     </div>
+   </section>
+-  <footer><span>录音与文字仅留在当前会话内存；云端模式按独立许可上传。</span><span>设备能力以连接回执为准</span></footer>
++  <button id="workspace-takeover" class="danger" hidden>接管工作台</button><div id="message" class="message" role="status" aria-live="polite">连接语音后即可开始，角色预览可直接使用。</div>
++  </div>
+ </main><script src="/static/gork-catalog.js"></script><script src="/static/gork-avatar.js"></script><script type="module" src="/static/app.js"></script>
+ </body></html>
+--- a/03-Src/stopwatch-voice-companion/static/style.css
++++ b/03-Src/stopwatch-voice-companion/static/style.css
+@@ -1,97 +1,7 @@
+-@font-face{font-family:LocalUI;src:local("Segoe UI")}
+-*{box-sizing:border-box}
+-body{margin:0;background:#f3f2ee;color:#20221f;font:14px/1.6 LocalUI,"Microsoft YaHei",sans-serif}
+-header{height:76px;border-bottom:1px solid #d9dbd3;display:flex;align-items:center;justify-content:space-between;padding:0 5vw}
+-.wordmark{font-weight:800;letter-spacing:2px;color:inherit;text-decoration:none}
+-.wordmark span{color:#72776b;font-size:11px;font-weight:400}
+-.version,.eyebrow{font:11px/1.4 Consolas,monospace;letter-spacing:1.5px;color:#687252}
+-main{max-width:1230px;margin:auto;padding:46px 30px 22px}
+-.intro{display:flex;align-items:center;justify-content:space-between;margin-bottom:36px;padding:0 14px}
+-.eyebrow{margin:0 0 12px}
+-h1{font-size:40px;font-weight:500;letter-spacing:-1.5px;line-height:1.3;margin:0 0 14px}
+-.subtitle{color:#73796c;margin:0}
+-.avatar{width:140px;height:140px;background:#131611;border-radius:50%;display:flex;align-items:center;justify-content:center;gap:18px;transform:rotate(-8deg);margin-right:28px}
+-.avatar i{background:#f7f8f2;width:16px;height:37px;border-radius:16px}
+-.avatar i+ i{height:32px}
+-.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,1fr);gap:22px;align-items:start}
+-.panel{background:#fff;border:1px solid #dfe1d9;border-radius:16px;padding:26px}
+-.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+-h2{font-size:16px;letter-spacing:.2px;margin:0;font-weight:600}
+-.badge{font-size:11px;background:#edf0e6;color:#626b54;border-radius:5px;padding:3px 9px}
+-.record-zone{text-align:center;padding:32px 0 28px;border-bottom:1px solid #e7e8e2}
+-.sound{height:44px;display:flex;align-items:center;justify-content:center;gap:5px}
+-.sound i{display:block;width:4px;height:12px;background:#7d896d;border-radius:4px}
+-.sound i:nth-child(2),.sound i:nth-child(4){height:25px}
+-.sound i:nth-child(3){height:38px}
+-body[data-phase="listening"] .sound i{animation:pulse .65s ease-in-out infinite alternate}
+-.sound i:nth-child(even){animation-delay:.3s!important}
+-@keyframes pulse{to{height:8px}
+-}
+-.actions{display:flex;justify-content:center;gap:10px;margin:16px 0}
+-.actions.compact{justify-content:flex-start;margin-bottom:0}
+-button{font:inherit;font-size:12px;font-weight:600;border:1px solid #d7dbcf;border-radius:7px;background:white;color:#353c2b;padding:9px 15px;cursor:pointer;white-space:nowrap}
+-button:hover:not(:disabled){background:#eef2e6;border-color:#73815c}
+-button.primary{background:#28301f;border-color:#28301f;color:#fff}
+-button.primary:hover:not(:disabled){background:#4a573b}
+-button.stop{color:#815c47}
+-button.danger{border-color:#bb8468;color:#804f34}
+-button:disabled{opacity:.42;cursor:not-allowed}
+-button.text-button{border:0;padding:3px;background:transparent;color:#758265}
+-button:focus-visible,textarea:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid #627c43;outline-offset:3px}
+-small{display:block;color:#8b9084;font-size:11px}
+-.editor-label{display:flex;justify-content:space-between;margin:24px 0 12px;font-size:12px;font-weight:600}
+-.interaction-mode{display:grid;grid-template-columns:auto 180px;align-items:center;gap:5px 12px;margin:22px 0 0;font-size:12px;font-weight:600}
+-.interaction-mode small{grid-column:1/-1;font-weight:400}
+-.editor-label span{font-weight:400;color:#8b9084}
+-textarea{width:100%;height:183px;resize:vertical;border:1px solid #dfe3d7;border-radius:9px;background:#fafbf7;padding:16px;font:15px/1.8 LocalUI,"Microsoft YaHei",sans-serif;color:#292e24}
+-textarea::placeholder{color:#9b9f94}
+-.editor-footer{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:12px}
+-.editor-footer>span{color:#929689;font-size:11px;max-width:245px}
+-.message{font-size:12px;margin-top:24px;border-top:1px solid #e7e8e2;padding-top:18px;color:#5f6c50;min-height:54px}
+-.message.error{color:#9b4937}
+-aside{display:flex;flex-direction:column;gap:20px}
+-.status-row{display:flex;justify-content:space-between;gap:10px;font-size:12px;margin:18px 0 6px}
+-.status-row>span+span{color:#7b856d;text-align:right}
+-code{font-size:11px;color:#919586}
+-.muted{font-size:11px;color:#818976;line-height:1.75}
+-.divider{height:1px;background:#e7e8e2;margin:22px 0 16px}
+-.device-picker{display:flex;gap:6px;margin:10px 0}
+-select{font:inherit;font-size:12px;padding:8px;border:1px solid #dfe3d7;border-radius:6px;background:#fafbf7;min-width:0;color:#424b37}
+-.device-picker select{flex:1;width:100px}
+-.device-picker button{padding:8px 10px}
+-.sound-controls{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:12px 0}
+-.sound-controls select{grid-column:1/-1}
+-.volume-control{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin-top:14px;font-size:11px;color:#6e7763}
+-.volume-control input{grid-column:1/-1;width:100%;accent-color:#526540}
+-.volume-control output{color:#424b37;font:11px Consolas,monospace}
+-.routing-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+-.routing-grid label{font-size:11px;color:#6e7763}
+-.routing-grid select{display:block;width:100%;margin-top:5px}
+-.consent{display:flex;align-items:flex-start;gap:8px;font-size:12px;margin:12px 0}
+-.consent input{accent-color:#526540;margin-top:5px}
+-.consent small{margin-top:2px}
+-.routing>button{margin:6px 10px 0 0}
+-.delay select,.delay progress{width:100%;margin-top:10px}
+-.delay progress{height:8px;accent-color:#627c43}
+-.warning{color:#8b6048}
+-footer{display:flex;justify-content:space-between;gap:18px;color:#8b9180;font-size:10px;padding:26px 2px 0}
+-.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+-[hidden]{display:none!important}
+-@media(max-width:840px){main{padding:30px 18px}
+-.layout{grid-template-columns:1fr}
+-.intro{padding:0}
+-.avatar{width:90px;height:90px;margin:0;gap:12px}
+-.avatar i{width:12px;height:28px}
+-.avatar i+i{height:25px}
+-h1{font-size:30px}
+-.version{display:none}
+-.panel{padding:22px}
+-footer{flex-direction:column}
+-}
+-@media(prefers-reduced-motion:reduce){*{animation:none!important}
+-}
+-canvas.avatar { display:block;height:auto;aspect-ratio:1;background:transparent;border-radius:0;transform:none; }
+-.voice-options label{display:block;margin:16px 0 8px;color:#667158;font-size:13px}
+-.voice-options select{width:100%}
+-.voice-options .actions{flex-wrap:wrap}
+-.app-header{gap:20px}.global-status{display:flex;align-items:center;justify-content:center;gap:12px;color:#647056;font-size:11px}.global-status span{white-space:nowrap}.compact-intro{margin-bottom:20px}.primary-nav{display:flex;gap:4px;border-bottom:1px solid #d9dbd3;margin:0 14px 24px}.primary-nav a{color:#647056;text-decoration:none;padding:10px 14px;border-bottom:2px solid transparent;font-weight:600}.primary-nav a.active{color:#28301f;border-color:#647056}.page{max-width:920px;margin:auto}.page>.panel,.bubble-panel{margin-bottom:20px}.two-column,.watch-grid,.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.character-avatar{width:min(100%,310px);margin:24px auto;display:block}.character-preview{min-height:420px}.panel>label:not(.consent){display:block;margin:15px 0 6px;font-size:12px;color:#667158}.panel>label+select{width:100%}.bubble-panel textarea{height:95px}.delay summary,.diagnostics summary,.panel summary{cursor:pointer;font-weight:600;color:#424b37}.delay[open] summary,.diagnostics[open] summary,.panel[open] summary{margin-bottom:14px}.diagnostics{margin-top:20px}.settings-grid{align-items:start}.privacy{grid-row:span 2}@media(max-width:840px){.app-header{height:auto;min-height:76px;padding:14px 18px;align-items:flex-start}.global-status{order:3;width:100%;justify-content:flex-start;flex-wrap:wrap}.primary-nav{overflow:auto;margin:0 0 20px}.primary-nav a{padding:10px 12px}.two-column,.watch-grid,.settings-grid{grid-template-columns:1fr}.privacy{grid-row:auto}.compact-intro{margin-bottom:10px}.character-preview{min-height:0}}
++@charset "UTF-8";
++:root{color-scheme:light;--bg:#f4f3ee;--paper:#fffefa;--ink:#262c27;--muted:#777e72;--line:#dedfd4;--accent:#46583a;--soft:#edf0e5;--danger:#a44933;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);font-size:14px}
++*{box-sizing:border-box}body{margin:0;height:100dvh;display:flex;flex-direction:column;overflow:hidden}[hidden]{display:none!important}button,select,textarea,input{font:inherit}button,a,input,select,textarea{ -webkit-tap-highlight-color:transparent}button{cursor:pointer;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 13px;line-height:1.35}button:hover:not(:disabled){background:var(--soft)}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--accent);color:white;border-color:var(--accent)}.primary:hover:not(:disabled){background:#35462c}.stop,.danger{color:var(--danger)}a{color:inherit;text-decoration:none}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}h1,h2,h3,p{margin:0}h2{font-size:17px;font-weight:600}h3{font-size:20px}.muted,small,.eyebrow{color:var(--muted);font-size:12px;line-height:1.65}.muted{margin:10px 0}small{display:block}.app-header{height:56px;flex:none;border-bottom:1px solid var(--line);background:var(--paper);display:flex;align-items:center;gap:22px;padding:0 24px}.wordmark{font-family:Georgia,serif;font-size:25px;font-weight:bold;letter-spacing:1px}.wordmark span{display:none}.global-status{display:flex;align-items:center;gap:18px;flex:1;font-size:12px;color:var(--muted)}#global-operation{margin-left:auto}#global-stop{padding:7px 12px}.version{font-size:10px;color:var(--muted)}main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(280px,38%) minmax(0,1fr);gap:32px;width:min(1180px,100%);margin:0 auto;padding:26px 30px 20px}.companion-stage{min-height:0;display:flex;flex-direction:column;padding:2px 20px 10px}.companion-portrait{display:flex;flex:1;min-height:0;flex-direction:column;align-items:center;justify-content:center;gap:10px}.avatar{display:block;width:clamp(160px,22vw,250px);height:clamp(160px,22vw,250px);max-height:32dvh;max-width:32dvh;aspect-ratio:1}.companion-portrait h1{font-family:Georgia,serif;font-weight:400;font-size:26px}.companion-portrait p{font-size:12px;color:var(--muted)}.robot-console{width:100%;max-width:330px;align-self:center;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin-top:20px}.status-row{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px;padding:6px 0}.status-row strong{font-weight:500}.switch-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:10px 0;border-top:1px solid var(--line);font-size:13px}.switch-row:first-of-type{margin-top:10px}.switch-row small{font-size:10px}.switch-row input{appearance:none;width:32px;height:19px;flex:none;border-radius:20px;background:#c8ccbF;position:relative;margin:0;cursor:pointer}.switch-row input:before{content:"";position:absolute;left:3px;top:3px;width:13px;height:13px;border-radius:50%;background:white;transition:transform .15s}.switch-row input:checked{background:var(--accent)}.switch-row input:checked:before{transform:translateX(13px)}.switch-row input:disabled{opacity:.4;cursor:not-allowed}#quick-connect{width:100%;margin-top:8px}.work-area{display:flex;flex-direction:column;min-width:0;min-height:0}.primary-nav{display:flex;gap:5px;flex:none;border-bottom:1px solid var(--line);margin-bottom:14px}.primary-nav a{padding:12px 19px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}.primary-nav a.active{border-color:var(--accent);color:var(--accent);font-weight:600}.page{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:4px}.page[data-page=dialogue]{display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;overflow:hidden}.chat-toolbar{display:flex;align-items:center;gap:12px;flex:none}.chat-toolbar h2{font-size:14px}.chat-toolbar #clear-answer{margin-left:auto}.badge{font-size:11px;color:var(--muted)}.text-button{border:0;background:transparent;padding:5px 8px;font-size:12px}.chat-log{flex:1;min-height:0;overflow:auto;padding:20px 8px;scrollbar-width:thin}.empty-chat{height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:12px;color:var(--muted)}.empty-chat h3{font-weight:400;color:var(--ink)}.empty-chat p{font-size:13px;line-height:1.8}.chat-message{margin:0 0 18px;padding:14px;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75;font-size:14px}.chat-message.user{background:var(--soft);margin-left:32px}.chat-message small{margin-bottom:5px}.composer{flex:none;border:1px solid #c5ceb8;border-radius:10px;padding:10px 12px;background:white}.interaction-mode{display:flex;gap:12px;align-items:center}.interaction-mode select{width:auto;border:0;background:var(--soft);font-size:12px;padding:4px 8px}.interaction-mode small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%}textarea{resize:vertical;display:block;width:100%;border:1px solid var(--line);border-radius:8px;padding:12px;color:var(--ink);background:white;line-height:1.7}#transcript{border:0;resize:none;height:86px;padding:10px 0;outline-offset:0}.editor-footer{display:flex;align-items:center;justify-content:space-between;gap:10px}#count{font-size:11px;color:var(--muted)}.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.compact{margin-top:14px}#record-hint{font-size:10px;margin-top:7px}.message{flex:none;min-height:28px;max-height:64px;overflow:auto;padding:9px 2px 0;font-size:11px;line-height:1.55;color:var(--muted)}.message.error{color:var(--danger)}.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:14px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.panel>label{display:block;font-size:12px;margin:12px 0 7px}select{width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;background:white;color:var(--ink)}.routing-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.routing-grid label{font-size:12px}.routing-grid select{margin-top:8px}.device-picker,.sound-controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.device-picker select,.sound-controls select{flex:1;min-width:140px}.volume-control{display:flex!important;align-items:center;gap:12px}.volume-control input{min-width:50px;flex:1;accent-color:var(--accent)}.consent{display:flex!important;gap:10px;align-items:flex-start}.consent input{accent-color:var(--accent)}summary{cursor:pointer;font-size:14px}progress{width:100%;margin-top:14px}code{font-size:12px;overflow-wrap:anywhere}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
++@media(max-height:760px) and (min-width:681px){main{padding-top:14px;gap:24px}.companion-stage{padding-bottom:0}.avatar{width:170px;height:170px}.companion-portrait{gap:5px}.robot-console{padding:9px 14px;margin-top:10px}.switch-row{padding:6px 0}.status-row{padding:4px 0}.switch-row small{display:none}.companion-portrait h1{font-size:22px}#transcript{height:65px}}
++@media(max-width:900px){main{padding:16px;gap:18px;grid-template-columns:280px minmax(0,1fr)}.companion-stage{padding:0 8px}.version{display:none}.primary-nav a{padding:10px 12px}.global-status{gap:10px}}
++@media(max-width:680px){.app-header{height:48px;padding:0 14px;gap:14px}#global-operation,#global-watch{display:none}.global-status{justify-content:space-between}main{display:flex;flex-direction:column;padding:10px;gap:10px}.companion-stage{flex:none;display:grid;grid-template-columns:85px 1fr;gap:12px;padding:0}.companion-stage>.eyebrow,.companion-portrait h1,.companion-portrait p{display:none}.avatar{width:76px;height:76px;max-width:none;max-height:none}.robot-console{max-width:none;margin:0;padding:7px 10px;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.robot-console .status-row{display:none}.switch-row{border:0;padding:0;font-size:11px;flex-direction:column;gap:5px}.switch-row:first-of-type{margin:0}.switch-row small{display:none}#quick-connect{grid-column:1/-1;margin:0;padding:4px;font-size:11px}.work-area{flex:1}.primary-nav{margin-bottom:9px}.primary-nav a{flex:1;text-align:center;padding:8px 0}.page[data-page=dialogue]{padding:10px}.panel{padding:14px}#transcript{height:65px}.editor-footer button{padding:7px 8px;font-size:12px}.chat-toolbar{gap:6px}.chat-toolbar #release{font-size:10px;padding:4px}.message{max-height:45px}.chat-message.user{margin-left:14px}}
++@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+--- a/03-Src/stopwatch-voice-companion/tests/test_browser.mjs
++++ b/03-Src/stopwatch-voice-companion/tests/test_browser.mjs
+@@ -26,15 +26,23 @@
+   }
+ });
+ 
+-function workbench(saved = {}) {
+-  const elements = new Map(), waiting = [], played = [], requests = [];
++function workbench(saved = {}, options = {}) {
++  const elements = new Map(), waiting = [], played = [], requests = [], events = {}, avatarStates = [];
++  const nodes = name => ({nodeName:name, children:[], dataset:{}, listeners:{}, hidden:false,
++    classList:{toggle(){}},setAttribute(){},focus(){this.focused=true;},remove(){this.removed=true;},
++    append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;this.options=[];this.value='';},
++    addEventListener(type,fn){(this.listeners[type] ||= []).push(fn);},
++    async keydown(event){for(const fn of this.listeners.keydown || []) await fn(event);}});
+   const element = id => {
+-    if (!elements.has(id)) elements.set(id, {value:'',textContent:'',checked:false,options:[],listeners:{},
+-      addEventListener(name,fn){(this.listeners[name] ||= []).push(fn);},
++    if (!elements.has(id)) elements.set(id, {...nodes('div'),value:id==='asr'?'local':id==='interaction-mode'?'read':'',textContent:'',checked:false,options:[],
+       async change(){for(const fn of this.listeners.change || []) await fn(); if(this.onchange) await this.onchange();},
+-      replaceChildren(){this.options=[];this.value='';}, add(option){this.options.push(option);if(this.options.length===1)this.value=option.value;},getTracks(){return [];}});
++      add(option){this.options.push(option);if(this.options.length===1)this.value=option.value;},getTracks(){return [];}});
+     return elements.get(id);
+   };
++  const pages = ['dialogue','character','watch','settings'].map(page=>Object.assign(nodes('section'),{dataset:{page}}));
++  const tabs = ['dialogue','character','watch','settings'].map(page=>Object.assign(nodes('a'),{dataset:{pageLink:page}}));
++  const location = {hash:options.hash || '#dialogue'};
++  const desktop = options.desktop;
+   class AudioContext {
+     constructor(){this.state='running';}
+     async resume(){} async suspend(){} async close(){this.state='closed';}
+@@ -43,27 +51,30 @@
+   }
+   const context = vm.createContext({
+     toPCM16,Epoch,AbortController,AbortSignal,DOMException,ArrayBuffer,performance,AudioContext,
+-    Recorder:class{async start(){return true;}finish(){return new ArrayBuffer(44);}stop(){}},
++    Recorder:class{async start(){requests.push({url:'recorder:start'});return true;}finish(){return new ArrayBuffer(44);}stop(){}},
+     WavPlayer:class{constructor(){this.playing=false;}async play(_bytes,onended){this.playing=true;this.onended=onended;return true;}stop(){this.playing=false;}},
+     Option:class{constructor(label,value){this.label=label;this.value=value;}},
+-    crypto:webcrypto,document:{getElementById:element,body:{dataset:{}}},window:{addEventListener(){},localStorage:{getItem:key=>saved[key]??null,setItem:(key,value)=>{saved[key]=value;}}},
+-    setInterval:()=>0,clearInterval(){},clearTimeout(){},setTimeout,console,
++    crypto:webcrypto,location,history:{replaceState(_a,_b,hash){location.hash=hash;}},
++    document:{getElementById:element,createElement:nodes,querySelectorAll:selector=>selector==='[data-page]'?pages:selector==='[data-page-link]'?tabs:[],body:{dataset:{}}},
++    window:{GorkAvatar:{mount(){return {set:state=>avatarStates.push(state)};}},gorkDesktop:desktop,
++      addEventListener(name,fn){events[name]=fn;},localStorage:{getItem:key=>saved[key]??null,setItem:(key,value)=>{saved[key]=value;}}},
++    setInterval:()=>0,clearInterval(){},clearTimeout,setTimeout,console,
+     async fetch(url, options){
+       requests.push({url,body:options.body});
+       if(url==='/api/tts') return await new Promise(resolve=>waiting.push(()=>resolve({ok:true,arrayBuffer:async()=>new ArrayBuffer(44)})));
+-      return {ok:true,json:async()=>url==='/api/health'?{voice:{ready:true},voice_url:'local',robot:{},
++      return {ok:true,json:async()=>url==='/api/health'?{voice:{ready:true},voice_url:'local',robot:{},answer:{enabled:true},
+         capabilities:{protocol_version:1,tts:{speakers:[{id:3,label:'local 3'},{id:58,label:'local 58'}]},
+-          cloud:{request_voice:true,voices:[{id:'Cherry',label:'Cherry'},{id:'Ethan',label:'Ethan'}]}}}:{generation:0,robot:{}}};
++          cloud:{request_voice:true,voices:[{id:'Cherry',label:'Cherry'},{id:'Ethan',label:'Ethan'}]}}}:url==='/api/answer'?{text:'单独的回答'}:{generation:0,robot:{}}};
+     }
+   });
+   const script = fs.readFileSync(new URL('../static/app.js', import.meta.url),'utf8').replace(/^import .*;\r?\n/gm, '');
+   vm.runInContext(script,context);
+-  return {element,waiting,played,requests};
++  return {element,waiting,played,requests,pages,tabs,location,events,avatarStates,saved};
+ }
+ const settle = () => new Promise(resolve=>setImmediate(resolve));
+ 
+ test('voice catalogue, saved preferences and cloud speed restriction',async()=>{
+-  const saved={'gork.speech':JSON.stringify({speaker_id:58,cloud_voice:'Ethan',speed:1.15})};
++  const saved={'gork.tts':'local','gork.speech':JSON.stringify({speaker_id:58,cloud_voice:'Ethan',speed:1.15})};
+   const ui=workbench(saved);await settle();
+   assert.equal(ui.element('voice-select').value,'58');
+   ui.element('tts').value='cloud';await ui.element('tts').change();
+@@ -133,3 +144,109 @@
+   }
+   assert.equal(ui.played.length,20);
+ });
++
++test('new browser defaults use local ASR, cloud TTS and no automatic request', async()=>{
++  const ui=workbench(); await settle();
++  assert.equal(ui.element('asr').value,'local');
++  assert.equal(ui.element('tts').value,'cloud');
++  assert.equal(ui.element('robot-route-summary').textContent,'云端朗读');
++  assert.equal(ui.element('auto-read').checked,true);
++  assert.equal(ui.element('expression-follow').checked,true);
++  assert.equal(ui.requests.some(r=>['/api/session','/api/tts','recorder:start'].includes(r.url)),false);
++});
++
++test('saved local route and independent consent revocations survive reload', async()=>{
++  const saved={'gork.tts':'local','gork.audio-consent':'false','gork.text-consent':'false','gork.answer-consent':'false'};
++  const ui=workbench(saved); await settle();
++  assert.equal(ui.element('tts').value,'local');
++  assert.equal(ui.element('robot-route-summary').textContent,'本地朗读');
++  for(const id of ['audio-consent','text-consent','answer-consent']) assert.equal(ui.element(id).checked,false);
++  await ui.element('connect').onclick();
++  const body=JSON.parse(ui.requests.find(r=>r.url==='/api/settings').body);
++  assert.equal(body.routing.allow_audio_upload,false);
++  assert.equal(body.routing.allow_text_upload,false);
++  assert.equal(body.allow_answer_upload,false);
++});
++
++test('revoking text upload switches cloud TTS to local immediately', async()=>{
++  const ui=workbench(); await settle(); await ui.element('connect').onclick();
++  ui.element('text-consent').checked=false; await ui.element('text-consent').change(); await settle();
++  assert.equal(ui.element('tts').value,'local');
++  assert.equal(ui.saved['gork.text-consent'],'false');
++  assert.equal(JSON.parse(ui.requests.filter(r=>r.url==='/api/settings').at(-1).body).routing.allow_text_upload,false);
++  assert.equal(JSON.parse(ui.requests.filter(r=>r.url==='/api/settings').at(-1).body).speech,null);
++  assert.equal(ui.element('robot-route-summary').textContent,'本地朗读');
++});
++
++test('ordinary route draft leaves current playback path usable until Apply', async()=>{
++  const ui=workbench(); await settle(); await ui.element('connect').onclick();
++  ui.element('tts').value='local'; await ui.element('tts').change();
++  assert.equal(ui.element('speak').disabled,true); // Empty editor, not a route block.
++  ui.element('transcript').value='仍使用已应用设置'; ui.element('transcript').oninput();
++  assert.equal(ui.element('speak').disabled,false);
++  assert.equal(ui.element('robot-route-summary').textContent,'云端朗读');
++  assert.equal(ui.requests.filter(r=>r.url==='/api/stop').length,0);
++});
++
++test('revoking answer permission stops active route then applies independent consent', async()=>{
++  const ui=workbench(); await settle(); await ui.element('connect').onclick();
++  ui.element('interaction-mode').value='answer'; ui.element('answer-consent').checked=false;
++  await ui.element('answer-consent').change();
++  const stopIndex=ui.requests.findIndex(r=>r.url==='/api/stop');
++  const lastSettings=ui.requests.findLastIndex(r=>r.url==='/api/settings');
++  assert.ok(stopIndex>=0 && stopIndex<lastSettings);
++  assert.equal(ui.element('interaction-mode').value,'read');
++  assert.equal(JSON.parse(ui.requests[lastSettings].body).allow_answer_upload,false);
++});
++
++test('auto-read off keeps answer visible without TTS and does not alter editor', async()=>{
++  const ui=workbench({'gork.auto-read':'false'}); await settle(); await ui.element('connect').onclick();
++  ui.element('interaction-mode').value='answer'; ui.element('transcript').value='原始问题';
++  await ui.element('speak').onclick();
++  assert.equal(ui.requests.filter(r=>r.url==='/api/answer').length,1);
++  assert.equal(ui.requests.filter(r=>r.url==='/api/tts').length,0);
++  assert.equal(ui.element('transcript').value,'原始问题');
++  const rows=ui.element('chat-log').children;
++  assert.equal(rows.length,2);
++  assert.equal(rows[0].children[1].textContent,'原始问题');
++  assert.equal(rows[1].children[1].textContent,'单独的回答');
++});
++
++test('tabs change only right-hand pages and keep one mounted avatar', async()=>{
++  const ui=workbench(); await settle();
++  const avatarCount=ui.avatarStates.length;
++  for(const page of ['character','watch','settings','dialogue']) {
++    ui.location.hash='#'+page; ui.events.hashchange();
++    assert.equal(ui.pages.find(item=>item.dataset.page===page).hidden,false);
++    assert.equal(ui.pages.filter(item=>!item.hidden).length,1);
++  }
++  assert.equal(ui.avatarStates.length,avatarCount);
++  assert.equal(ui.tabs.filter(item=>item.tabIndex===0).length,1);
++});
++
++test('repeat record clicks start one capture while first request is pending', async()=>{
++  const ui=workbench(); await settle(); await ui.element('connect').onclick();
++  const first=ui.element('record').onclick(), second=ui.element('record').onclick();
++  await Promise.all([first,second]);
++  assert.equal(ui.requests.filter(r=>r.url==='recorder:start').length,1);
++  await ui.element('stop').onclick();
++});
++
++test('repeat connect clicks create only one voice session', async()=>{
++  const ui=workbench(); await settle();
++  await Promise.all([ui.element('connect').onclick(),ui.element('quick-connect').onclick()]);
++  assert.equal(ui.requests.filter(r=>r.url==='/api/session').length,1);
++  assert.equal(ui.requests.filter(r=>r.url==='/api/settings').length,1);
++});
++
++test('desktop avatar switch uses bridge and reads back actual window state', async()=>{
++  let visible=true; const calls=[];
++  const ui=workbench({}, {desktop:{getAvatarVisible:async()=>visible,setAvatarVisible:async value=>{calls.push(value);visible=value;}}});
++  await settle();
++  assert.equal(ui.element('desktop-visible').disabled,false);
++  assert.equal(ui.element('desktop-visible').checked,true);
++  ui.element('desktop-visible').checked=false; await ui.element('desktop-visible').change();
++  assert.deepEqual(calls,[false]);
++  assert.equal(ui.element('desktop-visible').checked,false);
++  assert.equal(ui.element('desktop-visible').disabled,false);
++});
+--- /dev/null
++++ b/03-Src/gork-desktop/tests/avatar-visibility.test.js
+@@ -0,0 +1,51 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++
++const desktop = path.resolve(__dirname, '..');
++
++test('avatar visibility IPC accepts only the console sender and boolean state', () => {
++  const handlers = new Map();
++  const electron = {
++    app: {isPackaged:false,requestSingleInstanceLock:()=>true,on(){},whenReady:()=>new Promise(()=>{})},
++    ipcMain: {handle:(name,handler)=>handlers.set(name,handler)},
++  };
++  const scope = {module:{exports:{}},exports:{},__dirname:desktop,process,Buffer,URL,console,
++    require(name){
++      if(name==='electron') return electron;
++      if(name==='./backend-manager') return {};
++      if(name==='./window-state') return {};
++      return require(name);
++    },
++  };
++  const source = fs.readFileSync(path.join(desktop,'main.js'),'utf8');
++  vm.runInNewContext(source+'\nmodule.exports.setWindows = (c,a) => { consoleWindow=c; avatarWindow=a; };',scope);
++  const consoleContents = {}, outsider = {};
++  let visible = true;
++  const avatar = {isDestroyed:()=>false,isVisible:()=>visible,showInactive:()=>{visible=true;},hide:()=>{visible=false;}};
++  scope.module.exports.setWindows({webContents:consoleContents},avatar);
++  const get = handlers.get('gork:avatar-visible');
++  const set = handlers.get('gork:set-avatar-visible');
++  assert.equal(get({sender:consoleContents}),true);
++  assert.throws(()=>get({sender:outsider}),/Only the console/);
++  assert.throws(()=>set({sender:outsider},false),/Invalid visibility/);
++  assert.throws(()=>set({sender:consoleContents},'false'),/Invalid visibility/);
++  assert.equal(set({sender:consoleContents},false),false);
++  assert.equal(get({sender:consoleContents}),false);
++  assert.equal(set({sender:consoleContents},true),true);
++});
++
++test('preload exposes the visibility bridge', () => {
++  const invokes = [];
++  let bridge;
++  const electron = {contextBridge:{exposeInMainWorld:(_name,value)=>{bridge=value;}},
++    ipcRenderer:{invoke:async(...args)=>{invokes.push(args);return true;},on(){}}};
++  vm.runInNewContext(fs.readFileSync(path.join(desktop,'preload.js'),'utf8'),{
++    require:name=>name==='electron'?electron:require(name),Object,
++  });
++  return Promise.all([bridge.getAvatarVisible(),bridge.setAvatarVisible(false)]).then(()=>{
++    assert.deepEqual(invokes,[['gork:avatar-visible'],['gork:set-avatar-visible',false]]);
++  });
++});
