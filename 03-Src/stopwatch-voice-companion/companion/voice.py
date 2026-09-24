@@ -40,7 +40,7 @@ class VoiceClient:
         except httpx.TimeoutException as exc:
             raise VoiceError(504, "VOICE_TIMEOUT", "语音请求超时；请停止本轮后重试") from exc
         except httpx.RequestError as exc:
-            raise VoiceError(503, "VOICE_OFFLINE", "语音服务未连接，请先启动独立语音服务") from exc
+            raise VoiceError(503, "VOICE_OFFLINE", "语音服务未连接，请点击“启动 / 重试”") from exc
         if response.is_error:
             try:
                 error = response.json()["error"]
@@ -81,10 +81,14 @@ class VoiceClient:
             files={"audio": ("recording.wav", data, "audio/wav")})).json()
         return result["result"]["text"]
 
-    async def synthesize(self, text, turn, request_id):
-        response = await self.call("POST", "/v1/tts/synthesize", json={
+    async def synthesize(self, text, turn, request_id, speech=None):
+        speech = speech or {}
+        payload = {
             "request_id": request_id, "turn_id": turn, "text": text,
-            "speaker_id": 3, "speed": 1.0, "sample_rate": 24000})
+            "speaker_id": speech.get("speaker_id", 3), "speed": speech.get("speed", 1.0), "sample_rate": 24000}
+        if speech.get("request_voice"):
+            payload["cloud_voice"] = speech["cloud_voice"]
+        response = await self.call("POST", "/v1/tts/synthesize", json=payload)
         if response.headers.get("content-type", "").split(";")[0] != "audio/wav":
             raise VoiceError(502, "AUDIO_INVALID", "语音服务没有返回完整 WAV")
         return check_wav(response.content)

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 #include <Arduino.h>
-#include <M5IOE1.h>
 #include <M5Unified.h>
 #include <Preferences.h>
 #include <cstring>
@@ -9,15 +8,15 @@
 #include "avatar_engine.h"
 #include "ble_control.h"
 #include "audio_probe.h"
+#include "sound_control.h"
+#include "speaker_output.h"
 
 namespace {
 
-constexpr uint8_t kIoeAddress = 0x4F;
-constexpr uint8_t kVibrationPwmRegister = 0x1B;
 constexpr uint8_t kDefaultBrightness = 150;
+constexpr char kFirmwareVersion[] = "v0.9.0-dev";
 constexpr uint8_t kMinimumBrightness = 30;
 constexpr uint8_t kBrightnessStep = 15;
-constexpr uint32_t kIoeBusFrequency = M5IOE1_I2C_FREQ_100K;
 constexpr uint32_t kDiagnosticRefreshIntervalMs = 100;
 constexpr uint32_t kBatteryRefreshIntervalMs = 5000;
 constexpr uint32_t kImuInteractionIntervalMs = 20;
@@ -35,6 +34,7 @@ constexpr uint16_t kSwipeTransitionMs = 160;
 constexpr char kBleEnabledKey[] = "ble";
 constexpr char kBleBoundKey[] = "ble_bound";
 constexpr char kBlePeerKey[] = "ble_peer";
+constexpr char kSoundVolumeKey[] = "sound_vol";
 constexpr uint8_t kBubbleMaxBytes = 72;
 constexpr uint8_t kBubbleMaxCharacters = 24;
 constexpr uint32_t kTextTransferTimeoutMs = 5000;
@@ -49,13 +49,13 @@ struct TextTransfer {
 };
 
 enum class GestureAxis : uint8_t { None, Horizontal, Vertical };
-enum class PanelPage : uint8_t { Settings, Hardware, Bluetooth, Audio };
+enum class PanelPage : uint8_t { Settings, Hardware, Bluetooth, Sound, Audio };
 
-M5IOE1 ioe;
 AvatarEngine avatar;
 Preferences settings;
 BLEControl bleControl;
 AudioProbe audioProbe(bleControl);
+SoundControl soundControl(bleControl);
 TextTransfer textTransfer;
 bool vibrationReady = false;
 bool settingsReady = false;
@@ -86,6 +86,9 @@ uint32_t lastStrongShakeMs = 0;
 String lastDiagnosticEvent = "Waiting for input";
 String serialCommand;
 uint8_t brightness = kDefaultBrightness;
+uint8_t pendingSoundVolume = 20;
+uint32_t soundVolumeChangedAtMs = 0;
+bool soundVolumePending = false;
 GestureAxis gestureAxis = GestureAxis::None;
 bool gestureCommitted = false;
 
@@ -163,12 +166,25 @@ void drawDebugControls() {
 
 void drawSettingsFrame() {
   drawPanelFrame("Settings");
+  drawDiagnosticLine(102, "Firmware", kFirmwareVersion, TFT_LIGHTGREY);
   drawBatteryLine();
   drawBrightnessControls();
   drawDebugControls();
-  drawPanelButton(123, 300, 220, "Bluetooth");
-  drawPanelButton(123, 352, 220, "Hardware Check");
-  drawPanelButton(170, 404, 126, "Audio test");
+  drawPanelButton(123, 292, 220, "Sound");
+  drawPanelButton(123, 334, 220, "Bluetooth");
+  drawPanelButton(123, 376, 220, "Hardware Check");
+  drawPanelButton(170, 418, 126, "Audio test");
+}
+
+void drawSoundFrame() {
+  drawPanelFrame("Sound");
+  drawDiagnosticLine(150,"Volume",String(soundControl.volume())+"%",TFT_WHITE);
+  drawDiagnosticLine(174,"Speaker",soundControl.hardwareStatus(),
+                     String(soundControl.hardwareStatus())=="playing"?TFT_GREEN:TFT_WHITE);
+  drawPanelButton(90,206,80,"-"); drawPanelButton(193,206,80,"Test"); drawPanelButton(296,206,80,"+");
+  drawPanelButton(115,270,105,soundControl.volume()?"Mute":"Muted");
+  drawPanelButton(246,270,105,"Stop");
+  drawPanelButton(170,396,126,"Back");
 }
 
 void drawBluetoothFrame() {
@@ -251,25 +267,13 @@ void toggleDebugMode() {
 
 void stopVibration() {
   if (!vibrationReady) return;
-  const uint8_t pwmData[2] = {0, 0x80};
-  M5.In_I2C.writeRegister(kIoeAddress, kVibrationPwmRegister, pwmData,
-                          sizeof(pwmData), kIoeBusFrequency);
+  M5.Power.setVibration(0);
   vibrationStopsAtMs = 0;
 }
 
 void startVibration(uint8_t strength = 160, uint16_t durationMs = 45) {
   if (!vibrationReady) return;
-  const uint16_t duty12 =
-      static_cast<uint16_t>(strength) * 0x0FFF / 0xFF;
-  const uint8_t pwmData[2] = {
-      static_cast<uint8_t>(duty12 & 0xFF),
-      static_cast<uint8_t>(0x80 | ((duty12 >> 8) & 0x0F)),
-  };
-  if (!M5.In_I2C.writeRegister(kIoeAddress, kVibrationPwmRegister, pwmData,
-                               sizeof(pwmData), kIoeBusFrequency)) {
-    Serial.println("Vibration PWM write failed");
-    return;
-  }
+  M5.Power.setVibration(strength);
   vibrationStopsAtMs = millis() + durationMs;
 }
 
@@ -278,17 +282,10 @@ void updateVibration(uint32_t nowMs) {
 }
 
 void setupVibration() {
-  const m5ioe1_err_t error =
-      ioe.begin(&M5.In_I2C, kIoeAddress, M5IOE1_I2C_FREQ_100K);
-  vibrationReady = error == M5IOE1_OK;
-  if (vibrationReady) {
-    ioe.setPwmFrequency(200);
-    // Configure the PWM pin once through the verified driver. Runtime haptics
-    // then need only one two-byte register write instead of a write/readback/
-    // GPIO-mode sequence that can stall an animation frame.
-    vibrationReady =
-        ioe.setPwmDuty12bit(M5IOE1_PWM_CH1, 0, false, true) == M5IOE1_OK;
-  }
+  // Keep one owner for the shared IO expander. A second M5IOE1 driver instance
+  // can race the codec-power and PA pins used by M5Unified's speaker callback.
+  vibrationReady = M5.getBoard() == m5::board_t::board_M5StopWatch;
+  if (vibrationReady) M5.Power.setVibration(0);
 }
 
 void trigger(ExpressionId expression, uint32_t nowMs,
@@ -696,6 +693,7 @@ void setMenuOpen(bool enabled) {
     drawSettingsFrame();
     Serial.println("Settings mode entered");
   } else {
+    audioProbe.enter(false);
     avatar.invalidate();
     Serial.println("Expression mode entered");
   }
@@ -710,19 +708,23 @@ void handleSettingsInput(uint32_t nowMs) {
     } else if (touch.y >= 242 && touch.y < 290 &&
                touch.x >= 250 && touch.x < 390) {
       toggleDebugMode();
-    } else if (touch.y >= 294 && touch.y < 340 &&
+    } else if (touch.y >= 288 && touch.y < 330 &&
+               touch.x >= 110 && touch.x < 356) {
+      panelPage = PanelPage::Sound;
+      drawSoundFrame();
+    } else if (touch.y >= 330 && touch.y < 372 &&
                touch.x >= 110 && touch.x < 356) {
       panelPage = PanelPage::Bluetooth;
       clearBleBindingConfirm = false;
       drawBluetoothFrame();
-    } else if (touch.y >= 346 && touch.y < 394 &&
+    } else if (touch.y >= 372 && touch.y < 414 &&
                touch.x >= 110 && touch.x < 356) {
       panelPage = PanelPage::Hardware;
       drawDiagnosticFrame();
-    } else if (touch.y >= 400 && touch.y < 440 &&
+    } else if (touch.y >= 414 && touch.y < 454 &&
                touch.x >= 160 && touch.x < 306) {
       panelPage = PanelPage::Audio;
-      drawPanelFrame("BLE Audio v0.7.0-P0");
+      drawPanelFrame("BLE Audio v0.7.2-P0");
       drawPanelButton(170, 396, 126, "Back");
       audioProbe.enter();
       return;
@@ -731,6 +733,18 @@ void handleSettingsInput(uint32_t nowMs) {
   if (nowMs - lastBatteryRefreshMs >= kBatteryRefreshIntervalMs) {
     drawBatteryLine();
   }
+}
+
+void handleSoundInput() {
+  const auto touch=M5.Touch.getDetail(0); if(!touch.wasPressed())return;
+  if(touch.y>=390 && touch.y<440){soundControl.stopNow();if(settingsReady&&soundVolumePending){settings.putUChar(kSoundVolumeKey,pendingSoundVolume);soundVolumePending=false;}panelPage=PanelPage::Settings;drawSettingsFrame();return;}
+  if(touch.y>=196 && touch.y<256){
+    if(touch.x<175)soundControl.setLocalVolume(soundControl.volume()>=5?soundControl.volume()-5:0);
+    else if(touch.x>285)soundControl.setLocalVolume(std::min<int>(100,soundControl.volume()+5));
+    else soundControl.preview(2);
+    drawSoundFrame(); return;
+  }
+  if(touch.y>=255 && touch.y<330){if(touch.x<233)soundControl.toggleMute();else soundControl.stopNow();drawSoundFrame();}
 }
 
 void handleBluetoothInput(uint32_t nowMs) {
@@ -835,19 +849,21 @@ void setup() {
   // M5.begin configures the official pins/callbacks. Audio is not left active
   // at boot and is started only by the explicit diagnostic session/gesture.
   M5.Mic.end();
-  M5.Speaker.end();
+  stopStopWatchSpeaker();
   Serial.begin(115200);
 
   M5.Display.setRotation(0);
   settingsReady = settings.begin("gorkbot", false);
   bool bleEnabled = false;
   bool bleBound = false;
+  uint8_t soundVolume = 20;
   uint8_t blePeer[BLEControl::kPeerAddressLength] = {};
   if (settingsReady) {
     brightness = settings.getUChar("brightness", kDefaultBrightness);
     debugMode = settings.getBool("debug", false);
     bleEnabled = settings.getBool(kBleEnabledKey, false);
     bleBound = settings.getBool(kBleBoundKey, false);
+    soundVolume = settings.getUChar(kSoundVolumeKey, 20);
     if (bleBound && settings.getBytes(kBlePeerKey, blePeer, sizeof(blePeer)) !=
                         sizeof(blePeer)) {
       bleBound = false;
@@ -871,10 +887,14 @@ void setup() {
   avatar.setDebugLabelEnabled(debugMode);
 
   bleControl.setAudioProbe(&audioProbe);
+  bleControl.setSoundControl(&soundControl);
+  audioProbe.setSoundControl(&soundControl);
+  soundControl.setInitialVolume(soundVolume);
   if (!bleControl.begin(bleEnabled, bleBound, blePeer)) {
     Serial.println("BLE control failed to initialize; kept OFF");
     if (settingsReady) settings.putBool(kBleEnabledKey, false);
   }
+  audioProbe.enter(false);
 
   Serial.println("Expression device started");
   Serial.println(
@@ -894,12 +914,20 @@ void loop() {
   handleSerialCommands(nowMs);
   processBleCommands(nowMs);
   audioProbe.update(nowMs);
+  soundControl.update(nowMs, (menuOpen && panelPage == PanelPage::Audio) || audioProbe.busy());
+  uint8_t changedVolume = 0;
+  if (soundControl.takeVolumeChanged(&changedVolume)) {
+    pendingSoundVolume=changedVolume; soundVolumeChangedAtMs=nowMs; soundVolumePending=true;
+  }
+  if(settingsReady&&soundVolumePending&&nowMs-soundVolumeChangedAtMs>=800){settings.putUChar(kSoundVolumeKey,pendingSoundVolume);soundVolumePending=false;}
 
   if (menuOpen) {
     if (panelPage == PanelPage::Settings) {
       handleSettingsInput(nowMs);
     } else if (panelPage == PanelPage::Bluetooth) {
       handleBluetoothInput(nowMs);
+    } else if (panelPage == PanelPage::Sound) {
+      handleSoundInput();
     } else if (panelPage == PanelPage::Audio) {
       const auto touch = M5.Touch.getDetail(0);
       if (touch.wasPressed() && touch.y >= 390 && touch.y < 440 &&
@@ -916,7 +944,7 @@ void loop() {
       avatar.previous(nowMs);
       startVibration(125, 35);
     }
-    if (M5.BtnB.wasClicked()) {
+    if (M5.BtnB.wasClicked() && !soundControl.takeButtonBConsumed()) {
       avatar.next(nowMs);
       startVibration(125, 35);
     }

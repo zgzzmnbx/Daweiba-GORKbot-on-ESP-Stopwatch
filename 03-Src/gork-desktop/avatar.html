@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+  <link rel="stylesheet" href="avatar.css">
+  <title>Gork</title>
+</head>
+<body>
+  <main id="avatar" class="avatar idle" aria-label="Gork 桌面小人">
+    <div class="drag-zone" aria-hidden="true"></div>
+    <canvas id="gork-face" class="face" aria-label="Grok bot 黑色圆体白色双眼"></canvas>
+    <p id="bubble" class="bubble" hidden></p>
+    <p id="status">就绪</p>
+    <div class="actions">
+      <button id="console">控制台</button><button id="hide">隐藏</button>
+    </div>
+  </main>
+  <script src="gork-catalog.js"></script>
+  <script src="gork-avatar.js"></script>
+  <script src="avatar.js"></script>
+</body>
+</html>

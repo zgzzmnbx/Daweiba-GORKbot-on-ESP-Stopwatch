@@ -1,6 +1,27 @@
 # Local-only endpoints. No credentials or model paths belong here.
 port = 8766
 voice_url = "http://127.0.0.1:8765"
-# Optional preselection within a fresh BLE scan; never automatically connects.
+# On startup and after link loss, keep scanning with bounded backoff. With no
+# address, connect only when exactly one StopWatch advertises the expected BLE
+# service. A configured address is always enforced.
+# Set auto_connect_device=false for isolated previews and tests.
+auto_connect_device = true
 device_address = ""
+# Create the browser-owned voice session after the console loads. This does not
+# start recording, playback, upload, or takeover of another session.
+# Set false for isolated previews and tests.
+auto_connect_voice = true
 request_timeout = 60.0
+
+# By default, Gork owns the bundled 03-Src/voice-service module and uses
+# Codex-Temp/voice-runtime/.venv plus the project-local model directory.
+# Omit both keys for project-local startup; set command=[] for reuse-only mode.
+# Custom commands must be absolute and are executed directly, without a shell.
+# voice_service_command = []
+# voice_service_cwd = ""
+
+# Optional OpenAI-compatible text-only answer provider. The secret itself is never stored here.
+answer_base_url = ""
+answer_model = ""
+answer_api_key_env = "GORK_ANSWER_API_KEY"
+answer_history_turns = 4

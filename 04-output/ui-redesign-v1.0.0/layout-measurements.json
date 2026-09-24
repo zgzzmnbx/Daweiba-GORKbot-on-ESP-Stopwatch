@@ -1,0 +1,321 @@
+{
+  "layout": [
+    {
+      "page": "主界面",
+      "actionsBottom": 767,
+      "actionsVisible": true,
+      "height": 820,
+      "innerScrollers": 0,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1180
+    },
+    {
+      "page": "角色",
+      "actionsBottom": 763,
+      "actionsVisible": true,
+      "height": 820,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1180
+    },
+    {
+      "page": "StopWatch",
+      "actionsBottom": 763,
+      "actionsVisible": true,
+      "height": 820,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1180
+    },
+    {
+      "page": "设置",
+      "actionsBottom": 763,
+      "actionsVisible": true,
+      "height": 820,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1180
+    },
+    {
+      "page": "主界面",
+      "actionsBottom": 715,
+      "actionsVisible": true,
+      "height": 768,
+      "innerScrollers": 0,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1366
+    },
+    {
+      "page": "角色",
+      "actionsBottom": 711,
+      "actionsVisible": true,
+      "height": 768,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1366
+    },
+    {
+      "page": "StopWatch",
+      "actionsBottom": 711,
+      "actionsVisible": true,
+      "height": 768,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1366
+    },
+    {
+      "page": "设置",
+      "actionsBottom": 711,
+      "actionsVisible": true,
+      "height": 768,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1366
+    },
+    {
+      "page": "主界面",
+      "actionsBottom": 547,
+      "actionsVisible": true,
+      "height": 600,
+      "innerScrollers": 0,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1024
+    },
+    {
+      "page": "角色",
+      "actionsBottom": 543,
+      "actionsVisible": true,
+      "height": 600,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1024
+    },
+    {
+      "page": "StopWatch",
+      "actionsBottom": 543,
+      "actionsVisible": true,
+      "height": 600,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1024
+    },
+    {
+      "page": "设置",
+      "actionsBottom": 543,
+      "actionsVisible": true,
+      "height": 600,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 1024
+    },
+    {
+      "page": "主界面",
+      "actionsBottom": 547,
+      "actionsVisible": true,
+      "height": 600,
+      "innerScrollers": 0,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 820
+    },
+    {
+      "page": "角色",
+      "actionsBottom": 547,
+      "actionsVisible": true,
+      "height": 600,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 820
+    },
+    {
+      "page": "StopWatch",
+      "actionsBottom": 547,
+      "actionsVisible": true,
+      "height": 600,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 820
+    },
+    {
+      "page": "设置",
+      "actionsBottom": 547,
+      "actionsVisible": true,
+      "height": 600,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 820
+    },
+    {
+      "page": "主界面",
+      "actionsBottom": 657,
+      "actionsVisible": true,
+      "height": 700,
+      "innerScrollers": 0,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 390
+    },
+    {
+      "page": "角色",
+      "actionsBottom": 685,
+      "actionsVisible": true,
+      "height": 700,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 390
+    },
+    {
+      "page": "StopWatch",
+      "actionsBottom": 685,
+      "actionsVisible": true,
+      "height": 700,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 390
+    },
+    {
+      "page": "设置",
+      "actionsBottom": 685,
+      "actionsVisible": true,
+      "height": 700,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 390
+    },
+    {
+      "page": "主界面",
+      "actionsBottom": 497,
+      "actionsVisible": true,
+      "height": 540,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 390
+    },
+    {
+      "page": "角色",
+      "actionsBottom": 525,
+      "actionsVisible": true,
+      "height": 540,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 390
+    },
+    {
+      "page": "StopWatch",
+      "actionsBottom": 525,
+      "actionsVisible": true,
+      "height": 540,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 390
+    },
+    {
+      "page": "设置",
+      "actionsBottom": 525,
+      "actionsVisible": true,
+      "height": 540,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 390
+    },
+    {
+      "page": "主界面",
+      "actionsBottom": 395,
+      "actionsVisible": false,
+      "height": 384,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 683
+    },
+    {
+      "page": "角色",
+      "actionsBottom": 504,
+      "actionsVisible": false,
+      "height": 384,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 683
+    },
+    {
+      "page": "StopWatch",
+      "actionsBottom": 504,
+      "actionsVisible": false,
+      "height": 384,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 683
+    },
+    {
+      "page": "设置",
+      "actionsBottom": 504,
+      "actionsVisible": false,
+      "height": 384,
+      "innerScrollers": 1,
+      "regionOverflowX": false,
+      "rootOverflowX": false,
+      "rootOverflowY": false,
+      "width": 683
+    }
+  ],
+  "longChat": {
+    "bodyHeight": 820,
+    "clientHeight": 472,
+    "inputBottom": 767.1999969482422,
+    "messages": 14,
+    "scrollHeight": 2038,
+    "scrolled": true,
+    "viewportHeight": 820
+  }
+}

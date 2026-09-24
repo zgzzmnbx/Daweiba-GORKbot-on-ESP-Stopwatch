@@ -17,6 +17,8 @@ from typing import Any, Callable, Iterable, Optional
 
 DEVICE_NAME = "GorkBot-SW"
 SERVICE_UUID = "48f1a001-8a75-4db6-9c18-590f7e9b0a01"
+SOUND_SERVICE_UUID = "48f1c001-8a75-4db6-9c18-590f7e9b0a01"
+AUDIO_SERVICE_UUID = "48f1b001-8a75-4db6-9c18-590f7e9b0a01"
 COMMAND_UUID = "48f1a002-8a75-4db6-9c18-590f7e9b0a01"
 STATUS_UUID = "48f1a003-8a75-4db6-9c18-590f7e9b0a01"
 MAX_COMMAND_BYTES = 20
@@ -251,17 +253,21 @@ class BleExpressionClient:
         self._connection_epoch += 1
         epoch = self._connection_epoch
         self._status_queue = asyncio.Queue()
-        self.client = factory(
-            device,
-            pair=True,
-            disconnected_callback=self._on_disconnected,
-        )
+        options = {"pair": True, "disconnected_callback": self._on_disconnected}
+        # The real Windows connection explicitly discovers the three services on
+        # the one shared client. Injected test transports keep their small API.
+        if self._client_factory is None:
+            options.update(timeout=60,
+                           services=[SERVICE_UUID, SOUND_SERVICE_UUID, AUDIO_SERVICE_UUID],
+                           winrt={"use_cached_services": False})
+        self.client = factory(device, **options)
         try:
-            await asyncio.wait_for(self.client.connect(), 30)
+            # Windows may show a first-pairing confirmation while pair=True runs.
+            await asyncio.wait_for(self.client.connect(), 60)
             services = getattr(self.client, "services", None)
             service = services.get_service(SERVICE_UUID) if services is not None else None
             if service is None:
-                raise BleConsoleError("已连接，但未发现目标 GATT 服务")
+                raise BleConsoleError("BLE 链路已建立，但目标 GATT 服务不可见；请检查设备绑定状态")
             command = service.get_characteristic(COMMAND_UUID)
             status = service.get_characteristic(STATUS_UUID)
             if command is None or status is None:
@@ -279,7 +285,7 @@ class BleExpressionClient:
         except Exception as exc:
             await self.disconnect()
             raise BleConsoleError(
-                "连接失败：请确认 Pair 窗口、Windows 蓝牙和绑定状态"
+                f"BLE 连接或服务发现失败：{exc}；请确认设备 BLE、首次 Pair 窗口和绑定状态"
             ) from exc
 
     def _on_status_notification(self, _characteristic: Any, payload: Any) -> None:

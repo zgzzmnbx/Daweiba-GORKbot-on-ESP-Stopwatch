@@ -11,7 +11,90 @@ KK is a procedural avatar built for the M5Stack StopWatch's circular AMOLED disp
 
 > Community project. Not affiliated with or endorsed by M5Stack.
 
-## v0.7.0-P0 BLE audio probe (built, NOT flashed)
+## v0.9.0-dev Opus BLE candidate (source/build only)
+
+The audio endpoint accepts length-prefixed Opus packets after an opt-in HELLO capability exchange, decodes to mono PCM in PSRAM, then uses the same avatar-page speaker path. Legacy clients still receive the four-byte PCM capabilities. The encrypted GATT, bounded packet ACKs, cancellation and 10-second playback limit remain. The v0.9.0 image was written only to app0 and independently verified. On one 5.592 s sample, Opus transfer took 3.66 s versus 32.22 s for PCM on the same device. The user confirmed a complete, audible Opus sentence on the avatar page; detailed timbre comparison is still open.
+
+## v0.8.8-dev avatar-page audio
+
+The BLE audio receiver also stays active on the normal avatar page, without drawing the diagnostic audio UI over the avatar. Playback may coexist with avatar animation and text bubbles. Recording remains restricted to Settings → Audio test. Built-in sound playback and dynamic BLE audio are mutually excluded; opening Settings, losing authorization, or cancelling audio stops the active transfer. On 2026-09-24, the v0.8.8 image was written only to app0 and independently verified. A complete short sentence played twice on the avatar page; the user confirmed clear, complete audible speech on the second run. Transfer took about 17.5 seconds for 89.6 KB of PCM; remaining hardware checks are recorded under `04-output/v0.12.9/`.
+
+## v0.8.7-dev BLE bonded-peer reconnect candidate (source/build only)
+
+On an existing bond, a Windows central can reconnect with a resolvable private
+address that differs from the stored identity. The BLE server now waits for
+encryption/authentication before checking the bound identity. GATT writes still
+require authorization; a new bond still requires the local Pair window. The
+v0.8.7 image was subsequently flashed and its GATT reconnect path checked on
+hardware; v0.8.8 remains a source/build candidate.
+
+## v0.8.6-dev built-in codec loudness boost (flashed, loudness accepted)
+
+The v0.8.5 PCM peak is already 30,000/32,767, so another direct 3x PCM
+multiply would clip. For the six short built-in sounds only, v0.8.6 changes
+ES8311 REG32 from `0xBF` (0 dB) to `0xD2` (+9.5 dB, nominal 2.99x voltage
+gain). Streamed BLE PCM and recorded-audio playback remain at 0 dB.
+The Settings landing page also displays `v0.8.6-dev` as the firmware version.
+
+All 75 Python, 5 browser and 5 Electron tests pass. PlatformIO builds at RAM
+63,928 bytes (19.5%) and Flash 1,625,497 bytes (24.8%). The 1,625,856-byte
+application was flashed app-only at 0x10000 and an independent verify_flash
+passed. Because the source tones are already near full scale, high-volume
+output may clip or saturate; physical testing must begin at 20–30% and
+increase gradually.
+
+The user subsequently confirmed on the physical device that the sound now has
+a normal usable loudness. This closes the maximum-loudness issue, but does not
+yet cover per-sound distortion/noise, thermal or long-duration testing.
+
+## v0.8.5-dev 3x built-in sound amplitude (flashed; still too quiet)
+
+The six deterministic built-in PCM16 sounds previously peaked at 10,000,
+leaving 3.2767x headroom below the signed 16-bit limit. Their generator now
+uses a 30,000 peak: exactly 3x digital amplitude, approximately +9.54 dB,
+without PCM clipping. The ES8311 remains at 0 dB, so dynamic speech, BLE PCM
+and recorded-audio playback are not globally boosted.
+
+All 73 Python, 5 browser and 5 Electron tests pass. PlatformIO builds at RAM
+63,928 bytes (19.5%) and Flash 1,625,089 bytes (24.8%). The 1,625,456-byte
+application was flashed app-only at 0x10000 and an independent verify_flash
+passed. Actual loudness, distortion, noise and thermal behavior require a
+staged physical listening test beginning at 30–40% volume.
+
+## v0.8.4-dev official ES8311 setup fix (flashed, audible output confirmed)
+
+The source embeds six deterministic 16 kHz PCM16 mono CC0 tones and adds a
+separate encrypted sound-control GATT service. Short 9-byte commands provide
+capabilities, catalog version, play, stop, 0–100 volume and status with request
+IDs, directed notifications and an eight-entry terminal dedupe cache.
+`Settings → Sound` exposes volume, mute, explicit preview and stop; NVS writes
+are delayed. Static sounds, microphone and dynamic PCM remain half-duplex and
+mutually exclusive. B stops active sound before expression browsing.
+
+The v0.8.3 local test still displayed `playing` without audible output after
+both M5IOE1 G10 and ESP32 GPIO14 were enabled. The official factory project
+uses esp_codec_dev 1.5.4 to configure 44.1 kHz, 16-bit Philips I2S, the DAC
+reference, mute state and output volume. The pinned M5Unified callback writes
+only a subset of those ES8311 registers. v0.8.4 applies the complete official
+sequence, verifies the critical registers, then enables both PA gates.
+
+PlatformIO builds successfully at RAM 63,928 bytes (19.5%) and Flash 1,625,873
+bytes (24.8%). The v0.8.4 application was flashed app-only at 0x10000 and an
+independent verify_flash passed. The local Sound/Test is now audibly playing,
+confirming that the incomplete codec setup caused the previous silent output.
+The reported 100% volume is still low, so gain and full sound-control acceptance
+remain pending.
+
+## v0.7.2-P0 BLE audio probe (flashed, runtime acceptance pending)
+
+Update 2026-09-21: authorized app-only flash at 0x10000 and independent
+verify_flash succeeded; hardware reset sent. Capture/playback retest pending.
+The following not-flashed statement records the earlier development snapshot.
+
+Fixes stale-loop-clock capture timeout underflow; adds distinct driver/queue/
+timeout errors E9–E13 and preserves failures across cleanup/disconnect.
+The device still runs v0.7.0-P0 and has reported code 5 on capture.
+Actual microphone/speaker acceptance remains pending after an authorized update.
 
 An opt-in `Settings → Audio test` page exercises the official StopWatch
 microphone/speaker using half-duplex PCM16. The PC bench arms one capture;
@@ -20,9 +103,11 @@ avatar page. The separate encrypted audio GATT service has bounded PSRAM,
 connection/session/transfer isolation, physical cancellation, and a heartbeat
 lease. `../../tools/stopwatch_audio.py` supports tone, WAV playback, explicit
 WAV recording, and BLE round-trip echo. This is a credit-one transport probe,
-not a real-time stream or integrated speech assistant. The PC voice workbench
-remains v0.6.0 and uses PC audio. Hardware sound quality, throughput, security,
-and product regression acceptance are pending; the device still runs v0.5.0.
+not a real-time stream. The PC voice workbench has evolved into the v0.8.0-dev
+Gork console while retaining this diagnostic protocol. Hardware sound quality, throughput, security,
+and product regression acceptance are pending. The v0.7.0-P0 application was
+flashed at 0x10000 on 2026-09-21 with independent readback verification; normal
+boot and on-device audio still require observation.
 
 ## Highlights
 

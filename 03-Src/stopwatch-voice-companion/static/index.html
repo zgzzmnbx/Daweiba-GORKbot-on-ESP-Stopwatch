@@ -1,25 +1,86 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StopWatch · 语音工作台</title><link rel="stylesheet" href="/static/style.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gork 机器人控制台</title><link rel="stylesheet" href="/static/style.css"></head>
 <body>
-<header><a class="wordmark" href="/">STOPWATCH<span> / COMPANION</span></a><span class="version">LOCAL WORKSPACE · 0.6.0</span></header>
+<header class="app-header">
+  <a class="wordmark" href="#dialogue">GORK<span> / ROBOT CONSOLE</span></a>
+  <div class="global-status" aria-live="polite"><span id="global-voice">语音：检查中</span><span id="global-watch">Watch：未连接</span><span id="global-operation">待机</span><button id="global-stop" class="stop">停止全部</button></div>
+  <span class="version">LOCAL WORKSPACE · 0.13.0</span>
+</header>
 <main>
-  <section class="intro"><div><p class="eyebrow">听见 · 编辑 · 回读</p><h1>把话说给小人听。</h1><p class="subtitle">电脑负责收音与出声，StopWatch 用表情回应。<br>这是跟读工作台，暂不接入 AI 问答。</p></div><div class="avatar" aria-hidden="true"><i></i><i></i></div></section>
-  <div class="layout">
-    <section class="workspace panel" aria-labelledby="work-title">
-      <div class="section-head"><h2 id="work-title">对话练习</h2><span id="phase" class="badge">未连接</span></div>
-      <div class="record-zone"><div class="sound" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><p id="record-hint">连接语音服务后，开始第一轮。</p><div class="actions"><button id="record" class="primary" disabled>开始录音</button><button id="finish" hidden>结束并转写</button><button id="stop" class="stop" disabled>停止</button></div><small>录音最长 30 秒 · PCM16 / 16 kHz · 不保存录音文件</small></div>
-      <label for="transcript" class="editor-label">识别文字 / 回读内容 <span id="count">0 / 300</span></label>
-      <textarea id="transcript" maxlength="300" placeholder="识别结果会显示在这里，也可以直接输入文字。回读前可以自由修改。" spellcheck="false"></textarea>
-      <div class="editor-footer"><span>设备气泡仅显示前 24 字，回读使用完整文字。</span><button id="speak" class="primary" disabled>回读文字 <span aria-hidden="true">↗</span></button></div>
-      <div id="message" class="message" role="status" aria-live="polite">请先在右侧连接独立语音服务。</div>
+  <aside class="companion-stage" aria-label="常驻机器人">
+    <span class="eyebrow">桌面伙伴</span>
+    <div class="companion-portrait"><canvas id="gork-face" class="avatar" aria-label="Grok bot 动画"></canvas><h1>Gork</h1><p id="companion-phase">待机 · 陪着你</p></div>
+    <section class="debug-console" id="debug-console" data-theme="dark" aria-label="状态日志摘要">
+      <div class="debug-tools"><strong>状态日志</strong><select id="debug-theme" aria-label="日志底色"><option value="dark">黑底</option><option value="light">白底</option></select><button id="debug-clear" type="button">清空</button><a href="#logs" aria-label="展开运行日志">展开 ↗</a></div>
+      <div id="debug-log" class="debug-log" role="log" aria-label="状态调试信息" aria-live="off" tabindex="0"></div>
     </section>
-    <aside>
-      <section class="panel connection"><div class="section-head"><h2>连接</h2><button id="refresh" class="text-button">刷新</button></div><div class="status-row"><span>语音服务</span><span id="voice-status">检查中</span></div><code id="service-url">127.0.0.1:8765</code><p id="engine-status" class="muted">正在读取引擎状态…</p><div class="actions compact"><button id="connect" class="primary">连接会话</button><button id="release" hidden>退出会话</button><button id="takeover" class="danger" hidden>接管已有会话</button></div>
-      <div class="divider"></div><div class="status-row"><span>StopWatch</span><span id="robot-status">未连接 · 不影响语音</span></div><p class="muted">设备开启 BLE；首次在 Bluetooth 设置进入 Pair，然后退出 Settings。关闭其他蓝牙控制台。</p><button id="scan" disabled>扫描设备</button><div class="device-picker"><label class="sr-only" for="device">选择 StopWatch</label><select id="device" disabled><option value="">扫描后选择设备</option></select><button id="pair" disabled>连接</button><button id="unpair" disabled>断开</button></div><small id="receipt">未收到设备回执</small></section>
-      <section class="panel routing"><h2>声音与隐私</h2><p class="muted">默认全部本地。推荐：本地识别 + 云端回读；首次使用云端仍需单独授权。</p><div class="routing-grid"><label>语音识别<select id="asr"><option value="local">本地 ASR</option><option value="cloud">云端 ASR</option></select></label><label>文字回读<select id="tts"><option value="local">本地 TTS</option><option value="cloud">云端 TTS</option></select></label></div><label class="consent"><input type="checkbox" id="audio-consent"><span>允许上传录音<small>本次会话的云端识别使用，可能产生费用；可随时撤销。</small></span></label><label class="consent"><input type="checkbox" id="text-consent"><span>允许上传回读文字<small>本次会话的云端回读使用；与录音许可独立，可随时撤销。</small></span></label><button id="apply" disabled>应用设置</button><span id="settings-status" class="muted">本地 / 本地 · 上传关闭</span></section>
-    </aside>
+    <section class="robot-console" aria-label="机器人状态与开关">
+      <div class="sr-only">
+      <div class="status-row"><span>语音会话</span><strong id="robot-voice-summary">未连接</strong></div>
+      <div class="status-row"><span>StopWatch</span><strong id="robot-device-summary">未连接</strong></div>
+      <div class="status-row"><span>朗读路径</span><strong id="robot-route-summary">云端朗读</strong></div>
+      </div>
+      <label class="switch-row"><span>自动朗读<small>收到 AI 回答后朗读</small></span><input id="auto-read" type="checkbox" role="switch" checked></label>
+      <label class="switch-row"><span>表情联动<small>页面机器人跟随对话状态</small></span><input id="expression-follow" type="checkbox" role="switch" checked></label>
+      <label class="switch-row"><span>桌面小人<small id="desktop-hint">仅桌面客户端可用</small></span><input id="desktop-visible" type="checkbox" role="switch" disabled></label>
+      <label class="switch-row"><span>始终置顶<small id="desktop-top-hint">仅桌面客户端可用</small></span><input id="desktop-always-on-top" type="checkbox" role="switch" disabled></label>
+      <div class="avatar-size-control"><label for="desktop-size">桌面小人大小 <output id="desktop-size-value" for="desktop-size">100%</output></label><input id="desktop-size" type="range" min="25" max="150" step="5" value="100" disabled aria-describedby="desktop-size-hint"><small id="desktop-size-hint">仅桌面客户端可调节</small></div>
+      <button id="quick-connect" class="primary">自动连接语音</button>
+    </section>
+  </aside>
+  <div class="work-area">
+  <nav class="primary-nav" role="tablist" aria-label="功能模块"><a href="#dialogue" data-page-link="dialogue" role="tab" id="tab-dialogue" aria-controls="page-dialogue">对话</a><a href="#character" data-page-link="character" role="tab" id="tab-character" aria-controls="page-character">角色</a><a href="#watch" data-page-link="watch" role="tab" id="tab-watch" aria-controls="page-watch">StopWatch</a><a href="#settings" data-page-link="settings" role="tab" id="tab-settings" aria-controls="page-settings">设置</a><a href="#logs" data-page-link="logs" role="tab" id="tab-logs" aria-controls="page-logs">运行日志</a></nav>
+
+  <section class="page logs-page" data-page="logs" role="tabpanel" id="page-logs" aria-labelledby="logs-title" hidden>
+    <div class="logs-heading"><div><h2 id="logs-title">运行日志</h2><p>本次页面的状态记录 · 最多 120 条</p></div><button id="logs-copy" type="button">复制日志</button></div>
+    <div class="logs-toolbar"><label>显示 <select id="logs-filter"><option value="all">全部</option><option value="ble">蓝牙</option><option value="voice">语音</option><option value="error">异常</option></select></label><label><input id="logs-follow" type="checkbox" checked> 自动跟随</label><span id="logs-count"></span><button id="logs-clear" type="button">清空</button></div>
+    <div id="logs-full" class="debug-log logs-full" role="log" aria-label="完整运行日志" aria-live="off" tabindex="0"></div>
+    <p id="logs-feedback" role="status">向上滚动可暂停跟随；复制当前筛选结果。</p>
+  </section>
+
+  <section class="page" data-page="dialogue" role="tabpanel" id="page-dialogue" aria-labelledby="dialogue-title">
+    <div class="chat-toolbar"><h2 id="dialogue-title">当前会话</h2><span id="phase" class="badge">未连接</span><button id="clear-answer" class="text-button">新会话</button><button id="release" hidden>释放会话</button></div>
+    <div id="chat-log" class="chat-log" role="log" aria-label="对话记录" aria-live="polite"><div class="empty-chat" id="empty-chat"><h3>想说些什么？</h3><p>输入文字，或者录音后确认文字。<br>Gork 会一直在左边陪着你。</p></div></div>
+    <section class="composer" aria-label="输入与录音">
+      <div class="interaction-mode">
+        <div class="mode-control"><label class="sr-only" for="output-mode">输出方式</label><select id="output-mode" aria-label="输出方式"><option value="pc">电脑朗读</option><option value="bubble">小人显示文字</option><option value="watch-audio">Watch 朗读（实验）</option></select></div>
+        <div class="mode-control"><label class="sr-only" for="interaction-mode">文字来源</label><select id="interaction-mode" aria-label="文字来源"><option value="read">原文</option><option id="answer-option" value="answer" disabled>AI 回答（未配置）</option></select></div>
+        <div class="mode-control" id="bubble-target-control" hidden><label for="bubble-target">显示到</label><select id="bubble-target"><option value="watch">Watch</option><option value="desktop">桌面小人</option><option value="both">两端</option></select></div>
+        <small id="answer-status">电脑扬声器朗读输入文字</small>
+      </div>
+      <label for="transcript" class="sr-only">输入文字</label><textarea id="transcript" aria-describedby="record-hint count" maxlength="300" placeholder="输入文字，或点击录音…" spellcheck="false"></textarea>
+      <div class="editor-footer"><span id="count">0 / 300</span><div class="actions"><button id="record" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3m-4 0h8"/></svg>录音</button><button id="finish" hidden>结束录音</button><button id="stop" class="stop" disabled>停止</button><button id="speak" class="primary" disabled><span id="speak-label">电脑朗读</span></button></div></div>
+    </section>
+    <small id="record-hint">Enter 发送 · Shift+Enter 换行 · 录音最多 30 秒</small>
+  </section>
+
+  <section class="page" data-page="character" role="tabpanel" id="page-character" aria-labelledby="character-title" hidden>
+    <div class="two-column">
+      <section class="panel character-preview"><div class="section-head"><div><p class="eyebrow">正式 Grok bot 数据</p><h2 id="character-title">角色</h2></div><span id="character-status" class="badge">本地预览</span></div><p id="character-note" class="muted">点选表情在左侧机器人预览；发送到目标需要工作台控制权。</p></section>
+      <section class="panel"><div class="section-head"><h2>手动播放</h2><button id="character-acquire">取得控制权</button></div><label for="character-expression">表情</label><select id="character-expression"></select><label for="character-mode">播放方式</label><select id="character-mode"><option value="once">播放一次后回待机</option><option value="loop">持续循环</option></select><label for="character-target">发送目标</label><select id="character-target"><option value="desktop">桌面小人</option><option value="watch">StopWatch</option><option value="both">两端</option></select><div class="actions compact"><button id="character-preview">预览</button><button id="character-play" class="primary">播放到目标</button><button id="character-idle">返回自动联动</button></div><p id="character-result" class="muted">桌面接收和设备回执分别显示。</p></section>
+    </div>
+    <section class="panel bubble-panel"><div class="section-head"><h2>文字显示</h2><button id="bubble-clear">清除目标文字</button></div><p class="muted">在“对话”页输入文字并选择“小人显示文字”。此处可清除上方所选目标的文字。</p></section>
+  </section>
+
+  <section class="page" data-page="watch" role="tabpanel" id="page-watch" aria-labelledby="watch-title" hidden>
+    <div class="watch-grid">
+      <section class="panel connection"><div class="section-head"><div><p class="eyebrow">单一 BLE 客户端</p><h2 id="watch-title">StopWatch</h2></div><button id="workspace-acquire" class="text-button">取得控制权</button></div><div class="status-row"><span>设备连接</span><span id="robot-status">未连接</span></div><p class="muted">启动时自动扫描并连接已配置或唯一的 StopWatch；多台设备时请手动选择。</p><button id="scan" disabled>扫描设备</button><div class="device-picker"><label class="sr-only" for="device">选择 StopWatch</label><select id="device" disabled><option value="">扫描后选择设备</option></select><button id="pair" disabled>连接</button><button id="unpair" disabled>断开</button></div><small id="receipt">未收到设备回执</small></section>
+      <section class="panel"><h2>内置声音</h2><p class="muted">电脑试听和设备播放标明不同输出端。设备播放需已连接 Watch。</p><div class="sound-controls"><select id="sound-select" aria-label="选择内置声音"><option value="1">启动</option><option value="2">确认</option><option value="3">思考</option><option value="4">成功</option><option value="5">错误</option><option value="6">再见</option></select><button id="sound-preview">电脑试听</button><button id="sound-play" disabled>设备播放</button><button id="sound-stop" disabled>停止</button></div><label class="volume-control" for="sound-volume"><span>设备音量</span><output id="sound-volume-label">20%</output><input id="sound-volume" type="range" min="0" max="100" step="5" value="20" disabled></label><small>设备没有读取接口时，界面只显示本次已确认的提交值。</small></section>
+    </div>
+    <details class="panel delay"><summary>实验功能：设备录音</summary><p class="muted warning">文字让 Watch 朗读请在“对话”页选择“Watch 朗读（实验）”。设备录音须进入 Settings → Audio test，看到 ARM 后再按住 A；朗读仍需先合成完整语音，传输时间依设备编码能力而变。</p><label for="delay-mode" class="sr-only">延迟音频模式</label><select id="delay-mode"><option value="device-pc">设备录音 → 电脑播放</option><option value="device-process-device">设备录音 → 处理 → 设备播放</option></select><div class="actions compact"><button id="delay-start" disabled>开始延迟任务</button><button id="delay-cancel" disabled>取消传输</button></div><progress id="delay-progress" max="100" value="0"></progress><small id="delay-status">未开始 · 音频仅保存在内存</small></details>
+    <details class="panel diagnostics"><summary>诊断详情</summary><p id="watch-diagnostics" class="muted">连接、回执和实验任务的详细状态会显示在这里。</p></details>
+  </section>
+
+  <section class="page" data-page="settings" role="tabpanel" id="page-settings" aria-labelledby="settings-title" hidden>
+    <div class="settings-grid">
+      <section class="panel"><div class="section-head"><div><p class="eyebrow">启动自动连接</p><h2 id="settings-title">语音</h2></div><button id="refresh" class="text-button">刷新状态</button></div><div class="status-row"><span>语音服务</span><span id="voice-status">检查中</span></div><code id="service-url">127.0.0.1:8765</code><p id="engine-status" class="muted">正在读取引擎状态…</p><div class="actions compact"><button id="connect" class="primary">连接语音会话</button><button id="takeover" class="danger" hidden>接管会话</button><button id="voice-start">启动 / 重试语音服务</button></div><p id="voice-lifecycle" class="muted">启动后自动连接；不会自动录音或上传。</p></section>
+      <section class="panel routing"><h2>路由、音色与试听</h2><p class="muted">应用后保存；试听使用固定句，不调用 AI、不覆盖对话输入。</p><div class="routing-grid"><label>语音识别<select id="asr"><option value="local">本地 ASR</option><option value="cloud">云端 ASR</option></select></label><label>文字回读<select id="tts"><option value="local">本地 TTS</option><option value="cloud" selected>云端 TTS</option></select></label></div><label for="voice-select">当前音色</label><select id="voice-select" disabled><option value="">等待语音服务</option></select><label for="voice-speed">语速</label><select id="voice-speed"><option value="0.85">舒缓 · 0.85×</option><option value="1" selected>自然 · 1.0×</option><option value="1.15">轻快 · 1.15×</option></select><p id="voice-hint" class="muted">连接后读取支持的音色。</p><div class="actions compact"><button id="apply" disabled>应用并保存</button><button id="voice-preview" disabled>试听当前音色</button><button id="voice-stop" disabled>停止试听</button></div><span id="settings-status" class="muted">默认授权 · 连接时应用</span></section>
+      <section class="panel privacy"><h2>隐私与上下文</h2><p class="muted">勾选只代表许可，不会开始录音或发起云端请求。撤销立即停止相关路径。</p><label class="consent"><input type="checkbox" id="audio-consent" checked><span>允许上传录音<small>仅云端识别使用，可能产生费用。</small></span></label><label class="consent"><input type="checkbox" id="text-consent" checked><span>允许上传回读文字<small>仅云端回读使用。</small></span></label><label class="consent"><input type="checkbox" id="answer-consent" checked><span>允许向回答服务发送文字<small>仅 AI 对话使用。</small></span></label></section>
+      <details class="panel"><summary>服务与诊断</summary><p class="muted">服务 URL、实例和错误详情只在本机显示。释放语音会话不会释放角色和 StopWatch 的工作台控制权。</p><button id="voice-release">仅释放语音会话</button><p id="diagnostics" class="muted"></p></details>
+    </div>
+  </section>
+  <button id="workspace-takeover" class="danger" hidden>接管工作台</button><div id="message" class="message" role="status" aria-live="polite">启动后会自动连接语音；不会自动录音或上传。</div>
   </div>
-  <footer><span>录音与文字仅留在当前会话内存；云端模式按上述独立许可上传。</span><span>固件 v0.5.0 · 本轮无需烧录</span></footer>
-</main><script type="module" src="/static/app.js"></script>
+</main><script src="/static/gork-catalog.js"></script><script src="/static/gork-avatar.js"></script><script type="module" src="/static/app.js"></script>
 </body></html>

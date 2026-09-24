@@ -9,6 +9,7 @@
 #include <atomic>
 
 class AudioProbe;
+class SoundControl;
 
 // BLE remains an optional runtime feature.  The firmware owns the GATT
 // protocol, while the main loop owns avatar state, rendering, and NVS.
@@ -55,6 +56,9 @@ class BLEControl {
   bool authorized() const { return authorized_; }
   bool hasBoundPeer() const { return hasBoundPeer_; }
   void setAudioProbe(AudioProbe* probe) { audioProbe_ = probe; }
+  void setSoundControl(SoundControl* control) { soundControl_ = control; }
+  bool sendNotification(BLECharacteristic* characteristic,
+                        const uint8_t* data, size_t size);
   uint32_t linkEpoch() const { return linkEpoch_.load(); }
   uint16_t connectionId() const { return connectionId_; }
   bool audioPeerAllowed(uint16_t id) const {
@@ -132,6 +136,7 @@ class BLEControl {
 
   BLEServer* server_ = nullptr;
   AudioProbe* audioProbe_ = nullptr;
+  SoundControl* soundControl_ = nullptr;
   std::atomic<uint32_t> linkEpoch_{0};
   BLEService* service_ = nullptr;
   BLECharacteristic* commandCharacteristic_ = nullptr;

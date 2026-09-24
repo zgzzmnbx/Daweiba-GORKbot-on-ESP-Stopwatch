@@ -2,6 +2,7 @@ import asyncio
 import io
 import uuid
 import wave
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -21,6 +22,23 @@ def wav_bytes(rate=16000, channels=1, frames=3200):
     return output.getvalue()
 
 
+def test_audio_timeout_keeps_failure_reason_and_zero_transfer(monkeypatch):
+    async def run():
+        robot = Robot(client=SimpleNamespace(connected=True))
+        robot.enabled = True
+        async def timeout(*_args):
+            raise TimeoutError()
+        monkeypatch.setattr(robot, '_run_audio', timeout)
+        job = robot.start_audio_play(wav_bytes())
+        await robot.audio_task
+        result = robot.audio_snapshot()
+        assert result['job_id'] == job['job_id']
+        assert result['stage'] == 'error' and result['bytes'] == 0
+        assert 'Audio test' in result['error']
+        assert not result['running']
+    asyncio.run(run())
+
+
 class FakeRobot:
     def __init__(self):
         self.events, self.generation = [], 0
@@ -28,6 +46,14 @@ class FakeRobot:
     def show(self, *args): self.events.append(args)
     def snapshot(self): return {'connected': False, 'enabled': False, 'receipt': '', 'error': ''}
     async def close(self): pass
+    async def play_sound(self, sound_id): self.events.append(('sound', sound_id)); return {'event':'completed','sound_id':sound_id}
+    async def stop_sound(self): self.events.append(('sound-stop',)); return {'event':'stopped'}
+    async def set_sound_volume(self, volume): self.events.append(('sound-volume', volume)); return {'event':'completed','volume':volume}
+    def audio_snapshot(self): return {'job_id':'00000000-0000-0000-0000-000000000001','stage':'received','running':False,'result_ready':True}
+    def start_audio_record(self, echo=False): self.events.append(('audio-record',echo)); return self.audio_snapshot()
+    def start_audio_play(self, data): self.events.append(('audio-play',len(data))); return self.audio_snapshot()
+    async def cancel_audio(self): self.events.append(('audio-cancel',)); return self.audio_snapshot()
+    def take_audio_result(self, job_id): self.events.append(('audio-result',job_id)); return wav_bytes()
 
 
 class FakeVoice:
@@ -206,6 +232,9 @@ def test_api_local_boundary_permissions_and_safe_default():
     headers = {'X-Companion-Client': str(uuid.uuid4())}
     with TestClient(app, base_url='http://127.0.0.1:8766') as client:
         assert client.get('/').status_code == 200
+        preview = client.get('/api/sounds/2/preview')
+        assert preview.status_code == 200 and preview.content[:4] == b'RIFF'
+        assert client.get('/api/sounds/9/preview').status_code == 404
         assert client.get('/api/health', headers={'host':'evil.example'}).status_code == 403
         assert client.post('/api/session', json={}, headers={'Origin':'https://evil.example'}).status_code == 403
         assert client.post('/api/session', json={}).status_code == 401
@@ -214,6 +243,16 @@ def test_api_local_boundary_permissions_and_safe_default():
         assert result.json()['routing'] == SAFE_ROUTING
         assert client.patch('/api/settings', headers=headers, json={'generation':1, 'routing':{**SAFE_ROUTING,'tts':'cloud'}}).status_code == 403
         assert client.post('/api/begin', headers=headers, json={'generation':1}).status_code == 200
+        assert client.post('/api/device/sound', headers=headers, json={'sound_id':2}).json()['sound_id'] == 2
+        assert client.put('/api/device/sound/volume', headers=headers, json={'volume':35}).json()['volume'] == 35
+        assert client.delete('/api/device/sound', headers=headers).json()['event'] == 'stopped'
+        assert client.post('/api/device/sound', headers=headers, json={'sound_id':7}).status_code == 422
+        job = client.post('/api/device/audio/record', headers=headers, json={'echo':False}).json()
+        assert job['stage'] == 'received'
+        assert client.post('/api/device/audio/play', headers={**headers,'Content-Type':'audio/wav'}, content=wav_bytes()).status_code == 200
+        assert client.get('/api/device/audio', headers=headers).status_code == 200
+        assert client.get('/api/device/audio/result/'+job['job_id'], headers=headers).content[:4] == b'RIFF'
+        assert client.delete('/api/device/audio', headers=headers).status_code == 200
         assert client.post('/api/tts', headers=headers, json={'generation':1,'text':'你好'}).headers['content-type'] == 'audio/wav'
         assert client.post('/api/stop', headers=headers, json={'generation':2}).status_code == 200
         assert client.post('/api/tts', headers=headers, json={'generation':1,'text':'旧结果'}).status_code == 409

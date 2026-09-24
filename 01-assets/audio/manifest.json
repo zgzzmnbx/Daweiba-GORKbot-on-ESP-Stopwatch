@@ -1,0 +1,70 @@
+{
+  "version": 2,
+  "sample_rate": 16000,
+  "format": "PCM16 mono",
+  "peak_amplitude": 30000,
+  "license": "CC0-1.0",
+  "sounds": [
+    {
+      "id": 1,
+      "name": "ready",
+      "duration_ms": 306,
+      "sample_rate": 16000,
+      "bytes": 9792,
+      "source": "Original deterministic sine synthesis",
+      "license": "CC0-1.0",
+      "default_volume": 20
+    },
+    {
+      "id": 2,
+      "name": "confirm",
+      "duration_ms": 218,
+      "sample_rate": 16000,
+      "bytes": 6976,
+      "source": "Original deterministic sine synthesis",
+      "license": "CC0-1.0",
+      "default_volume": 20
+    },
+    {
+      "id": 3,
+      "name": "thinking",
+      "duration_ms": 344,
+      "sample_rate": 16000,
+      "bytes": 11008,
+      "source": "Original deterministic sine synthesis",
+      "license": "CC0-1.0",
+      "default_volume": 20
+    },
+    {
+      "id": 4,
+      "name": "success",
+      "duration_ms": 424,
+      "sample_rate": 16000,
+      "bytes": 13568,
+      "source": "Original deterministic sine synthesis",
+      "license": "CC0-1.0",
+      "default_volume": 20
+    },
+    {
+      "id": 5,
+      "name": "error",
+      "duration_ms": 396,
+      "sample_rate": 16000,
+      "bytes": 12672,
+      "source": "Original deterministic sine synthesis",
+      "license": "CC0-1.0",
+      "default_volume": 20
+    },
+    {
+      "id": 6,
+      "name": "goodbye",
+      "duration_ms": 464,
+      "sample_rate": 16000,
+      "bytes": 14848,
+      "source": "Original deterministic sine synthesis",
+      "license": "CC0-1.0",
+      "default_volume": 20
+    }
+  ],
+  "total_pcm_bytes": 68864
+}

@@ -2,6 +2,7 @@
 
 #include "ble_control.h"
 #include "audio_probe.h"
+#include "sound_control.h"
 
 #include <Arduino.h>
 #include <BLE2902.h>
@@ -12,6 +13,12 @@
 #include <esp_gap_ble_api.h>
 
 namespace {
+std::atomic<uint16_t> gattInterface{ESP_GATT_IF_NONE};
+void captureGattInterface(esp_gatts_cb_event_t event, esp_gatt_if_t interface,
+                          esp_ble_gatts_cb_param_t*) {
+  if (event == ESP_GATTS_CONNECT_EVT && interface != ESP_GATT_IF_NONE)
+    gattInterface.store(interface);
+}
 
 bool deadlineReached(uint32_t nowMs, uint32_t deadlineMs) {
   return deadlineMs != 0 && static_cast<int32_t>(nowMs - deadlineMs) >= 0;
@@ -67,6 +74,7 @@ bool BLEControl::initializeStack() {
 
   BLEDevice::init(std::string(kDeviceName));
   BLEDevice::setMTU(247);
+  BLEDevice::setCustomGattsHandler(captureGattInterface);
   BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
   BLEDevice::setSecurityCallbacks(&securityCallbacks_);
 
@@ -122,12 +130,29 @@ bool BLEControl::initializeStack() {
     BLEDevice::deinit(false);
     return false;
   }
+  if (soundControl_ && !soundControl_->attach(server_)) {
+    BLEDevice::deinit(false);
+    return false;
+  }
   service_->start();
   BLEAdvertising* advertising = server_->getAdvertising();
   advertising->addServiceUUID(kServiceUuid);
   advertising->setScanResponse(true);
   initialized_ = true;
   return true;
+}
+
+bool BLEControl::sendNotification(BLECharacteristic* characteristic,
+                                  const uint8_t* data, size_t size) {
+  if (!audioPeerAllowed(connectionId_) || characteristic == nullptr ||
+      data == nullptr || size == 0 || gattInterface.load() == ESP_GATT_IF_NONE)
+    return false;
+  auto* cccd = static_cast<BLE2902*>(
+      characteristic->getDescriptorByUUID(BLEUUID(uint16_t(0x2902))));
+  if (!cccd || !cccd->getNotifications()) return false;
+  return esp_ble_gatts_send_indicate(
+             gattInterface.load(), connectionId_, characteristic->getHandle(),
+             size, const_cast<uint8_t*>(data), false) == ESP_OK;
 }
 
 void BLEControl::update(uint32_t nowMs) {
@@ -447,7 +472,10 @@ void BLEControl::ServerCallbacks::onConnect(
   owner_->connectionId_ = param->connect.conn_id;
   memcpy(owner_->connectedPeer_, param->connect.remote_bda,
          BLEControl::kPeerAddressLength);
-  if (!owner_->currentPeerAllowed()) owner_->disconnectRequested_ = true;
+  // A bonded Windows peer may reconnect with a resolvable private address.
+  // Wait for authentication to reveal its identity before comparing the bond.
+  if (!owner_->hasBoundPeer_ && !owner_->pairingWindow_)
+    owner_->disconnectRequested_ = true;
 }
 
 void BLEControl::ServerCallbacks::onDisconnect(
@@ -494,13 +522,15 @@ uint32_t BLEControl::SecurityCallbacks::onPassKeyRequest() { return 0; }
 void BLEControl::SecurityCallbacks::onPassKeyNotify(uint32_t /*passKey*/) {}
 
 bool BLEControl::SecurityCallbacks::onSecurityRequest() {
-  return owner_ != nullptr && owner_->currentPeerAllowed();
+  // An encrypted link is still unauthorized until authentication completes.
+  // Checking the connection address here would reject a bonded peer's RPA.
+  return owner_ != nullptr && owner_->enabled_ && owner_->connected_ &&
+         (owner_->hasBoundPeer_ || owner_->pairingWindow_);
 }
 
 void BLEControl::SecurityCallbacks::onAuthenticationComplete(
     esp_ble_auth_cmpl_t result) {
-  if (owner_ == nullptr || !owner_->connected_ ||
-      !owner_->currentPeerAllowed()) {
+  if (owner_ == nullptr || !owner_->enabled_ || !owner_->connected_) {
     if (owner_ != nullptr) owner_->requestDisconnect();
     return;
   }

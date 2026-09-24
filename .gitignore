@@ -19,6 +19,19 @@ Codex-Temp/
 # Computer companion local routing/device preferences and test caches
 03-Src/stopwatch-voice-companion/config.local.toml
 **/.pytest_cache/
+**/node_modules/
 
 # P0 audio probe build products stay local; source/tests/docs are versioned.
 04-output/v0.7.0/firmware/
+04-output/v0.7.2/firmware/
+04-output/v0.8.0/Gork-Robot-Console-v0.8.0-win32-x64/
+04-output/v0.8.0/Gork-Robot-Console-v0.8.0-win32-x64.zip
+04-output/v0.8.0/Gork-Robot-Console-win32-x64/
+# Hardware flash logs contain the private device identifier; retain locally.
+04-output/v0.7.0/烧录记录-20260921-【codex】.txt
+04-output/v0.7.0/读回校验-20260921-【codex】.txt
+
+# Integrated voice module: local settings and credentials never enter Git.
+03-Src/voice-service/03-Src/config/voice.local.toml
+03-Src/voice-service/**/.env
+03-Src/voice-service/**/.env.*

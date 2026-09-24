@@ -1,14 +1,70 @@
-# StopWatch 电脑语音工作台 v0.6.0
+# Gork 机器人控制台后端与网页 v0.13.0
 
-电脑麦克风 → 独立语音服务 ASR → 可编辑文字 → TTS 完整 WAV → 电脑扬声器；现有 v0.5.0 StopWatch 通过加密 BLE 同步表情和短气泡。这是跟读测试，不是 AI 对话。设备离线不阻断电脑语音。
+## v0.13.0 Opus 压缩 BLE 朗读
+
+与新固件协商到 Opus 时，电脑将 16/24 kHz 单声道 PCM 编成 Opus，只经已加密的原 BLE 音频特征传送编码包；Watch 解码后在小人页播放。旧固件能力字段保持四字节，客户端自动走 PCM。控制台音频状态显示编码格式、发送字节、原始 PCM 大小和 ACK 速率。使用 `requirements-lock.txt` 中的 numpy/soundfile 安装新依赖；Watch app0 已写入 v0.9.0 并独立校验，8766 后端已运行 v0.13.0 且自动恢复 BLE。相同 5.592 秒音频的 Opus 发送 3.66 秒，PCM 发送 32.22 秒；用户确认正式入口的 Opus 短句完整可闻。
+
+## v0.12.9 小人页朗读与传输提速
+
+设备 app0 已写入 v0.8.8 并独立校验，Watch 可在平时小人页接收播放，用户确认完整短句实际可闻；录音仍限 Audio test。电脑端传输保留逐包设备回执，最多同时发出 3 包（设备队列为 4 包）；只按累计有效回执推进进度，异常时不执行 COMMIT/PLAY，停止仍优先 CANCEL。真机约 89.6 KB 传输 17.5 秒，含播放 18.5 秒，后续仍需降低等待。旧实例另一次 57.6 KB/32.64 秒含播放，不构成同条件 A/B。
+
+## v0.12.7 Watch 朗读失败提示
+
+Watch 朗读须先在设备打开 Settings → Audio test。Watch 上出现文字来自独立的文字气泡通道，不代表语音已传到设备。控制台只有收到音频任务 `played` 回执才显示“报告播放完成”；失败、取消或意外结束均明确报错。音频 HELLO、BEGIN 等步骤等待回执超时时显示具体命令和 Audio test 操作提示；状态终端仍只记录摘要。固件未改，真实听感需在设备上验证。
+
+## v0.12.6 统一文字输入
+
+在“对话”页输入或录音转写后，选择电脑朗读、小人显示文字（Watch、桌面小人或两端）、Watch 朗读（实验）。文字来源“原文 / AI 回答”单独选择；回答服务未配置时不可选 AI。Watch 显示需工作台控制权及 BLE 连接，按 24 字/72 UTF-8 字节提示，绝不静默裁剪；桌面小人显示最多 300 字。Watch 朗读还需语音会话和已应用 TTS，使用原有延迟 BLE 音频，可能等待数十秒且音频最长 10 秒；页面的播放完成只代表设备报告，真实可闻另验。“角色”页保留气泡清除，“StopWatch”页保留设备录音实验，两处不再重复输入电脑文字。
+
+## v0.12.3 BLE 程序内配对与持续重连
+
+首次在 StopWatch 的 Bluetooth 页面打开 BLE 和 Pair 窗口，然后打开 Gork；默认启动扫描唯一匹配设备，也可在 StopWatch 页手动扫描、选择、连接。客户端通过 Bleak `pair=True` 在程序内请求 Windows 配对，若 Windows 弹出确认仍须由用户确认；无需预先到 Windows 设置中配对。已绑定后保持 BLE ON，后续程序可直接重连，不必反复打开 Pair。
+
+本版为 Windows 首次配对留出 60 秒，显示连接或 GATT 服务发现的实际错误，并在首次失败或链路掉线后持续扫描和重连，重试间隔为 5–30 秒。手动断开会停止自动重连。设备端已写入 v0.8.7，修正绑定地址认证顺序；已从程序内完成重新配对并发现 GATT，长稳验收仍在进行。若两端保存的旧配对密钥不一致，需要在手表清一次绑定，由程序取消 Windows 旧配对后重新配对；无须进入 Windows 蓝牙设置。
+
+旧配对失配的恢复入口：先在 Watch 的 Bluetooth 页清除绑定并打开 Pair 窗口，再运行项目环境的 `python tools/repair_stopwatch_ble_pairing.py --apply`。脚本只接受本机配置地址或唯一的 `GorkBot-SW` 服务候选，执行 Windows 取消旧配对、程序内重配及目标 GATT 服务检查；不发送表情或声音。正常启动和掉线重连不需要运行这个恢复脚本。
+
+## v0.12.2 启动自动连接语音
+
+- 控制台加载后，等待本机语音服务就绪并自动创建当前窗口的语音会话；服务启动较慢时后台重试，最多约 60 次。
+- 自动连接只建立会话、应用已保存的路由和许可，不会自动录音、播放、上传或接管其他窗口；已有会话仍需手动点击“接管会话”。
+- 隔离预览或自动化测试可在 `config.local.toml` 设置 `auto_connect_voice = false`；手动“连接语音会话”仍可用。
+
+## v0.11.0 项目内语音运行时
+
+默认托管 `../voice-service/tools/serve_managed.py`，使用项目根目录 `Codex-Temp/voice-runtime/.venv/` 与其中 models/，不再依赖旧语音项目。省略 voice_service_command/cwd 使用默认值；显式空数组可禁用托管，仅复用。Windows 专用 Key 环境变量机制不变，凭据不写入配置。以下 v0.8.8 的外部项目路径说明是历史记录。
+
+## v0.10.0 自适应界面
+
+- 左侧机器人与状态开关常驻，右侧四标签内部滚动，底部输入区随窗口适配。
+- 默认云端朗读、本地识别；恢复已有路由与撤销许可。不会因默认值自动发请求。
+- AI 回答保留在消息区，不覆盖草稿；可单独朗读/复制。自动朗读和页面表情联动可关闭，桌面窗口开关仅 Electron 可用。
+- 录音使用点击开始/结束；切换模块或窗口失焦停止收音。设备控制权可独立于语音申请。
+- 设置普通草稿不会打断当前会话；许可撤销立即取消相关路径。保存成功后才更新持久化偏好。
+
+## v0.9.0 四页控制台
+
+- 入口分为对话、角色、StopWatch、设置；hash 深链接在刷新、前进和后退后保留。
+- 工作台控制权与语音会话分别管理。角色/设备写入要求工作台 owner；ASR/TTS 另要求已连接语音会话。工作台租期为 30 秒，由前台心跳续期。
+- `static/audio-client.js` 的 Recorder/WavPlayer 可独立使用；`tools/examples/voice_service_http_example.py` 是不依赖 Gork/Watch 的 HTTP 调用入口。
+- 手动角色/气泡 API 复用同一 BLE 客户端。桌面气泡显示 8 秒；Watch 使用现有协议限制。`happy-work` 只能发往 Watch。
+
+## v0.8.8 音色与托管
+
+- 声音与隐私选择本地/云端 TTS，下方“音色与试听”选择声音，点击“应用并保存”后试听；本地支持三档语速，云端当前仅 1.0×。音色、语速、路由保存在当前浏览器/Electron 配置中，不保存试听音频。云端试听也需文字上传许可，可能计费。
+- 能力目录来自独立语音服务；v0.3.2 提供 Cherry、Serena、Ethan、Chelsie、Momo、Moon。旧 v0.3.1 仅显示其默认音色，不发送不支持的新字段；更新后需重启旧语音服务一次。
+- 本机 `config.local.toml` 已配置独立服务 `tools/serve_managed.py`，随后启动控制台即可后台启动语音服务；页面可查看自有/外部/离线和启动重试。只关闭自有实例，外部服务不会被接管或强制重启。
+- 新电脑需要自行配置独立语音仓库的 Python、托管入口和工作目录；这些本机路径不入 Git。模型、venv、Key 仍在语音项目；本次未更新旧发行包。
+
+统一管理电脑麦克风/朗读、可选文字回答、桌面角色、StopWatch 表情/气泡、内置声音和延迟 BLE 音频。未配置回答服务时明确保持跟读/朗读，不伪造 AI 回复；设备离线不阻断电脑功能。
 
 ## 启动
 
-1. 先按独立语音项目的说明启动服务，默认 `http://127.0.0.1:8765`。本程序不启动/停止那个服务，不读取它的模型、虚拟环境或 Key。
-2. 在本项目根目录双击 `start-voice-companion.cmd`，默认浏览器打开 `http://127.0.0.1:8766`。首次启动需要 Python 3.11+ 与联网安装依赖；本机已用独立 Python 3.14 环境安装。关闭终端或 Ctrl+C 仅结束工作台。
-3. 点击“连接会话”。如果已有会话占用，不会自动抢占；确认可以结束对方会话时才点击“接管已有会话”。每次连接重置为本地 ASR / 本地 TTS，两个上传许可均关闭。
+1. 推荐在项目根目录双击 `start-gork-console.cmd`；网页回退入口仍为 `start-voice-companion.cmd`，默认 `http://127.0.0.1:8766`。
+2. 默认复用 `http://127.0.0.1:8765` 的独立语音服务。也可在 `config.local.toml` 明确配置 `voice_service_command` 和 `voice_service_cwd`；程序验证协议后后台启动，并只停止自己启动的实例。不搜索模型、venv 或 Key。
+3. 控制台加载后会自动连接语音会话；已有会话不会被自动抢占，需要用户点击“接管会话”。按用户2026-09-23要求，三项上传许可默认勾选并在连接时应用；保留当前界面选择的路由，不自动录音或上传。取消勾选会即时撤销并在当前浏览器/桌面配置中保存，重连/刷新不重新开启。
 4. 点击“开始录音”，由你确认浏览器的麦克风权限；说话后点“结束并转写”，最长 30 秒自动结束。浏览器实际采集数据会转换成 PCM16、单声道、16 kHz WAV，不是重命名 WebM。
-5. 检查/编辑文字后点“回读文字”，也可以直接输入文字。单次回读最多 300 个 Unicode 字符，超限会提示，不默默截断。完整转写保留在文本框；设备气泡仅发前 23 字加省略号（最多 24 BMP 字符 / 72 UTF-8 字节），过滤 emoji 和控制字符。
+5. 检查/编辑文字后选择“跟读/朗读”；如已配置回答适配器且单独允许发送文字，可选择“AI 对话”。回答超过 300 字时完整显示但不自动朗读，提示用户编辑，不默默截断。
 6. 点击“停止”立即停止本地麦克风/播放器，再异步取消服务请求；停止或失败不代表云端不计费。
 
 ### 蓝牙联动
@@ -21,15 +77,26 @@
 - 每次手动连接后自动重连最多 2 次；只恢复最新状态，不重放旧气泡或语音。失败后按页面提示重新扫描/连接。菜单打开会拒绝控制并提示 `ERR:BUSY`。
 - 现有表情和清屏协议没有请求编号，同一连接内的重复同名迟到通知不能做到严格逐请求证明；本版通过串行、清空已排队通知、超时断开和连接代号隔离降低风险，没有冒充协议升级。
 
+### v0.8.0 设备声音与延迟音频
+
+- 声音库提供 6 个原创短音效的电脑试听；设备播放、0–100 音量和停止需要设备已烧录 v0.8.0。声音协议含 request_id，终态缓存 8 条，重复请求不重复出声。
+- 延迟模式支持“电脑文字→设备”“设备录音→电脑”“设备录音→处理→设备”。同一 BleakClient 承载表情、声音和音频服务，不启动第二个控制器。
+- 页面显示真实阶段、累计字节、总字节、百分比和速率。设备录音仍必须进入 Audio test 页并按 A；最长 10 秒，非实时，可能等待数十秒。
+- 取消会停止本地播放器、作废 HTTP generation，并向设备音频会话发送 CANCEL；断线后不续传、不补播。私人 WAV 只在内存中持有，录音结果读取一次后释放。
+
+### 回答适配器
+
+`answer_base_url` 与 `answer_model` 同时配置后才开放 AI 对话；远端服务还必须存在 `answer_api_key_env` 指定的环境变量。请求只发送有限轮文字消息，不发送文件/屏幕，不声明工具，不执行模型输出。回答文本许可与 ASR 录音、TTS 文字许可互不替代，重新连接后归零。
+
 ### 选路和上传许可
 
-建议体验路径是本地 ASR + 云端 TTS，但需要你勾选“允许上传回读文字”并应用。允许文字不等于允许录音上传。许可在当前会话内生效，重新连接后归零；配置有 Key 不会自动开启上传。
+建议体验路径是本地 ASR + 云端 TTS，但需要你勾选“允许上传回读文字”并应用。允许文字不等于允许录音上传，也不等于允许向回答服务发送文字。三项许可在当前会话内生效，重新连接后归零；配置有 Key 不会自动开启上传。
 
 切换选项会立即停止当前操作；新路径必须点“应用设置”。取消任一上传勾选会立即停止并向服务撤销该项许可，对应路径退回本地。已有云请求可能只作废结果，不能承诺撤销账单。云端账号/Key 只在独立语音服务配置，不放在本仓库。
 
 ## 配置与依赖
 
-将 `config.example.toml` 复制为被 Git 忽略的 `config.local.toml` 后修改：工作台端口、独立语音服务地址、设备预选地址、请求超时。服务地址只允许本机 HTTP；设备地址仅用于本次扫描列表预选，不自动连接。不要填凭据。
+将 `config.example.toml` 复制为被 Git 忽略的 `config.local.toml` 后修改：工作台端口、独立语音服务地址/可选启动命令、语音会话自动连接策略、设备预选地址、请求超时、可选回答服务。语音服务地址只允许本机 HTTP；设备地址仅用于本次扫描列表预选，不自动连接。不要把凭据写入配置。
 
 `requirements.txt` 锁定直接依赖；`requirements-lock.txt` 记录本机 Windows/Python 3.14 的完整安装集合。启动器使用独立的 `Codex-Temp/.venv-companion`，不复用 PlatformIO 或语音引擎环境。工作台只监听 127.0.0.1，验证 Host/Origin，不放开跨源权限。多个浏览器标签使用独立内存控制标识；语音服务 session_id 不发给网页，不写 URL 或日志。
 
@@ -46,11 +113,10 @@
 在项目根目录运行：
 
 ```powershell
-& 'Codex-Temp/.venv-companion/Scripts/python.exe' -m pytest '03-Src/stopwatch-voice-companion/tests' -q
+$env:PYTHONPATH='03-Src/stopwatch-voice-companion'
+& 'Codex-Temp/.venv-companion/Scripts/python.exe' -m pytest '03-Src/stopwatch-voice-companion/tests' tools/test_ble_expression_console.py tools/test_grok_bot_catalog.py tools/test_grok_geometry.py tools/test_stopwatch_audio.py tools/test_stopwatch_sound.py -q
 node --test '03-Src/stopwatch-voice-companion/tests/test_browser.mjs'
-& 'Codex-Temp/.venv-companion/Scripts/python.exe' 'tools/test_ble_expression_console.py'
-& 'Codex-Temp/.venv-companion/Scripts/python.exe' 'tools/test_grok_bot_catalog.py'
-& 'Codex-Temp/.venv-companion/Scripts/python.exe' 'tools/test_grok_geometry.py'
+npm test --prefix '03-Src/gork-desktop'
 ```
 
 可选本地服务联测（先退出工作台会话，不会抢占）：
@@ -59,4 +125,4 @@ node --test '03-Src/stopwatch-voice-companion/tests/test_browser.mjs'
 & 'Codex-Temp/.venv-companion/Scripts/python.exe' -X utf8 '03-Src/stopwatch-voice-companion/tests/live_smoke.py'
 ```
 
-该脚本用本地 TTS 生成测试 WAV 后送入本地 ASR，不开启麦克风、不上传云端、不存原始音频，不能代替真人录音与听感验收。完整结果与未测项见项目 `04-output/v0.6.0/实施与验收记录-【codex】.md`。
+该脚本用本地 TTS 生成测试 WAV 后送入本地 ASR，不开启麦克风、不上传云端、不存原始音频，不能代替真人录音与听感验收。v0.8.0 完整结果与未测项见项目 `04-output/v0.8.0/实施与验收记录-【codex】.md`。
