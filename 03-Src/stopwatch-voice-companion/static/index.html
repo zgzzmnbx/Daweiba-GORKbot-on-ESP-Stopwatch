@@ -5,7 +5,7 @@
 <header class="app-header">
   <a class="wordmark" href="#dialogue">GORK<span> / ROBOT CONSOLE</span></a>
   <div class="global-status" aria-live="polite"><span id="global-voice">语音：检查中</span><span id="global-watch">Watch：未连接</span><span id="global-operation">待机</span><button id="global-stop" class="stop">停止全部</button></div>
-  <span class="version">LOCAL WORKSPACE · 0.13.0</span>
+  <span class="version">LOCAL WORKSPACE · 0.14.0-dev</span>
 </header>
 <main>
   <aside class="companion-stage" aria-label="常驻机器人">
@@ -30,7 +30,14 @@
     </section>
   </aside>
   <div class="work-area">
-  <nav class="primary-nav" role="tablist" aria-label="功能模块"><a href="#dialogue" data-page-link="dialogue" role="tab" id="tab-dialogue" aria-controls="page-dialogue">对话</a><a href="#character" data-page-link="character" role="tab" id="tab-character" aria-controls="page-character">角色</a><a href="#watch" data-page-link="watch" role="tab" id="tab-watch" aria-controls="page-watch">StopWatch</a><a href="#settings" data-page-link="settings" role="tab" id="tab-settings" aria-controls="page-settings">设置</a><a href="#logs" data-page-link="logs" role="tab" id="tab-logs" aria-controls="page-logs">运行日志</a></nav>
+<nav class="primary-nav" role="tablist" aria-label="功能模块"><a href="#dialogue" data-page-link="dialogue" role="tab" id="tab-dialogue" aria-controls="page-dialogue">对话</a><a href="#cost" data-page-link="cost" role="tab" id="tab-cost" aria-controls="page-cost">造价助手</a><a href="#character" data-page-link="character" role="tab" id="tab-character" aria-controls="page-character">角色</a><a href="#watch" data-page-link="watch" role="tab" id="tab-watch" aria-controls="page-watch">StopWatch</a><a href="#settings" data-page-link="settings" role="tab" id="tab-settings" aria-controls="page-settings">设置</a><a href="#logs" data-page-link="logs" role="tab" id="tab-logs" aria-controls="page-logs">运行日志</a></nav>
+
+  <section class="page" data-page="cost" role="tabpanel" id="page-cost" aria-labelledby="cost-title" hidden>
+    <section class="card"><div class="actions"><h2 id="cost-title">造价助手</h2><button id="cost-health">检查连接</button></div><p id="cost-status" role="status">按需连接本机造价智算 · 不自动启动或上传</p><p>依据由造价智算提供；这里只查询，不改价、不写成果。</p></section>
+    <section class="card"><h3>查依据 · 问知识</h3><label for="cost-question">造价问题</label><textarea id="cost-question" maxlength="1000" rows="3" placeholder="例如：勘察工作量计费应核对哪些依据？"></textarea><div class="actions"><button id="cost-import">带入对话文字</button><small>语音输入：先在对话页录音并确认文字。</small></div><label class="cost-consent"><input type="checkbox" id="cost-ai">本次允许 AI 整理（问题和依据可能发往造价服务配置的模型）</label><div class="actions"><button id="cost-query" class="primary">查询依据</button><button id="cost-stop">停止</button></div><p id="cost-feedback" role="status"></p><p id="cost-evidence" class="badge"></p><div id="cost-answer" class="cost-answer"></div><div id="cost-sources" class="cost-sources" aria-label="检索出处"></div></section>
+    <section class="card"><h3>项目与任务</h3><div class="actions"><button id="cost-projects">刷新项目</button><button id="cost-prev">上一页</button><span id="cost-page">第 1 页</span><button id="cost-next">下一页</button></div><label for="cost-project">选择项目（不影响上方知识查询）</label><select id="cost-project"><option value="">请先刷新项目</option></select><button id="cost-detail">查询状态</button><pre id="cost-project-result" class="cost-answer"></pre></section>
+    <section class="card"><h3>把摘要交给 Gork</h3><p>自行填写并核对摘要，不自动截断或播报造价结果。完整回答和依据保留在本页。</p><label for="cost-summary">确认后的短摘要（最多 300 字）</label><textarea id="cost-summary" maxlength="300" rows="2"></textarea><button id="cost-transfer">送入对话，选择朗读或小人显示</button><small>Watch 气泡最多 24 字 / 72 UTF-8 字节；朗读仍受设备时长限制。</small></section>
+  </section>
 
   <section class="page logs-page" data-page="logs" role="tabpanel" id="page-logs" aria-labelledby="logs-title" hidden>
     <div class="logs-heading"><div><h2 id="logs-title">运行日志</h2><p>本次页面的状态记录 · 最多 120 条</p></div><button id="logs-copy" type="button">复制日志</button></div>

@@ -1,6 +1,8 @@
 # Local-only endpoints. No credentials or model paths belong here.
 port = 8766
 voice_url = "http://127.0.0.1:8765"
+# Read-only cost integration; manually start the cost application separately.
+cost_url = "http://127.0.0.1:8000"
 # On startup and after link loss, keep scanning with bounded backoff. With no
 # address, connect only when exactly one StopWatch advertises the expected BLE
 # service. A configured address is always enforced.

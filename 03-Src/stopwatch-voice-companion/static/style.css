@@ -768,3 +768,15 @@ main {
   .primary-nav a {white-space:nowrap}
 }
 .logs-page:not([hidden]) {display:flex;flex-direction:column}
+.primary-nav {overflow-x:auto;flex-shrink:0}
+.primary-nav a {white-space:nowrap;flex-shrink:0}
+#page-cost .card {display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-5);border:1px solid var(--line);border-radius:var(--radius-panel);background:var(--paper);margin-bottom:var(--space-4)}
+#page-cost .card > button {align-self:flex-start}
+#page-cost .badge:empty {display:none}
+#page-cost textarea {width:100%;box-sizing:border-box;min-height:84px}
+#page-cost .cost-consent {display:flex;align-items:flex-start;gap:8px;margin:18px 0}
+#page-cost .cost-consent input {width:auto;flex-shrink:0;margin-top:4px}
+.cost-answer {white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.7}
+.cost-sources article {padding:16px 0;border-top:1px solid #dddfd4}
+.cost-sources small {display:block;margin-top:6px;overflow-wrap:anywhere}
+.cost-sources p {white-space:pre-wrap;overflow-wrap:anywhere}

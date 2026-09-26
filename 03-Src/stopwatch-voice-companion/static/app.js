@@ -75,7 +75,7 @@ function addMessage(role, text) {
 }
 function navigate() {
   if (!globalThis.location) return;
-  const page = ['dialogue', 'character', 'watch', 'settings', 'logs'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dialogue';
+  const page = ['dialogue', 'cost', 'character', 'watch', 'settings', 'logs'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dialogue';
   if (location.hash !== `#${page}`) history.replaceState(null, '', `#${page}`);
   document.querySelectorAll?.('[data-page]').forEach(item => { item.hidden = item.dataset.page !== page; });
   document.querySelectorAll?.('[data-page-link]').forEach(item => {
@@ -583,6 +583,88 @@ async function acquireWorkspace(replace = false) {
     else message(error.message, true);
   }
 }
+
+// Business content stays in this page's memory; never send it to the status log.
+let costBusy = false, costPage = 1, costTotal = 0;
+async function costOperation(run) {
+  if (costBusy) return;
+  costBusy = true;
+  $('cost-feedback').textContent = '正在查询…';
+  let gen;
+  try {
+    if (!workspace) await acquireWorkspace();
+    if (!workspace) throw new Error('请先取得工作台控制权。');
+    localStop(); turnReady = false;
+    gen = epoch.next(); render('processing');
+    await run(gen, epoch.abort.signal);
+    if (epoch.valid(gen)) $('cost-feedback').textContent = '查询完成；请核对依据。';
+  } catch (error) {
+    if (gen === undefined || epoch.valid(gen)) $('cost-feedback').textContent = error.message;
+  } finally {
+    costBusy = false;
+    if (gen !== undefined && epoch.valid(gen)) render('idle');
+  }
+}
+async function loadCostProjects(page) {
+  return costOperation(async (gen, signal) => {
+    const result = await api(`/cost/projects?page=${page}`, 'GET', undefined, {signal});
+    if (!epoch.valid(gen)) return;
+    costPage = page; costTotal = result.total;
+    $('cost-project').replaceChildren();
+    $('cost-project').add(new Option('请选择项目', ''));
+    for (const item of result.items) if (item.project_id) $('cost-project').add(new Option(item.project_name || item.project_id, item.project_id));
+    $('cost-page').textContent = `第 ${page} 页 · 共 ${costTotal} 项`;
+  });
+}
+$('cost-health').onclick = async () => {
+  try {
+    const result = await api('/cost/health');
+    $('cost-status').textContent = `造价智算在线 · ${result.release_version || result.version}`;
+  } catch (error) { $('cost-status').textContent = error.message; }
+};
+$('cost-import').onclick = () => { $('cost-question').value = $('transcript').value; };
+$('cost-query').onclick = () => costOperation(async (gen, signal) => {
+  const question = $('cost-question').value.trim();
+  if (!question) throw new Error('请先输入问题。');
+  const allow_ai = $('cost-ai').checked;
+  $('cost-ai').checked = false; // one-request permission, not a stored business-upload default
+  $('cost-answer').textContent = ''; $('cost-evidence').textContent = ''; $('cost-sources').replaceChildren();
+  const result = await api('/cost/query', 'POST', {generation:gen, question, allow_ai}, {signal});
+  if (!epoch.valid(gen)) return;
+  const kind = result.preset_answer || result.answer_mode === 'curated_demo' ? '预设演示回答（非实时检索）' :
+    result.answer_mode === 'local_search' ? '本地依据检索（未调用问答模型）' : `回答类型：${result.answer_mode}`;
+  $('cost-evidence').textContent = `${kind} · ${result.evidence_found ? '有依据，仍需人工核对' : '未找到依据，不能据此计价'}`;
+  $('cost-answer').textContent = result.answer;
+  for (const source of result.sources) {
+    const item = document.createElement('article');
+    const title = document.createElement('strong'); title.textContent = source.title || source.source_file || source.id || '未命名出处';
+    const location = document.createElement('small'); location.textContent = [source.library_name, source.source_file, source.title_path || source.heading, source.authority_level, source.page != null ? `页 ${source.page}` : ''].filter(Boolean).join(' · ');
+    const content = document.createElement('p'); content.textContent = source.snippet || '请在造价智算核对原文。';
+    item.append(title, location, content); $('cost-sources').append(item);
+  }
+});
+$('cost-stop').onclick = async () => { await stopAll(); $('cost-feedback').textContent = '已停止等待；上游模型可能仍在执行。'; };
+$('cost-projects').onclick = () => loadCostProjects(1);
+$('cost-prev').onclick = () => { if (costPage > 1) return loadCostProjects(costPage - 1); };
+$('cost-next').onclick = () => { if (costPage * 20 < costTotal) return loadCostProjects(costPage + 1); };
+$('cost-detail').onclick = () => costOperation(async (gen, signal) => {
+  const id = $('cost-project').value;
+  if (!id) throw new Error('请选择项目。');
+  const result = await api(`/cost/projects/${encodeURIComponent(id)}`, 'GET', undefined, {signal});
+  if (epoch.valid(gen)) {
+    const project = result.project;
+    $('cost-project-result').textContent = `${project.project_name || id}\n项目状态：${project.status_label || project.status || '未提供'}\n更新时间：${project.updated_at || '未提供'}\n\n` +
+      (result.tasks.length ? result.tasks.map(task => `${task.task_name || task.task_id} · ${task.status_label || task.status || '未提供'}${task.stage_label ? ' · ' + task.stage_label : ''}`).join('\n') : '暂无业务任务。');
+  }
+});
+$('cost-transfer').onclick = () => {
+  const text = $('cost-summary').value.trim();
+  if (!text || Array.from(text).length > 300) { $('cost-feedback').textContent = '请确认 1–300 字摘要；不会自动截断。'; return; }
+  if (costBusy || ['listening','processing','speaking'].includes(phase)) { $('cost-feedback').textContent = '请先停止当前操作。'; return; }
+  $('transcript').value = text; $('interaction-mode').value = 'read';
+  location.hash = '#dialogue'; navigate(); render('ready');
+  message('已带入摘要，尚未朗读或发送。请选择输出方式后执行。');
+};
 function characterOptions() {
   const names = [...new Set([...(window.GorkCatalog?.sequences || []).map(item => item.id), 'happy-work'])];
   const select = $('character-expression'); select.replaceChildren();

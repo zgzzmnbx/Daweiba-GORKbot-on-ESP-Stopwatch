@@ -40,8 +40,8 @@ function workbench(saved = {}, uiOptions = {}) {
       add(option){this.options.push(option);if(this.options.length===1)this.value=option.value;},getTracks(){return [];}});
     return elements.get(id);
   };
-  const pages = ['dialogue','character','watch','settings','logs'].map(page=>Object.assign(nodes('section'),{dataset:{page}}));
-  const tabs = ['dialogue','character','watch','settings','logs'].map(page=>Object.assign(nodes('a'),{dataset:{pageLink:page}}));
+  const pages = ['dialogue','cost','character','watch','settings','logs'].map(page=>Object.assign(nodes('section'),{dataset:{page}}));
+  const tabs = ['dialogue','cost','character','watch','settings','logs'].map(page=>Object.assign(nodes('a'),{dataset:{pageLink:page}}));
   const location = {hash:uiOptions.hash || '#dialogue'};
   const desktop = uiOptions.desktop;
   class AudioContext {
@@ -62,6 +62,11 @@ function workbench(saved = {}, uiOptions = {}) {
     setInterval:()=>0,clearInterval(){},clearTimeout,setTimeout,console,
     async fetch(url, options){
       requests.push({url,body:options.body});
+      if (url === '/api/cost/query') {
+        const result = {answer:'完整业务回答',sources:[{source_file:'规则.md',snippet:'<script>仅作文本</script>'}],evidence_found:true,answer_mode:'curated_demo',preset_answer:true};
+        if (uiOptions.delayCost) return await new Promise(resolve => waiting.push(() => resolve({ok:true,json:async()=>result})));
+        return {ok:true,json:async()=>result};
+      }
       if(url==='/api/tts') return await new Promise(resolve=>waiting.push(()=>resolve({ok:true,arrayBuffer:async()=>new ArrayBuffer(44)})));
       return {ok:true,json:async()=>url==='/api/health'?{auto_connect_voice:uiOptions.autoConnectVoice === true,voice:{ready:true},voice_url:'local',robot:{connected:uiOptions.robotConnected === true},answer:{enabled:true},
         capabilities:{protocol_version:1,tts:{speakers:[{id:3,label:'local 3'},{id:58,label:'local 58'}]},
@@ -76,6 +81,34 @@ function workbench(saved = {}, uiOptions = {}) {
   return {element,waiting,played,requests,pages,tabs,location,events,avatarStates,saved};
 }
 const settle = () => new Promise(resolve=>setImmediate(resolve));
+
+test('cost query is opt-in AI, labels demo, renders literal sources and never speaks', async () => {
+  const ui=workbench({}, {hash:'#cost'}); await settle();
+  assert.equal(ui.requests.some(r=>r.url.startsWith('/api/cost')),false);
+  ui.element('cost-question').value='计费依据';
+  await ui.element('cost-query').onclick();
+  assert.equal(JSON.parse(ui.requests.find(r=>r.url==='/api/cost/query').body).allow_ai,false);
+  assert.match(ui.element('cost-evidence').textContent,/预设演示/);
+  assert.equal(ui.element('cost-sources').children[0].children[2].textContent,'<script>仅作文本</script>');
+  ui.element('cost-ai').checked=true;
+  await ui.element('cost-query').onclick();
+  assert.equal(ui.element('cost-ai').checked,false);
+  assert.equal(ui.requests.some(r=>['/api/tts','/api/answer','/api/device/audio/play','/api/character/bubble'].includes(r.url)),false);
+});
+
+test('cost late result is discarded after stop and summary handoff cannot autoplay', async () => {
+  const ui=workbench({}, {hash:'#cost',delayCost:true}); await settle();
+  ui.element('cost-question').value='计费依据';
+  const request=ui.element('cost-query').onclick(); await settle();
+  await ui.element('cost-stop').onclick(); ui.waiting.shift()(); await request;
+  assert.equal(ui.element('cost-answer').textContent,'');
+  ui.element('cost-summary').value='这是人工确认的摘要';
+  ui.element('cost-transfer').onclick();
+  assert.equal(ui.location.hash,'#dialogue');
+  assert.equal(ui.element('transcript').value,'这是人工确认的摘要');
+  assert.equal(ui.element('interaction-mode').value,'read');
+  assert.equal(ui.requests.some(r=>['/api/tts','/api/answer','/api/character/bubble'].includes(r.url)),false);
+});
 
 test('voice catalogue, saved preferences and cloud speed restriction',async()=>{
   const saved={'gork.tts':'local','gork.speech':JSON.stringify({speaker_id:58,cloud_voice:'Ethan',speed:1.15})};

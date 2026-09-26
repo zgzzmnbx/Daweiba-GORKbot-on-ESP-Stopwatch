@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from . import __version__
 from .control import Controller
 from .answer import AnswerClient
+from .cost import CostClient
 from .robot import Robot, BleConsoleError
 from .voice import VoiceClient, VoiceError
 
@@ -66,6 +67,11 @@ class Text(Generation):
     text: str = Field(min_length=1, max_length=300)
 
 
+class CostQuery(Generation):
+    question: str = Field(min_length=1, max_length=1000)
+    allow_ai: bool = False
+
+
 class State(Generation):
     state: Literal["idle", "listening", "speaking", "error"]
 
@@ -110,7 +116,7 @@ def owner(request):
     return value
 
 
-def create_app(config=None, controller=None):
+def create_app(config=None, controller=None, cost_client=None):
     config = config or {}
     auto_connect_device = config.get("auto_connect_device", True)
     if not isinstance(auto_connect_device, bool):
@@ -122,6 +128,7 @@ def create_app(config=None, controller=None):
         raise ValueError("device_address 必须是字符串")
     manager = config.get("_voice_service_manager")
     service_task = None
+    cost = cost_client or CostClient(config.get('cost_url', 'http://127.0.0.1:8000'))
 
     def start_service():
         nonlocal service_task
@@ -149,6 +156,7 @@ def create_app(config=None, controller=None):
             yield
         finally:
             await control.close()
+            await cost.close()
             if manager:
                 await asyncio.to_thread(manager.close)
             if service_task:
@@ -156,6 +164,7 @@ def create_app(config=None, controller=None):
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.control = control
+    app.state.cost = cost
     allowed = {f"127.0.0.1:{port}", f"localhost:{port}"}
 
     @app.middleware("http")
@@ -234,6 +243,48 @@ def create_app(config=None, controller=None):
     @app.post("/api/workspace")
     async def acquire_workspace(payload: Connect, request: Request):
         return await control.acquire_workspace(owner(request), payload.replace)
+
+    @app.get('/api/cost/health')
+    async def cost_health():
+        return await cost.health()
+
+    @app.get('/api/cost/projects')
+    async def cost_projects(request: Request, page: int = 1):
+        who = owner(request)
+        control.renew_workspace(who)
+        if not 1 <= page <= 10000:
+            raise VoiceError(422, 'COST_PAGE', '无效页码')
+        result = await cost.projects(page)
+        control.authorize(who)
+        return result
+
+    @app.get('/api/cost/projects/{project_id}')
+    async def cost_project(project_id: str, request: Request):
+        who = owner(request)
+        control.renew_workspace(who)
+        result = await cost.project(project_id)
+        control.authorize(who)
+        return result
+
+    @app.post('/api/cost/query')
+    async def cost_query(payload: CostQuery, request: Request):
+        who = owner(request)
+        control.renew_workspace(who)
+        if payload.generation <= control.generation:
+            raise VoiceError(409, 'STALE', '查询已过期')
+        control.invalidate(payload.generation)
+        task = asyncio.current_task()
+        control.answer_tasks.add(task)
+        try:
+            result = await cost.query(payload.question, payload.allow_ai)
+            control.authorize(who)
+            if control.generation != payload.generation:
+                raise VoiceError(409, 'STALE', '查询已取消')
+            return result
+        except asyncio.CancelledError:
+            raise VoiceError(409, 'STALE', '查询已停止；上游模型可能仍在执行') from None
+        finally:
+            control.answer_tasks.discard(task)
 
     @app.get("/api/workspace")
     async def workspace_heartbeat(request: Request):
