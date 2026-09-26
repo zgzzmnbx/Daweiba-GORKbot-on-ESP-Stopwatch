@@ -299,7 +299,7 @@ class AudioClient:
         await self.progress(progress,"received",len(pcm),p.value,started)
         return bytes(pcm),16000
 
-    async def play(self, pcm, rate, progress=None, *, codec="auto"):
+    async def play(self, pcm, rate, progress=None, *, codec="auto", before_play=None):
         job_started=time.monotonic()
         # Reuse the WAV validator so direct API callers cannot bypass limits.
         make_wav(pcm,rate)
@@ -328,8 +328,11 @@ class AudioClient:
         await self.progress(progress,"sending",0,len(payload),started)
         await self.send_data(payload, chunk, progress, started)
         await self.request(Op.COMMIT,len(payload))
+        await self.progress(progress,"ready",len(payload),len(payload),started)
         send_elapsed=time.monotonic()-started
         print(f"电脑→设备 {self.codec}：{len(payload)} bytes，发送 {send_elapsed:.2f} s，{len(payload)/send_elapsed:.0f} B/s")
+        if before_play is not None:
+            await before_play()
         await self.request(Op.PLAY,expected=Op.PLAYING)
         await self.progress(progress,"playing",len(payload),len(payload),started)
         print("设备报告开始播放；B 可随时停止。")

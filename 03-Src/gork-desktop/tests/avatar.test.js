@@ -32,3 +32,17 @@ test('a late desktop listener draws the same animation position from a shared st
   consoleFace.set('happy',1000); desktopFace.set('happy',1000);
   assert.deepEqual(consoleFace.draw(1500,600),desktopFace.draw(1500,850));
 });
+
+test('still thumbnails render distinct real poses without scheduling animation frames',()=>{
+  let frames=0;const strokes=[];
+  const ctx={setTransform(){},clearRect(){strokes.length=0;},beginPath(){},arc(...args){strokes.push(args);},fill(){},save(){},translate(x,y){strokes.push([x,y]);},rotate(angle){strokes.push(angle);},moveTo(...args){strokes.push(args);},lineTo(...args){strokes.push(args);},stroke(){strokes.push(this.lineWidth);},restore(){}};
+  const scope={window:{devicePixelRatio:1},performance:{now:()=>0},Date,requestAnimationFrame:()=>{frames++;},cancelAnimationFrame(){}};
+  for(const name of ['gork-catalog.js','gork-avatar.js']) vm.runInNewContext(fs.readFileSync(path.join(web,name),'utf8'),scope);
+  const samples=[];
+  for(const sequence of scope.window.GorkCatalog.sequences) {
+    const canvas={clientWidth:54,getContext:()=>ctx};
+    scope.window.GorkAvatar.mount(canvas,scope.window.GorkCatalog,{still:true,expression:sequence.id}).dispose();
+    assert.equal(canvas.width,54);samples.push(JSON.stringify(strokes));
+  }
+  assert.equal(frames,0);assert.equal(new Set(samples).size,new Set(scope.window.GorkCatalog.sequences.map(s=>s.steps[0].expressionId)).size);
+});

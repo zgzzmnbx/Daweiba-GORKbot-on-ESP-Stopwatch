@@ -1,6 +1,8 @@
 import {Epoch} from './pcm.js';
 import {Recorder, WavPlayer} from './audio-client.js';
 import {createDebugConsole} from './debug-console.js';
+import {createExpressionMenu} from './expression-menu.js';
+import {createAppearancePicker} from './appearance-picker.js';
 
 const $ = id => document.getElementById(id);
 let debugStorage;
@@ -9,6 +11,7 @@ const debugConsole = createDebugConsole(document, debugStorage, text => navigato
 const face = window.GorkAvatar?.mount($('gork-face'));
 const characterFace = face;
 let manualPreview = false, lastFaceState = '', renderedPage = '';
+let expressionMenu = null, expressionPending = false;
 function shareAvatarScene(expression, mode = 'loop', startedAt = Date.now()) {
   window.gorkDesktop?.setAvatarScene?.({expression, mode, startedAt})?.catch(() => {});
 }
@@ -29,6 +32,7 @@ let client = crypto.randomUUID(), connected = false, workspace = false, dirty = 
 let turnReady = false;
 let context, playback, deadline;
 let previewContext, previewPlayback, robotConnected = false;
+let watchSpeechSync = false;
 const previewPlayer = new WavPlayer();
 const recorder = new Recorder();
 let delayBusy = false, outputPending = false, composerWatchAudio = false, composerWatchProgress = '';
@@ -115,15 +119,16 @@ function render(next = phase) {
   $('speak').disabled = busy || delayBusy || outputPending || !text || bubbleTooLong ||
     (output === 'pc' && (!connected || !appliedTts)) ||
     (output === 'bubble' && (!workspace || (watchTarget && !robotConnected) || (answerMode && !connected))) ||
-    (output === 'watch-audio' && (!workspace || !robotConnected || !connected || !appliedTts));
+    (output === 'watch-audio' && (!workspace || !robotConnected || !connected || !appliedTts || !watchSpeechSync));
   $('speak-label').textContent = output === 'bubble' ? `显示到${bubbleTarget === 'watch' ? ' Watch' : bubbleTarget === 'both' ? '两端' : '桌面'}` :
     output === 'watch-audio' ? 'Watch 朗读' : answerMode && !$('auto-read').checked ? '生成回答' : '电脑朗读';
   $('answer-status').textContent = bubbleTooLong ? `Watch 文字超限：${Array.from(text).length}/24 字、${watchBytes}/72 字节` :
     output === 'bubble' ? (!workspace ? '请先取得工作台控制权；Watch 最多 24 字、72 字节' :
       watchTarget && !robotConnected ? '请先连接 Watch；最多 24 字、72 字节' :
       watchTarget ? 'Watch 最多 24 字、72 字节；桌面最多 300 字' : '桌面小人显示 8 秒；最多 300 字') :
-    output === 'watch-audio' ? (!workspace || !robotConnected ? '请先取得工作台控制权并连接 Watch；设备朗读仍是延迟实验功能' :
-      '旧版 Watch 固件需进入 Audio test；新版小人页面可朗读。音频最长 10 秒') :
+    output === 'watch-audio' ? (!watchSpeechSync ? '请退出并重开 Gork，使文字与 Watch 朗读同步' :
+      !workspace || !robotConnected ? '请先取得工作台控制权并连接 Watch；设备朗读仍是延迟实验功能' :
+      '音频传完后再显示文字并开始朗读；低电平语音自动增强，最长 10 秒') :
     !connected ? '请先连接语音，再通过电脑扬声器朗读' :
     answerMode ? '先取得 AI 回答，再按自动朗读设置决定是否播放' : '使用电脑扬声器朗读输入文字';
   $('transcript').readOnly = busy;
@@ -143,7 +148,8 @@ function render(next = phase) {
   $('global-watch').textContent = `Watch：${robotConnected ? '已连接' : '未连接'}`;
   $('global-operation').textContent = delayBusy ? '设备音频任务进行中' : labels[phase] || '待机';
   $('workspace-acquire').textContent = workspace ? '已取得控制权' : '取得控制权';
-  $('character-play').disabled = !workspace || busy || delayBusy;
+  $('character-play').disabled = !workspace || busy || delayBusy || expressionPending;
+  expressionMenu?.update({watchConnected:robotConnected, blocked:busy || delayBusy || outputPending ? '请先结束当前录音、朗读或设备音频任务。' : ''});
   $('bubble-clear').disabled = !workspace || busy || delayBusy;
 }
 async function api(path, method = 'GET', body, options = {}) {
@@ -345,6 +351,7 @@ async function displayComposerText() {
 }
 async function speakOnWatch() {
   const original = $('transcript').value.trim(), answerMode = $('interaction-mode').value === 'answer';
+  if (!watchSpeechSync) { message('当前 Gork 后端尚不支持文字与朗读同步，请从托盘退出后重新打开。', true); return; }
   if (!original || !connected || !appliedTts || !workspace || !robotConnected || delayBusy) return;
   delayBusy = true; composerWatchAudio = true; composerWatchProgress = '';
   render('processing'); addMessage('user', original);
@@ -354,19 +361,23 @@ async function speakOnWatch() {
     let text = original;
     if (answerMode) {
       message('正在获取 AI 回答。');
-      text = (await api('/answer', 'POST', {generation:gen, text:original}, {signal:epoch.abort.signal})).text;
+      text = (await api('/answer', 'POST', {generation:gen, text:original, watch_speech:true}, {signal:epoch.abort.signal})).text;
       if (!epoch.valid(gen)) return;
       addMessage('assistant', text);
     }
     if (!text || Array.from(text).length > 300) throw new Error('文字超过 300 字，已保留在会话中，未合成或发送到 Watch。');
     message('正在合成完整语音；新版 Watch 可在小人页朗读，旧版请保持 Audio test 页面。');
-    const wav = await api('/tts', 'POST', {generation:gen, text}, {signal:epoch.abort.signal, audio:true});
+    const wav = await api('/tts', 'POST', {generation:gen, text, watch_speech:true}, {signal:epoch.abort.signal, audio:true});
     if (!epoch.valid(gen)) return;
     if (wav.byteLength > 484096) throw new Error('合成音频超过 Watch 的 10 秒上限，未发送到设备。');
-    const job = await api('/device/audio/play', 'POST', wav, {headers:{'Content-Type':'audio/wav'}, signal:epoch.abort.signal});
+    const audioOptions = {headers:{'Content-Type':'audio/wav', 'X-Generation':String(gen)}, signal:epoch.abort.signal};
+    const job = await api('/device/audio/speech', 'POST', wav, audioOptions);
     if (!epoch.valid(gen)) return;
     await waitAudio(job.job_id, gen, 'played');
-    if (epoch.valid(gen)) { render('ready'); message('Watch 报告播放完成；实际听感请以设备为准。'); }
+    if (epoch.valid(gen)) {
+      render('ready');
+      message(`Watch 报告播放完成${job.gain_db > 0 ? ` · 朗读增强 +${job.gain_db} dB` : ''}；实际听感请以设备为准。`);
+    }
   } catch (error) { failed(error, gen); }
   finally { delayBusy = false; composerWatchAudio = false; composerWatchProgress = ''; render(); }
 }
@@ -379,6 +390,7 @@ function submitComposer() {
 async function refresh() {
   try {
     const data = await api('/health'); suggestedAddress = data.device_address;
+    watchSpeechSync = data.watch_speech_sync === true;
     startupVoice.enabled = data.auto_connect_voice !== false;
     if (!startupVoice.enabled) { clearStartupVoiceTimer(); startupVoice.done = true; }
     $('service-url').textContent = data.voice_url;
@@ -465,7 +477,7 @@ async function deviceSound(method, path, body) {
   } catch (error) { message(error.message, true); }
 }
 function delayStatus(value) {
-  const names = {starting:'正在建立音频会话',armed:'设备已 ARM，请按住 A',recording:'设备正在录音',receiving:'设备 → 电脑传输',received:'接收完成',sending:'电脑 → 设备传输',playing:'设备报告开始播放',played:'设备报告播放结束',cancelled:'已取消',error:'失败'};
+  const names = {starting:'正在建立音频会话',armed:'设备已 ARM，请按住 A',recording:'设备正在录音',receiving:'设备 → 电脑传输',received:'接收完成',sending:'电脑 → 设备传输',ready:composerWatchAudio ? '语音已传完，正在显示文字' : '音频已传完，准备播放',playing:'设备报告开始播放',played:'设备报告播放结束',cancelled:'已取消',error:'失败'};
   const percent = value.total ? Math.min(100, value.bytes * 100 / value.total) : 0;
   $('delay-progress').value = percent;
   const speed = value.rate ? ` · ${Math.round(value.rate)} B/s` : '';
@@ -473,7 +485,8 @@ function delayStatus(value) {
   const compression = value.codec === 'opus' && value.source_bytes
     ? ` · 原始 ${Math.round(value.source_bytes / 1024)} KB`
     : '';
-  $('delay-status').textContent = `${names[value.stage] || value.stage} · ${codec} ${value.bytes || 0}/${value.total || '?'} bytes${compression} · ${percent.toFixed(1)}%${speed}`;
+  const gain = value.gain_db > 0 ? ` · 朗读增强 +${value.gain_db} dB` : '';
+  $('delay-status').textContent = `${names[value.stage] || value.stage} · ${codec} ${value.bytes || 0}/${value.total || '?'} bytes${compression}${gain} · ${percent.toFixed(1)}%${speed}`;
   const summary = `${names[value.stage] || '设备音频处理中'} · ${codec} · ${Math.floor(percent / 10) * 10}%`;
   debugConsole.push('AUDIO', summary, value.stage === 'error');
   if (composerWatchAudio && summary !== composerWatchProgress) {
@@ -677,6 +690,28 @@ function characterResult(value) {
   const desktop = value.desktop?.requested ? (value.desktop.accepted ? '桌面：已接收' : '桌面：未接收') : '桌面：未发送';
   const watch = value.watch?.requested ? (value.watch.accepted ? `Watch：${value.watch.receipt || '已接收'}` : `Watch：${value.watch.error || '失败'}`) : 'Watch：未发送';
   $('character-result').textContent = `${desktop}；${watch}`;
+  return `${desktop}；${watch}`;
+}
+async function quickExpression(expression, target, mode) {
+  if (expressionPending || ['listening','processing','speaking'].includes(phase) || delayBusy || outputPending)
+    throw new Error('请先结束当前操作。');
+  expressionPending = true;
+  const signal = epoch.abort.signal;
+  render();
+  try {
+    if (!workspace) await acquireWorkspace();
+    if (!workspace) throw new Error('未取得控制权，请在设置中处理工作台占用。');
+    if (signal.aborted) throw new DOMException('操作已取消','AbortError');
+    const gen = epoch.value;
+    const result = await api('/character','POST',{expression,target,mode},{signal});
+    if (!epoch.valid(gen)) throw new DOMException('操作已取消','AbortError');
+    if (target !== 'watch' && result.desktop?.accepted) {
+      const startedAt = Date.now(); manualPreview = true;
+      characterFace?.set(expression,{mode,startedAt,force:true});
+      shareAvatarScene(expression,mode,startedAt);
+    }
+    return characterResult(result);
+  } finally { expressionPending=false; render(); }
 }
 async function previewCharacter() {
   const name = $('character-expression').value;
@@ -779,10 +814,12 @@ window.addEventListener('hashchange', navigate);
 window.addEventListener('blur', () => { if (phase === 'listening' || recordingPending) stop(); });
 $('character-acquire').onclick = () => acquireWorkspace();
 $('workspace-takeover').onclick = () => acquireWorkspace(true);
-window.addEventListener('pagehide', () => { cancelStartupVoice(); stopPreview(); localStop(); epoch.next(); if (workspace) api('/workspace', 'DELETE', undefined, {keepalive: true}).catch(() => {}); });
+window.addEventListener('pagehide', () => { expressionMenu?.dispose(); cancelStartupVoice(); stopPreview(); localStop(); epoch.next(); if (workspace) api('/workspace', 'DELETE', undefined, {keepalive: true}).catch(() => {}); });
 if (window.gorkDesktop?.onStopAll) window.gorkDesktop.onStopAll(() => {
   stopPreview(); localStop(); epoch.next(); delayBusy = false; render('idle'); message('已由桌面控制台停止本地录音、播放和在途任务。');
 });
+expressionMenu = createExpressionMenu(document,{catalog:window.GorkCatalog,renderer:window.GorkAvatar,send:quickExpression});
+if(window.GorkAppearance) createAppearancePicker(document,{library:window.GorkAppearance,renderer:window.GorkAvatar,catalog:window.GorkCatalog,storage:debugStorage,bridge:window.gorkDesktop,onChange:value=>{face?.setAppearance(value);expressionMenu.setAppearance(value);}});
 characterOptions(); fillVoices(); navigate(); render(); refresh(); setInterval(heartbeat, 1000); setInterval(workspaceHeartbeat, 1000);
 setInterval(refresh, 5000);
 
@@ -861,3 +898,21 @@ $('desktop-size').oninput = () => {
   pendingAvatarScale = Number($('desktop-size').value); applyAvatarScale();
 };
 refreshAvatarScale(); setInterval(refreshAvatarScale, 2000);
+
+let bubblePositionBusy = false;
+async function refreshBubblePosition() {
+  if (!window.gorkDesktop?.getBubblePosition || bubblePositionBusy || document.activeElement === $('desktop-bubble-position')) return;
+  try {
+    $('desktop-bubble-position').value = await window.gorkDesktop.getBubblePosition();
+    $('desktop-bubble-position').disabled = false;
+    $('desktop-bubble-hint').textContent = '自动记住；屏幕边缘会调整位置';
+  } catch { $('desktop-bubble-position').disabled = true; }
+}
+$('desktop-bubble-position').onchange = async () => {
+  if (!window.gorkDesktop?.setBubblePosition) return;
+  bubblePositionBusy = true; $('desktop-bubble-position').disabled = true;
+  try { $('desktop-bubble-position').value = await window.gorkDesktop.setBubblePosition($('desktop-bubble-position').value); }
+  catch (error) { message(error.message || '气泡位置设置失败', true); }
+  finally { bubblePositionBusy = false; $('desktop-bubble-position').blur?.(); await refreshBubblePosition(); }
+};
+refreshBubblePosition(); setInterval(refreshBubblePosition, 2000);

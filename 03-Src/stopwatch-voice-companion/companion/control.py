@@ -30,6 +30,7 @@ class Controller:
         self.turn = 0
         self.phase = "idle"
         self.text = ""
+        self.watch_speech_generation = None
         self.routing = dict(SAFE_ROUTING)
         self.lock = asyncio.Lock()
         self.pending = {}
@@ -75,6 +76,7 @@ class Controller:
         self.generation = generation
         self.phase = "idle"
         self.text = ""
+        self.watch_speech_generation = None
         self.robot.show("idle", generation)
         for request_id, (turn, session, _) in list(self.pending.items()):
             task = asyncio.create_task(self.cancel_one(request_id, turn, session))
@@ -107,6 +109,7 @@ class Controller:
             self.routing = dict(SAFE_ROUTING)
             self.phase = "idle"
             self.text = ""
+            self.watch_speech_generation = None
             self.answer_upload = False
             self.speech = None
             self.answer_history.clear()
@@ -159,7 +162,7 @@ class Controller:
             return {"enabled": False, "reason": "未配置回答服务；当前为跟读/朗读模式"}
         return self.answer.capability()
 
-    async def ask(self, owner, generation, text):
+    async def ask(self, owner, generation, text, defer_watch_text=False):
         self.check(owner, generation)
         if not self.answer_upload:
             raise VoiceError(403, "ANSWER_UPLOAD_DENIED", "请单独允许向回答服务发送文字")
@@ -179,7 +182,7 @@ class Controller:
             else:
                 self.answer_history.clear()
             self.text, self.phase = result, "ready"
-            self.robot.show("idle", generation, result)
+            self.robot.show("idle", generation, "" if defer_watch_text else result)
             return result
         except asyncio.CancelledError as exc:
             raise VoiceError(409, "STALE_GENERATION", "旧回答已取消") from exc
@@ -258,7 +261,7 @@ class Controller:
                   "watch": {"requested": target in ("watch", "both"), "accepted": False}}
         if target in ("desktop", "both"):
             self.character.update(bubble=text, revision=self.character["revision"] + 1)
-            self.character_bubble_deadline = time.monotonic() + 8
+            self.character_bubble_deadline = time.monotonic() + min(45, max(8, len(text) * 0.12))
             result["desktop"]["accepted"] = True
         if target in ("watch", "both"):
             try:
@@ -291,8 +294,10 @@ class Controller:
         self.phase = phase
         self.robot.show(phase, generation, self.text if phase == "speaking" else "")
 
-    async def perform(self, owner, generation, kind, value):
+    async def perform(self, owner, generation, kind, value, watch_speech=False):
         self.check(owner, generation)
+        if kind == "tts":
+            self.watch_speech_generation = None
         if not self.turn:
             raise VoiceError(409, "NO_TURN", "请先开始新一轮")
         if any(item[2] == generation for item in self.pending.values()):
@@ -310,7 +315,8 @@ class Controller:
             self.check(owner, generation)
             self.phase = "ready"
             self.text = result if kind == "asr" else value
-            self.robot.show("idle", generation, self.text)
+            self.watch_speech_generation = generation if kind == "tts" and watch_speech else None
+            self.robot.show("idle", generation, "" if watch_speech else self.text)
             return result
         except VoiceError:
             if owner == self.owner and generation == self.generation:
@@ -319,6 +325,13 @@ class Controller:
             raise
         finally:
             self.pending.pop(request_id, None)
+
+    def take_watch_speech_text(self, owner, generation):
+        self.check(owner, generation)
+        if self.watch_speech_generation != generation or not self.text:
+            raise VoiceError(409, "WATCH_SPEECH_MISSING", "请先合成当前这轮 Watch 朗读语音")
+        self.watch_speech_generation = None
+        return self.text
 
     async def heartbeat(self, owner):
         self.require_voice(owner)

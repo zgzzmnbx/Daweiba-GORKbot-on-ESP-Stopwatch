@@ -18,8 +18,11 @@ test('avatar visibility IPC accepts only the console sender and boolean state', 
     require(name){
       if(name==='electron') return electron;
       if(name==='./backend-manager') return {};
+      if(name==='./bubble-window') return {...require('../bubble-window'),createBubbleWindow:()=>({sync(){},hide(){},update(){}})};
       if(name==='./window-state') return require('../window-state');
       if(name==='node:fs') return {...fs,writeFileSync:(_path,value)=>savedSizes.push(JSON.parse(value))};
+      if(name==='./bubble-window') return {...require('../bubble-window'),createBubbleWindow:()=>({sync(){},hide(){},update(){}})};
+      if(name==='./gork-appearance') return require('../gork-appearance');
       if(name==='./tray-icon') return require('../tray-icon');
       return require(name);
     },
@@ -31,6 +34,21 @@ test('avatar visibility IPC accepts only the console sender and boolean state', 
   const sent = [];
   const avatar = {getBounds:()=>bounds,setBounds:value=>{bounds=value;},isDestroyed:()=>false,isVisible:()=>visible,showInactive:()=>{visible=true;},hide:()=>{visible=false;},isAlwaysOnTop:()=>alwaysOnTop,setAlwaysOnTop:value=>{alwaysOnTop=value;},webContents:{send:(...args)=>sent.push(args)}};
   scope.module.exports.setWindows({webContents:consoleContents},avatar);
+  const getLook=handlers.get('gork:get-appearance'), setLook=handlers.get('gork:set-appearance');
+  assert.equal(getLook({sender:consoleContents}).id,'gork');
+  assert.throws(()=>getLook({sender:outsider}),/Only the console/);
+  assert.throws(()=>setLook({sender:outsider},{id:'kirby'}),/Only the console/);
+  const look=setLook({sender:consoleContents},{id:'kirby',bodyColor:'#123456',eyeColor:'bad'});
+  assert.equal(look.id,'kirby');assert.equal(look.bodyColor,'#123456');
+  assert.equal(savedSizes.at(-1).appearance.id,'kirby');
+  assert.equal(sent.at(-1)[1].appearance.id,'kirby');
+  const getPosition=handlers.get('gork:bubble-position'), setPosition=handlers.get('gork:set-bubble-position');
+  assert.equal(getPosition({sender:consoleContents}),'above');
+  assert.throws(()=>getPosition({sender:outsider}),/Only the console/);
+  assert.throws(()=>setPosition({sender:outsider},'left'),/Invalid/);
+  assert.throws(()=>setPosition({sender:consoleContents},'bad'),/Invalid/);
+  assert.equal(setPosition({sender:consoleContents},'left'),'left');
+  assert.equal(savedSizes.at(-1).bubblePosition,'left');
   const get = handlers.get('gork:avatar-visible');
   const set = handlers.get('gork:set-avatar-visible');
   assert.equal(get({sender:consoleContents}),true);
@@ -101,15 +119,20 @@ test('avatar restores disabled always-on-top from the saved window state', () =>
   const scope = {module:{exports:{}},exports:{},__dirname:desktop,process,Buffer,URL,console,
     require(name){
       if(name==='electron') return electron;
-      if(name==='node:fs') return {...fs,readFileSync:()=>JSON.stringify({x:100,y:100,width:180,height:210,alwaysOnTop:false})};
+      if(name==='node:fs') return {...fs,readFileSync:()=>JSON.stringify({x:100,y:100,width:180,height:210,alwaysOnTop:false,bubblePosition:'below',appearance:{id:'freddy',bodyColor:'#123456'}})};
       if(name==='./backend-manager') return {};
       if(name==='./window-state') return require('../window-state');
+      if(name==='./bubble-window') return require('../bubble-window');
+      if(name==='./gork-appearance') return require('../gork-appearance');
       if(name==='./tray-icon') return require('../tray-icon');
       return require(name);
     },
   };
-  vm.runInNewContext(fs.readFileSync(path.join(desktop,'main.js'),'utf8')+'\nmodule.exports.createAvatar = createAvatar;',scope);
+  vm.runInNewContext(fs.readFileSync(path.join(desktop,'main.js'),'utf8')+'\nmodule.exports.createAvatar = createAvatar; module.exports.position = () => bubblePosition; module.exports.look = () => appearance;',scope);
   scope.module.exports.createAvatar();
   assert.equal(options[0].alwaysOnTop,false);
   assert.equal(options[0].width,180);
+  assert.equal(scope.module.exports.position(),'below');
+  assert.equal(scope.module.exports.look().id,'freddy');
+  assert.equal(scope.module.exports.look().bodyColor,'#123456');
 });

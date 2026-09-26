@@ -68,7 +68,7 @@ def test_speaker_and_vibration_share_only_m5unified_io_expander():
     assert "mute & 0x60" in output
 
 
-def test_builtin_loudness_boost_is_scoped_to_short_sounds():
+def test_sound_and_voice_share_the_saved_output_volume():
     firmware = ROOT / "03-Src/stopwatch-grok-avatar/src"
     sound = (firmware / "sound_control.cpp").read_text(encoding="utf-8")
     probe = (firmware / "audio_probe.cpp").read_text(encoding="utf-8")
@@ -76,14 +76,15 @@ def test_builtin_loudness_boost_is_scoped_to_short_sounds():
     assert "kCodecUnityVolume = 0xBF" in output
     assert "kCodecBuiltInLoudVolume = 0xD2" in output
     assert "SpeakerGainProfile::BuiltInLoud" in sound
-    assert "SpeakerGainProfile::BuiltInLoud" not in probe
-    assert "startStopWatchSpeaker(192)" in probe
+    assert "soundControl_->volume()" in probe
+    assert "SpeakerGainProfile::BuiltInLoud" in probe
+    assert "startStopWatchSpeaker(192)" not in probe
 
 
 def test_firmware_version_is_visible_on_settings_page():
     main = (ROOT / "03-Src/stopwatch-grok-avatar/src/main.cpp").read_text(
         encoding="utf-8")
-    assert 'kFirmwareVersion[] = "v0.9.0-dev"' in main
+    assert 'kFirmwareVersion[] = "v0.9.1-dev"' in main
     assert 'drawDiagnosticLine(102, "Firmware", kFirmwareVersion' in main
 
 

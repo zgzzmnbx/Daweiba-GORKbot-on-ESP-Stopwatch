@@ -158,6 +158,25 @@ class PacketTests(unittest.TestCase):
 
 
 class ClientTests(unittest.IsolatedAsyncioTestCase):
+    async def test_text_hook_runs_after_commit_and_before_play(self):
+        ble = FakeBle()
+        client = AudioClient(ble)
+        await client.open()
+        try:
+            calls = []
+            async def show_text():
+                operations = [packet.op for packet in ble.written]
+                self.assertIn(Op.COMMIT, operations)
+                self.assertNotIn(Op.PLAY, operations)
+                calls.append('text')
+            await client.play(b'\0' * 3200, 16000, before_play=show_text)
+            self.assertEqual(calls, ['text'])
+            self.assertLess([packet.op for packet in ble.written].index(Op.COMMIT),
+                            [packet.op for packet in ble.written].index(Op.PLAY))
+            self.assertTrue(ble.played)
+        finally:
+            await client.close()
+
     async def test_opus_negotiation_and_compressed_transfer(self):
         ble=FakeBle(opus=True)
         client=AudioClient(ble)

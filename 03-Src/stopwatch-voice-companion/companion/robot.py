@@ -1,9 +1,12 @@
 """One BLE writer, latest-state wins. Offline robot never blocks PC speech."""
 import asyncio
 import contextlib
+import math
 from pathlib import Path
 import sys
 import uuid
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools"))
 from stopwatch_ble import BleExpressionClient, BleConsoleError, EXPRESSIONS as BLE_EXPRESSIONS, scan_targets
@@ -23,6 +26,23 @@ def short_bubble(text):
     return clean if len(clean) <= 24 else clean[:23] + "…"
 
 
+def boost_watch_speech(pcm):
+    """Compensate for the built-in sounds' separate +9.5 dB codec profile.
+
+    This runs only for synthesized Watch speech, before PCM or Opus encoding.
+    Leave full-scale input and silence alone; never clip the output samples.
+    """
+    samples = np.frombuffer(pcm, dtype="<i2")
+    peak = int(np.abs(samples.astype(np.int32)).max(initial=0))
+    if not peak or peak >= 30000:
+        return pcm, 0.0
+    gain = min(3.0, 30000 / peak)
+    if gain <= 1.0:
+        return pcm, 0.0
+    raised = np.rint(samples.astype(np.float32) * gain).astype("<i2")
+    return raised.tobytes(), round(20 * math.log10(gain), 1)
+
+
 class Robot:
     def __init__(self, client=None, scanner=None, sound=None):
         self.client = client or BleExpressionClient()
@@ -33,6 +53,7 @@ class Robot:
         self.enabled = False
         self.generation = 0
         self.revision = 0
+        self.flushed_revision = -1
         self.state, self.text = "idle", ""
         self.receipt, self.error = "", ""
         self.reconnects = 0
@@ -49,6 +70,7 @@ class Robot:
         self.audio_progress = {"stage": "idle", "bytes": 0, "total": 0, "elapsed": 0, "rate": 0}
         self.audio_result = None
         self.audio_error = ""
+        self.audio_gain_db = 0.0
 
     def start(self):
         self.worker = asyncio.create_task(self.run())
@@ -178,6 +200,7 @@ class Robot:
             self.target = None
             raise
         self.enabled, self.reconnects = True, 0
+        self.flushed_revision = -1
         self.error = ""
         self.text = ""
         self.changed.set()
@@ -189,7 +212,8 @@ class Robot:
 
     def audio_snapshot(self):
         return {"job_id": self.audio_job, "mode": self.audio_mode, **self.audio_progress,
-            "error": self.audio_error, "result_ready": self.audio_result is not None,
+            "error": self.audio_error, "gain_db": self.audio_gain_db,
+            "result_ready": self.audio_result is not None,
             "running": bool(self.audio_task and not self.audio_task.done())}
 
     async def scan(self):
@@ -236,6 +260,8 @@ class Robot:
         async with self.lock:
             if not self.enabled or self.target is None:
                 return
+            if self.client.connected and self.revision <= self.flushed_revision:
+                return
             reconnected = False
             if not self.client.connected:
                 if self.maintain_task and not self.maintain_task.done():
@@ -257,6 +283,8 @@ class Robot:
             await self.client.clear_text()
             if text and revision == self.revision:
                 self.receipt = await self.client.send_text(text)
+            if revision == self.revision:
+                self.flushed_revision = revision
             self.error = ""
 
     async def run(self):
@@ -292,14 +320,31 @@ class Robot:
         if not self.enabled or not self.client.connected:
             raise BleConsoleError("StopWatch 未连接")
 
-    async def _run_audio(self, mode, pcm=None, rate=None):
+    async def _run_audio(self, mode, pcm=None, rate=None, speech_text=None):
         async with self.lock:
             raw = getattr(self.client, "client", None)
             if raw is None or not getattr(raw, "is_connected", False):
                 raise BleConsoleError("StopWatch 未连接")
             self.audio = AudioClient(raw)
+            bubble = short_bubble(speech_text) if speech_text else ""
+            bubble_started = False
+            async def reveal_after_transfer():
+                nonlocal bubble_started
+                self.receipt = await self.client.send_command(EXPRESSIONS["idle"])
+                bubble_started = True
+                self.receipt = await self.client.send_text(bubble)
+                self.state, self.text = "idle", bubble
+                self.revision += 1
+                self.flushed_revision = self.revision
             try:
                 await self.audio.open()
+                if bubble:
+                    # A queued idle/processing flush must not show an older
+                    # bubble after the audio task releases the BLE writer.
+                    self.receipt = await self.client.clear_text()
+                    self.text = ""
+                    self.revision += 1
+                    self.flushed_revision = self.revision
                 if mode in ("record", "echo"):
                     captured, captured_rate = await self.audio.record(self._audio_changed)
                     if mode == "record":
@@ -307,19 +352,36 @@ class Robot:
                     else:
                         await self.audio.play(captured, captured_rate, self._audio_changed)
                 else:
-                    await self.audio.play(pcm, rate, self._audio_changed)
+                    await self.audio.play(pcm, rate, self._audio_changed,
+                                          before_play=reveal_after_transfer if bubble else None)
+            except BaseException:
+                if bubble_started:
+                    cleared = False
+                    try:
+                        self.receipt = await self.client.clear_text()
+                        cleared = True
+                    except Exception:
+                        pass
+                    self.text = ""
+                    self.revision += 1
+                    if cleared:
+                        self.flushed_revision = self.revision
+                    else:
+                        self.changed.set()
+                raise
             finally:
                 await self.audio.close()
                 self.audio = None
 
-    def _start_audio(self, mode, pcm=None, rate=None):
+    def _start_audio(self, mode, pcm=None, rate=None, gain_db=0.0, speech_text=None):
         self._require_audio_idle()
         self.audio_job, self.audio_mode = str(uuid.uuid4()), mode
         self.audio_result, self.audio_error = None, ""
+        self.audio_gain_db = gain_db
         self.audio_progress = {"stage": "starting", "bytes": 0, "total": len(pcm or b""), "elapsed": 0, "rate": 0}
         async def runner():
             try:
-                await self._run_audio(mode, pcm, rate)
+                await self._run_audio(mode, pcm, rate, speech_text)
             except asyncio.CancelledError:
                 self.audio_progress = {**self.audio_progress, "stage": "cancelled"}
                 raise
@@ -334,12 +396,13 @@ class Robot:
     def start_audio_record(self, echo=False):
         return self._start_audio("echo" if echo else "record")
 
-    def start_audio_play(self, wav):
+    def start_audio_play(self, wav, *, speech=False, speech_text=None):
         try:
             pcm, rate = read_wav(wav)
         except ValueError as exc:
             raise BleConsoleError(str(exc)) from exc
-        return self._start_audio("play", pcm, rate)
+        pcm, gain_db = boost_watch_speech(pcm) if speech else (pcm, 0.0)
+        return self._start_audio("play", pcm, rate, gain_db, speech_text if speech else None)
 
     async def cancel_audio(self):
         task = self.audio_task

@@ -4,6 +4,8 @@ const path = require('node:path');
 const { ensureBackend, stopOwnedBackend } = require('./backend-manager');
 const { visibleBounds, avatarBoundsForScale } = require('./window-state');
 const { createTrayIcon } = require('./tray-icon');
+const { createBubbleWindow, BUBBLE_POSITIONS } = require('./bubble-window');
+const { normalize:normalizeAppearance } = require('./gork-appearance');
 
 const backendPort = Number(process.env.GORK_BACKEND_PORT || 8766);
 if (!Number.isInteger(backendPort) || backendPort < 1024 || backendPort > 65535) throw new Error('GORK_BACKEND_PORT must be 1024..65535');
@@ -12,10 +14,13 @@ const ROOT = app.isPackaged ? path.join(process.resourcesPath, 'project') : path
 let backend;
 let avatarWindow;
 let consoleWindow;
+let bubbleWindow;
+let bubblePosition = 'above';
 let tray;
 let quitting = false;
 let sharedState = { mode: 'idle', label: '正在启动', robotConnected: false, character: { revision: 0, bubble: '' } };
 let avatarScene = null;
+let appearance = normalizeAppearance(null);
 let stateTimer;
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
@@ -29,7 +34,7 @@ function readState() {
 }
 function saveState() {
   if (avatarWindow && !avatarWindow.isDestroyed())
-    fs.writeFileSync(statePath(), JSON.stringify({ ...avatarWindow.getBounds(), alwaysOnTop: avatarWindow.isAlwaysOnTop() }));
+    fs.writeFileSync(statePath(), JSON.stringify({ ...avatarWindow.getBounds(), alwaysOnTop: avatarWindow.isAlwaysOnTop(), bubblePosition, appearance }));
 }
 
 function securePreferences() {
@@ -38,6 +43,8 @@ function securePreferences() {
 
 function createAvatar() {
   const saved = readState();
+  appearance = normalizeAppearance(saved.appearance);sharedState.appearance=appearance;
+  bubblePosition = BUBBLE_POSITIONS.includes(saved.bubblePosition) ? saved.bubblePosition : 'above';
   const restored = visibleBounds(saved, screen.getAllDisplays());
   avatarWindow = new BrowserWindow({
     width: 240, height: 280, ...(restored || {}), minWidth: 60, minHeight: 70, maxWidth: 360, maxHeight: 420,
@@ -46,6 +53,11 @@ function createAvatar() {
   });
   avatarWindow.loadFile(path.join(__dirname, 'avatar.html'));
   avatarWindow.once('ready-to-show', () => avatarWindow.showInactive());
+  bubbleWindow = createBubbleWindow({BrowserWindow, screen, avatar:avatarWindow, preferences:securePreferences(), getPosition:() => bubblePosition});
+  avatarWindow.on('move', () => bubbleWindow.sync());
+  avatarWindow.on('resize', () => bubbleWindow.sync());
+  avatarWindow.on('show', () => bubbleWindow.sync());
+  avatarWindow.on('hide', () => bubbleWindow.hide());
   avatarWindow.on('moved', saveState);
   avatarWindow.on('resized', saveState);
   avatarWindow.on('close', (event) => { if (!quitting) { event.preventDefault(); avatarWindow.hide(); } });
@@ -77,7 +89,9 @@ async function pollState() {
     const modes = { listening: 'listening', processing: 'thinking', generating: 'thinking', speaking: 'happy', error: 'confused' };
     sharedState = { mode: modes[data.phase] || 'idle', label: data.phase === 'idle' ? '就绪' : ({listening:'正在聆听',processing:'处理中',generating:'正在回答',speaking:'正在说话',error:'需要检查'}[data.phase] || data.phase), robotConnected: Boolean(data.robot?.connected), character: data.character || { revision: 0, bubble: '' }, scene: avatarScene };
   } catch { sharedState = { mode: 'confused', label: '后端未就绪', robotConnected: false, character: { revision: 0, bubble: '' }, scene: avatarScene }; }
+  sharedState.appearance=appearance;
   if (avatarWindow && !avatarWindow.isDestroyed()) avatarWindow.webContents.send('gork:state', sharedState);
+  bubbleWindow?.update(sharedState.character);
   updateTrayMenu();
 }
 
@@ -99,10 +113,37 @@ function createTray() {
 }
 
 if (hasSingleInstanceLock) {
+  ipcMain.handle('gork:get-appearance',event=>{
+    if(event.sender!==consoleWindow?.webContents)throw new Error('Only the console can inspect appearance');
+    return appearance;
+  });
+  ipcMain.handle('gork:set-appearance',(event,value)=>{
+    if(event.sender!==consoleWindow?.webContents)throw new Error('Only the console can set appearance');
+    const next=normalizeAppearance(value),previous=appearance;
+    appearance=next;
+    try {saveState();} catch(error) {appearance=previous;throw error;}
+    sharedState.appearance=appearance;
+    if(avatarWindow&&!avatarWindow.isDestroyed())avatarWindow.webContents.send('gork:state',sharedState);
+    return appearance;
+  });
   ipcMain.handle('gork:open-console', () => showConsole());
   ipcMain.handle('gork:hide-avatar', () => avatarWindow.hide());
   ipcMain.handle('gork:stop-all', () => stopAll());
   ipcMain.handle('gork:get-state', () => sharedState);
+  ipcMain.handle('gork:bubble-position', event => {
+    if (event.sender !== consoleWindow?.webContents) throw new Error('Only the console can inspect bubble position');
+    return bubblePosition;
+  });
+  ipcMain.handle('gork:set-bubble-position', (event, position) => {
+    if (event.sender !== consoleWindow?.webContents || !BUBBLE_POSITIONS.includes(position)) throw new Error('Invalid bubble position');
+    if (!avatarWindow || avatarWindow.isDestroyed()) throw new Error('Avatar window unavailable');
+    bubblePosition = position; saveState(); bubbleWindow?.sync();
+    return bubblePosition;
+  });
+  ipcMain.handle('gork:dismiss-bubble', event => {
+    if (!bubbleWindow?.owns(event.sender)) throw new Error('Only the bubble can dismiss itself');
+    bubbleWindow.dismiss();
+  });
   ipcMain.handle('gork:set-avatar-scene', (event, scene) => {
     if (event.sender !== consoleWindow?.webContents) throw new Error('Only the console can set the avatar scene');
     if (!scene || typeof scene.expression !== 'string' || !['once', 'loop'].includes(scene.mode)) throw new Error('Invalid avatar scene');
@@ -146,6 +187,7 @@ if (hasSingleInstanceLock) {
     if (event.sender !== consoleWindow?.webContents || typeof enabled !== 'boolean') throw new Error('Invalid avatar stacking request');
     if (!avatarWindow || avatarWindow.isDestroyed()) throw new Error('Avatar window unavailable');
     avatarWindow.setAlwaysOnTop(enabled);
+    bubbleWindow?.sync();
     saveState();
     return avatarWindow.isAlwaysOnTop();
   });
@@ -172,6 +214,6 @@ if (hasSingleInstanceLock) {
     }
   }).catch((error) => { console.error(error); quitting = true; app.quit(); });
 
-  app.on('before-quit', async () => { quitting = true; clearInterval(stateTimer); saveState(); await stopAll(); await stopOwnedBackend(backend); });
+  app.on('before-quit', async () => { quitting = true; clearInterval(stateTimer); bubbleWindow?.destroy(); saveState(); await stopAll(); await stopOwnedBackend(backend); });
   app.on('window-all-closed', (event) => event.preventDefault());
 }

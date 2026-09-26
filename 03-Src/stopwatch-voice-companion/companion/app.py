@@ -65,6 +65,7 @@ class Speech(Payload):
 
 class Text(Generation):
     text: str = Field(min_length=1, max_length=300)
+    watch_speech: bool = False
 
 
 class CostQuery(Generation):
@@ -212,6 +213,7 @@ def create_app(config=None, controller=None, cost_client=None):
             "pid": os.getpid(), "launch": os.environ.get("GORK_LAUNCH_TOKEN", ""),
             "device_address": config.get("device_address", ""),
             "voice_url": url, "auto_connect_voice": auto_connect_voice,
+            "watch_speech_sync": True,
             "robot": control.robot.snapshot()}
         result["answer"] = control.answer_capability()
         result["voice_service"] = manager.snapshot() if manager else {"mode": "unknown", "owned": False}
@@ -327,7 +329,7 @@ def create_app(config=None, controller=None, cost_client=None):
     async def answer(payload: Text, request: Request):
         if not payload.text.strip():
             raise VoiceError(422, "TEXT_EMPTY", "请输入要发送的文字")
-        return {"text": await control.ask(owner(request), payload.generation, payload.text)}
+        return {"text": await control.ask(owner(request), payload.generation, payload.text, payload.watch_speech)}
 
     @app.delete("/api/answer/history")
     async def clear_answer_history(request: Request):
@@ -366,7 +368,7 @@ def create_app(config=None, controller=None, cost_client=None):
     async def tts(payload: Text, request: Request):
         if not payload.text.strip():
             raise VoiceError(422, "TEXT_EMPTY", "请输入要回读的文字")
-        data = await control.perform(owner(request), payload.generation, "tts", payload.text)
+        data = await control.perform(owner(request), payload.generation, "tts", payload.text, payload.watch_speech)
         return Response(data, media_type="audio/wav")
 
     @app.get("/api/devices")
@@ -430,15 +432,30 @@ def create_app(config=None, controller=None, cost_client=None):
         control.authorize(owner(request))
         return control.robot.start_audio_record(payload.echo)
 
-    @app.post("/api/device/audio/play")
-    async def audio_play(request: Request):
-        control.authorize(owner(request))
+    async def accept_audio_play(request: Request, *, speech: bool):
+        tab = owner(request)
+        control.authorize(tab)
         if request.headers.get("content-type", "").split(";", 1)[0].lower() != "audio/wav":
             raise VoiceError(415, "WAV_REQUIRED", "仅接受 PCM16 单声道 WAV")
         data = await request.body()
         if len(data) > 484096:
             raise VoiceError(413, "AUDIO_TOO_LARGE", "设备音频最多 10 秒")
+        if speech:
+            try:
+                generation = int(request.headers.get("x-generation", ""))
+            except ValueError as exc:
+                raise VoiceError(422, "GENERATION_REQUIRED", "缺少当前 Watch 朗读操作代号") from exc
+            text = control.take_watch_speech_text(tab, generation)
+            return control.robot.start_audio_play(data, speech=True, speech_text=text)
         return control.robot.start_audio_play(data)
+
+    @app.post("/api/device/audio/play")
+    async def audio_play(request: Request):
+        return await accept_audio_play(request, speech=False)
+
+    @app.post("/api/device/audio/speech")
+    async def audio_speech(request: Request):
+        return await accept_audio_play(request, speech=True)
 
     @app.delete("/api/device/audio")
     async def audio_cancel(request: Request):

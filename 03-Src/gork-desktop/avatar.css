@@ -13,10 +13,9 @@ p { margin: 0; font-size: 14px; letter-spacing: .08em; }
 button:hover { background: #daddbd; }
 /* Transparent desktop silhouette; same black/white body as the web and Watch. */
 .avatar { border:0;border-radius:0;background:transparent;box-shadow:none;gap:3px; }
-.face { display:block;width:min(88vw, calc(100vh - 72px));height:auto;aspect-ratio:1;background:transparent;box-shadow:none; }
+.face { display:block;width:min(88vw, calc(100vh - 72px));height:auto;aspect-ratio:1;background:transparent;box-shadow:none;border-radius:0; }
 .drag-zone { height:32px; }
 p { padding:2px 9px;border-radius:12px;background:rgba(243,242,238,.9);font-size:11px; }
-.bubble{max-width:88%;white-space:pre-wrap;overflow-wrap:anywhere;color:#303526;background:rgba(243,242,238,.96);box-shadow:0 3px 12px rgba(43,46,32,.13)}
 .actions { opacity:0;transition:opacity .15s; }
 .avatar:hover .actions,.avatar:focus-within .actions { opacity:1; }
 button { padding:4px 10px;font-size:11px;background:#f3f2ee; }
@@ -26,6 +25,6 @@ button { padding:4px 10px;font-size:11px;background:#f3f2ee; }
 @media(max-height:180px){
   .avatar{gap:0}
   .face{width:min(90vw,90vh)}
-  #status,.actions,.bubble{display:none}
+  #status,.actions{display:none}
   .drag-zone{height:12px;z-index:1}
 }

@@ -14,7 +14,7 @@
 namespace {
 
 constexpr uint8_t kDefaultBrightness = 150;
-constexpr char kFirmwareVersion[] = "v0.9.0-dev";
+constexpr char kFirmwareVersion[] = "v0.9.1-dev";
 constexpr uint8_t kMinimumBrightness = 30;
 constexpr uint8_t kBrightnessStep = 15;
 constexpr uint32_t kDiagnosticRefreshIntervalMs = 100;

@@ -208,15 +208,22 @@ void AudioProbe::process(const Packet& packet,uint32_t now) {
     case Commit:
       if (state_!=State::Receiving || size || used_!=total_ || value!=total_) { fail(4); return; }
       state_=State::Loaded; message_="Ready to play"; ack(Commit,total_); return;
-    case Play:
+    case Play: {
       if ((state_!=State::Loaded && state_!=State::Captured) || size || value) { fail(2); return; }
       if (opus_ && !decodeOpus()) { fail(14); return; }
-      if (startStopWatchSpeaker(192)!=SpeakerStartResult::Ok) { fail(12); return; }
+      // Match the built-in sounds' playback profile and the user's saved
+      // volume setting; the old fixed 192 / Unity path left speech quiet.
+      const uint8_t volume = soundControl_ ? soundControl_->volume() : 75;
+      if (startStopWatchSpeaker((volume*255U+50U)/100U,
+                                SpeakerGainProfile::BuiltInLoud)!=SpeakerStartResult::Ok) {
+        fail(12); return;
+      }
       speakerOwned_=true;
       if (!M5.Speaker.playRaw(reinterpret_cast<int16_t*>(opus_ ? decoded_ : buffer_),
           opus_ ? decodedSamples_ : used_/2,rate_,false,1,0,true)) { fail(13); return; }
       state_=State::Playing; message_="PLAYING / B: stop";
       reply(Playing,id_,opus_ ? decodedSamples_*2 : used_); return;
+    }
     case Pull: {
       if (state_!=State::Captured || size || value%2 || value>=used_) { fail(4); return; }
       size_t n=std::min<size_t>(used_-value,(packetSize_-kHeader)&~1U);

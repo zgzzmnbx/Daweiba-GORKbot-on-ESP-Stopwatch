@@ -1,6 +1,16 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('gorkDesktop', Object.freeze({
+  getAppearance: () => ipcRenderer.invoke('gork:get-appearance'),
+  setAppearance: value => ipcRenderer.invoke('gork:set-appearance', value),
+  getBubblePosition: () => ipcRenderer.invoke('gork:bubble-position'),
+  setBubblePosition: position => ipcRenderer.invoke('gork:set-bubble-position', position),
+  dismissBubble: () => ipcRenderer.invoke('gork:dismiss-bubble'),
+  onBubble: (callback) => {
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('gork:bubble', listener);
+    return () => ipcRenderer.removeListener('gork:bubble', listener);
+  },
   openConsole: () => ipcRenderer.invoke('gork:open-console'),
   hideAvatar: () => ipcRenderer.invoke('gork:hide-avatar'),
   stopAll: () => ipcRenderer.invoke('gork:stop-all'),

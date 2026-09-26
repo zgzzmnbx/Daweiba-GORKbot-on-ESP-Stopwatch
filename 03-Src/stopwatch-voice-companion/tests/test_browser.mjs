@@ -5,6 +5,10 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 import {createDebugConsole} from '../static/debug-console.js';
+import {createExpressionMenu} from '../static/expression-menu.js';
+import {createAppearancePicker} from '../static/appearance-picker.js';
+const catalogScope = {window:{}};
+vm.runInNewContext(fs.readFileSync(new URL('../static/gork-catalog.js',import.meta.url),'utf8'),catalogScope);
 
 test('48k stereo-downmixed floats become real 16k mono PCM WAV', () => {
   const wav = toPCM16([new Float32Array(4800).fill(.5)], 48000), view = new DataView(wav);
@@ -28,7 +32,7 @@ test('20 intermediate stops invalidate old playback/HTTP generations', () => {
 });
 
 function workbench(saved = {}, uiOptions = {}) {
-  const elements = new Map(), waiting = [], played = [], requests = [], events = {}, avatarStates = [];
+  const elements = new Map(), waiting = [], played = [], requests = [], events = {}, avatarStates = [], previewMounts = [];
   const nodes = name => ({nodeName:name, children:[], dataset:{}, listeners:{}, hidden:false,
     classList:{toggle(){}},setAttribute(){},focus(){this.focused=true;},remove(){this.removed=true;},
     append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;this.options=[];this.value='';},
@@ -51,34 +55,43 @@ function workbench(saved = {}, uiOptions = {}) {
     createBufferSource(){const player={stopped:false,connect(){},disconnect(){},start(){played.push(this);},stop(){this.stopped=true;}};return player;}
   }
   const context = vm.createContext({
-    toPCM16,Epoch,AbortController,AbortSignal,DOMException,ArrayBuffer,TextEncoder,performance,AudioContext,createDebugConsole,
+    toPCM16,Epoch,AbortController,AbortSignal,DOMException,ArrayBuffer,TextEncoder,performance,AudioContext,createDebugConsole,createExpressionMenu,createAppearancePicker,
     Recorder:class{async start(){requests.push({url:'recorder:start'});return true;}finish(){return new ArrayBuffer(44);}stop(){}},
     WavPlayer:class{constructor(){this.playing=false;}async play(_bytes,onended){this.playing=true;this.onended=onended;return true;}stop(){this.playing=false;}},
     Option:class{constructor(label,value){this.label=label;this.value=value;}},
     crypto:webcrypto,location,history:{replaceState(_a,_b,hash){location.hash=hash;}},
     document:{getElementById:element,createElement:nodes,querySelectorAll:selector=>selector==='[data-page]'?pages:selector==='[data-page-link]'?tabs:[],body:{dataset:{}}},
-    window:{GorkAvatar:{mount(){return {set:state=>avatarStates.push(state)};}},gorkDesktop:desktop,
+    window:{GorkCatalog:catalogScope.window.GorkCatalog,GorkAvatar:{mount(_canvas,_catalog,options){const mount={options,disposed:false};previewMounts.push(mount);return {set:state=>avatarStates.push(state),dispose(){mount.disposed=true;}};}},gorkDesktop:desktop,
       addEventListener(name,fn){events[name]=fn;},localStorage:{getItem:key=>saved[key]??null,setItem:(key,value)=>{saved[key]=value;}}},
     setInterval:()=>0,clearInterval(){},clearTimeout,setTimeout,console,
     async fetch(url, options){
-      requests.push({url,body:options.body});
+      requests.push({url,body:options.body,headers:options.headers});
+      if(url==='/api/workspace' && uiOptions.workspaceBusy) return {ok:false,status:409,json:async()=>({error:{code:'WORKSPACE_BUSY',message:'工作台已占用'}})};
+      if(url==='/api/character' && options.method==='POST') {
+        const {target}=JSON.parse(options.body);
+        const result={desktop:{requested:target!=='watch',accepted:target!=='watch'},watch:{requested:target!=='desktop',accepted:target!=='desktop'&&!uiOptions.watchError,error:uiOptions.watchError,receipt:'OK:EXPR'}};
+        if(uiOptions.delayExpression) return await new Promise(resolve=>waiting.push(()=>resolve({ok:true,json:async()=>result})));
+        return {ok:true,json:async()=>result};
+      }
       if (url === '/api/cost/query') {
         const result = {answer:'完整业务回答',sources:[{source_file:'规则.md',snippet:'<script>仅作文本</script>'}],evidence_found:true,answer_mode:'curated_demo',preset_answer:true};
         if (uiOptions.delayCost) return await new Promise(resolve => waiting.push(() => resolve({ok:true,json:async()=>result})));
         return {ok:true,json:async()=>result};
       }
+      if (url === '/api/device/audio/speech' && uiOptions.oldBackend)
+        return {ok:false,status:404,json:async()=>({})};
       if(url==='/api/tts') return await new Promise(resolve=>waiting.push(()=>resolve({ok:true,arrayBuffer:async()=>new ArrayBuffer(44)})));
-      return {ok:true,json:async()=>url==='/api/health'?{auto_connect_voice:uiOptions.autoConnectVoice === true,voice:{ready:true},voice_url:'local',robot:{connected:uiOptions.robotConnected === true},answer:{enabled:true},
+      return {ok:true,json:async()=>url==='/api/health'?{auto_connect_voice:uiOptions.autoConnectVoice === true,watch_speech_sync:uiOptions.oldBackend !== true,voice:{ready:true},voice_url:'local',robot:{connected:uiOptions.robotConnected === true},answer:{enabled:true},
         capabilities:{protocol_version:1,tts:{speakers:[{id:3,label:'local 3'},{id:58,label:'local 58'}]},
           cloud:{request_voice:true,voices:[{id:'Cherry',label:'Cherry'},{id:'Ethan',label:'Ethan'}]}}}:url==='/api/answer'?{text:'单独的回答'}:
         url==='/api/character/bubble'?{desktop:{requested:true,accepted:true},watch:{requested:true,accepted:true,receipt:'OK:TEXT'}}:
-        url==='/api/device/audio/play'?{job_id:'test-job'}:
+        ['/api/device/audio/speech','/api/device/audio/play'].includes(url)?{job_id:'test-job'}:
         url==='/api/device/audio'?(uiOptions.audioResult || {job_id:'test-job',running:false,stage:'played',bytes:44,total:44}):{generation:0,robot:{}}};
     }
   });
   const script = fs.readFileSync(new URL('../static/app.js', import.meta.url),'utf8').replace(/^import .*;\r?\n/gm, '');
   vm.runInContext(script,context);
-  return {element,waiting,played,requests,pages,tabs,location,events,avatarStates,saved};
+  return {element,waiting,played,requests,pages,tabs,location,events,avatarStates,saved,previewMounts};
 }
 const settle = () => new Promise(resolve=>setImmediate(resolve));
 
@@ -93,7 +106,7 @@ test('cost query is opt-in AI, labels demo, renders literal sources and never sp
   ui.element('cost-ai').checked=true;
   await ui.element('cost-query').onclick();
   assert.equal(ui.element('cost-ai').checked,false);
-  assert.equal(ui.requests.some(r=>['/api/tts','/api/answer','/api/device/audio/play','/api/character/bubble'].includes(r.url)),false);
+  assert.equal(ui.requests.some(r=>['/api/tts','/api/answer','/api/device/audio/speech','/api/character/bubble'].includes(r.url)),false);
 });
 
 test('cost late result is discarded after stop and summary handoff cannot autoplay', async () => {
@@ -278,9 +291,33 @@ test('Watch speech uses delayed device audio, with no computer playback', async(
   const request=ui.element('speak').onclick(); await settle();
   assert.equal(ui.requests.filter(r=>r.url==='/api/tts').length,1);
   ui.waiting.shift()(); await request;
-  assert.equal(ui.requests.filter(r=>r.url==='/api/device/audio/play').length,1);
+  assert.equal(ui.requests.filter(r=>r.url==='/api/device/audio/speech').length,1);
+  assert.equal(JSON.parse(ui.requests.find(r=>r.url==='/api/tts').body).watch_speech,true);
+  assert.equal(ui.requests.find(r=>r.url==='/api/device/audio/speech').headers['X-Generation'],
+    String(JSON.parse(ui.requests.find(r=>r.url==='/api/tts').body).generation));
   assert.equal(ui.played.length,0);
   assert.match(ui.element('message').textContent,/Watch 报告播放完成/);
+});
+
+test('AI answer is also deferred until Watch audio is ready', async()=>{
+  const ui=workbench({}, {robotConnected:true}); await settle(); await ui.element('connect').onclick();
+  ui.element('interaction-mode').value='answer';
+  ui.element('output-mode').value='watch-audio'; ui.element('transcript').value='请回答'; ui.element('transcript').oninput();
+  const request=ui.element('speak').onclick(); await settle(); ui.waiting.shift()(); await request;
+  assert.equal(JSON.parse(ui.requests.find(r=>r.url==='/api/answer').body).watch_speech,true);
+  const synthesis=JSON.parse(ui.requests.find(r=>r.url==='/api/tts').body);
+  assert.equal(synthesis.watch_speech,true);
+  assert.equal(synthesis.text,'单独的回答');
+  assert.equal(ui.requests.filter(r=>r.url==='/api/device/audio/speech').length,1);
+});
+
+test('Watch speech waits for the new backend instead of showing text early', async()=>{
+  const ui=workbench({}, {robotConnected:true,oldBackend:true}); await settle(); await ui.element('connect').onclick();
+  ui.element('output-mode').value='watch-audio'; ui.element('transcript').value='你好'; ui.element('transcript').oninput();
+  await ui.element('speak').onclick();
+  assert.equal(ui.requests.filter(r=>r.url==='/api/tts').length,0);
+  assert.equal(ui.requests.filter(r=>r.url==='/api/device/audio/speech').length,0);
+  assert.match(ui.element('message').textContent,/请从托盘退出后重新打开/);
 });
 
 test('Watch speech does not report success when the audio task fails before sending', async()=>{
@@ -307,7 +344,7 @@ test('stopped Watch speech never sends a late TTS result to the device', async()
   ui.element('output-mode').value='watch-audio'; ui.element('transcript').value='晚安';
   const request=ui.element('speak').onclick(); await settle();
   await ui.element('stop').onclick(); ui.waiting.shift()(); await request;
-  assert.equal(ui.requests.filter(r=>r.url==='/api/device/audio/play').length,0);
+  assert.equal(ui.requests.filter(r=>r.url==='/api/device/audio/speech').length,0);
 });
 
 test('revoking answer permission stops active route then applies independent consent', async()=>{
@@ -422,4 +459,68 @@ test('logs tab opens without device requests',async()=>{
   assert.equal(ui.pages.find(p=>p.dataset.page==='logs').hidden,false);
   assert.equal(ui.pages.find(p=>p.dataset.page==='dialogue').hidden,true);
   assert.equal(ui.requests.some(r=>r.url.startsWith('/api/device')),false);
+});
+
+test('desktop bubble position loads and saves using the native bridge',async()=>{
+  const calls=[];let position='above';
+  const ui=workbench({}, {desktop:{getBubblePosition:async()=>position,setBubblePosition:async value=>{calls.push(value);position=value;return value;}}});
+  await settle();assert.equal(ui.element('desktop-bubble-position').value,'above');
+  ui.element('desktop-bubble-position').value='right';await ui.element('desktop-bubble-position').change();
+  assert.deepEqual(calls,['right']);assert.equal(ui.element('desktop-bubble-position').value,'right');
+  assert.equal(ui.requests.some(r=>r.url.includes('/device')),false);
+});
+
+function openExpressions(ui) {
+  const menu=ui.element('expression-menu'); menu.open=true;
+  for(const listener of menu.listeners.toggle) listener();
+  return ui.element('expression-grid').children;
+}
+test('expression menu builds 23 real previews only when expanded and hover sends nothing',async()=>{
+  const ui=workbench(); await settle();
+  assert.equal(ui.element('expression-grid').children.length,0);
+  const tiles=openExpressions(ui); assert.equal(tiles.length,23);
+  tiles[1].listeners.pointerenter[0]();
+  assert.equal(ui.avatarStates.at(-1),'happy');
+  assert.equal(ui.requests.some(r=>r.url==='/api/character'),false);
+  await tiles[1].onclick();
+  assert.deepEqual(JSON.parse(ui.requests.find(r=>r.url==='/api/character').body),{expression:'happy',target:'desktop',mode:'once'});
+  assert.equal(JSON.parse(ui.requests.find(r=>r.url==='/api/workspace').body).replace,false);
+  assert.match(ui.element('expression-feedback').textContent,/桌面：已接收/);
+});
+test('Watch-only expression does not change desktop scene; both reports partial failure',async()=>{
+  const scenes=[];const ui=workbench({}, {robotConnected:true,watchError:'设备忙',desktop:{setAvatarScene:async scene=>scenes.push(scene)}});await settle();
+  const tiles=openExpressions(ui);scenes.length=0;
+  ui.element('expression-target').value='watch';await ui.element('expression-target').change();
+  ui.element('expression-mode').value='loop';await tiles[1].onclick();
+  assert.equal(scenes.length,0);assert.equal(JSON.parse(ui.requests.find(r=>r.url==='/api/character').body).mode,'loop');
+  ui.element('expression-target').value='both';await ui.element('expression-target').change();await tiles[1].onclick();
+  assert.equal(scenes.at(-1).expression,'happy');
+  assert.match(ui.element('expression-feedback').textContent,/桌面：已接收；Watch：设备忙/);
+});
+test('offline Watch and workspace conflict never send expressions or take over',async()=>{
+  const ui=workbench({}, {workspaceBusy:true});await settle();const tiles=openExpressions(ui);
+  ui.element('expression-target').value='watch';await ui.element('expression-target').change();await tiles[1].onclick();
+  assert.match(ui.element('expression-feedback').textContent,/未连接/);
+  assert.equal(ui.requests.some(r=>r.url==='/api/character'),false);
+  ui.element('expression-target').value='desktop';await ui.element('expression-target').change();await tiles[1].onclick();
+  assert.match(ui.element('expression-feedback').textContent,/未取得控制权/);
+  assert.equal(ui.requests.some(r=>r.url==='/api/character'),false);
+});
+test('expression pending locks repeated sends and late result cannot restart desktop after global stop',async()=>{
+  const scenes=[];const ui=workbench({}, {delayExpression:true,desktop:{setAvatarScene:async scene=>scenes.push(scene)}});await settle();
+  const tiles=openExpressions(ui);const pending=tiles[1].onclick();await settle();
+  await tiles[2].onclick();assert.equal(ui.requests.filter(r=>r.url==='/api/character').length,1);
+  await ui.element('global-stop').onclick();scenes.length=0;
+  ui.waiting.shift()();await pending;
+  assert.equal(scenes.some(s=>s.expression==='happy'),false);
+  assert.match(ui.element('expression-feedback').textContent,/取消/);
+});
+test('collapsed menu disposes hover animation; reopening retains one set of tiles',async()=>{
+  const ui=workbench();await settle();const tiles=openExpressions(ui);
+  assert.equal(ui.previewMounts.filter(m=>m.options?.still).length,23);
+  assert.ok(ui.previewMounts.filter(m=>m.options?.still).every(m=>m.disposed));
+  tiles[1].listeners.focus[0]();const animated=ui.previewMounts.at(-1);assert.equal(animated.disposed,false);
+  ui.element('expression-menu').open=false;
+  ui.element('expression-menu').listeners.toggle[0]();assert.equal(animated.disposed,true);
+  assert.equal(openExpressions(ui).length,23);
 });

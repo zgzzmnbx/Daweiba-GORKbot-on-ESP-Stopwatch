@@ -1,0 +1,31 @@
+/* Keep the original stylesheet intact; flatten Mantine's structural wrappers. */
+.modern-only,.nav-icon{display:none!important}
+.mantine-InputWrapper-root,.mantine-Input-wrapper{min-width:0}
+.mantine-Input-section{display:none}
+.mantine-Button-inner,.mantine-Button-label{display:contents}
+.mantine-Button-root{height:auto;white-space:normal}
+.mantine-Badge-label{display:contents}
+.mantine-Title-root{line-height:inherit;letter-spacing:inherit}
+.mantine-Input-input{width:100%}
+.mantine-NativeSelect-root{min-width:0}
+.device-picker>.mantine-InputWrapper-root,.sound-controls>.mantine-InputWrapper-root{flex:1;min-width:140px}
+.switch-row{display:block}
+.switch-row .mantine-Switch-body{display:flex;align-items:center;justify-content:space-between;width:100%;gap:15px}
+.switch-row .mantine-Switch-labelWrapper{order:-1;flex:1}
+.switch-row .mantine-Switch-track{display:none}
+.switch-row .mantine-Switch-input{display:block;position:relative;opacity:1}
+.consent .mantine-Checkbox-body{display:flex;align-items:flex-start;gap:10px}
+.consent .mantine-Checkbox-inner{width:16px;flex:none}
+.consent .mantine-Checkbox-icon{display:none}
+.consent .mantine-Checkbox-label{font-size:13px}
+.native-range{flex:1;min-width:50px}
+.native-range input{width:100%;accent-color:var(--accent);height:auto}
+.native-color input{height:32px;width:42px;padding:2px}
+.debug-tools .mantine-InputWrapper-root{width:64px}
+.logs-toolbar .mantine-InputWrapper-root{display:inline-block;width:auto}
+.logs-toolbar label{display:flex;align-items:center;gap:8px}
+#theme-toggle{font-size:11px;white-space:nowrap;padding:7px 10px;flex:none;order:4}
+.companion-stage .debug-console{order:1}
+.companion-stage .robot-console{order:2}
+.companion-stage>.eyebrow,.companion-stage>.companion-portrait,.companion-stage>.expression-menu{order:0}
+@media(max-width:700px){.version{display:none}.app-header{gap:8px;padding:0 12px}.global-status{gap:6px}.global-status>span{display:none}#global-stop,#theme-toggle{font-size:10px;padding:7px}#theme-toggle{margin-left:auto}.wordmark{font-size:22px}}

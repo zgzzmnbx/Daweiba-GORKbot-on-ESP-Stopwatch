@@ -16,6 +16,12 @@ def main():
             assert path.read_text(encoding='utf-8')==data, f'Stale: {path}'
         else:
             path.write_text(data,encoding='utf-8',newline='\n')
+    for name in ('avatar-engine.js','avatar-presets.js','gork-appearance.js'):
+        data=(web/name).read_text(encoding='utf-8')
+        if args.check:
+            assert (desktop/name).read_text(encoding='utf-8')==data, f'Stale: {name}'
+        else:
+            (desktop/name).write_text(data,encoding='utf-8',newline='\n')
     print('Desktop/web catalog and renderer match')
 if __name__=='__main__':
     main()

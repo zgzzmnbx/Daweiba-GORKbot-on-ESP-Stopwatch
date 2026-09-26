@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from companion.app import create_app
 from companion.control import Controller, SAFE_ROUTING
-from companion.robot import Robot, short_bubble
+from companion.robot import Robot, boost_watch_speech, short_bubble
 from companion.voice import VoiceClient, VoiceError, check_wav
 
 
@@ -20,6 +20,57 @@ def wav_bytes(rate=16000, channels=1, frames=3200):
         wav.setparams((channels, 2, rate, frames, 'NONE', 'NONE'))
         wav.writeframes(b'\x00\x00' * frames * channels)
     return output.getvalue()
+
+
+def test_watch_speech_gain_is_limited_and_diagnostic_audio_is_unchanged():
+    quiet = (1000).to_bytes(2, 'little', signed=True) + (-5000).to_bytes(2, 'little', signed=True)
+    raised, gain_db = boost_watch_speech(quiet)
+    assert raised == (3000).to_bytes(2, 'little', signed=True) + (-15000).to_bytes(2, 'little', signed=True)
+    assert gain_db == 9.5
+    near_full = (29999).to_bytes(2, 'little', signed=True)
+    raised, gain_db = boost_watch_speech(near_full)
+    assert abs(int.from_bytes(raised, 'little', signed=True)) <= 30000
+    assert gain_db < 0.1
+    assert boost_watch_speech(b'\0\0' * 10) == (b'\0\0' * 10, 0.0)
+
+
+def test_robot_boosts_speech_but_preserves_diagnostic_wav(monkeypatch):
+    source = io.BytesIO()
+    with wave.open(source, 'wb') as wav:
+        wav.setparams((1, 2, 16000, 1600, 'NONE', 'NONE'))
+        wav.writeframes((5000).to_bytes(2, 'little', signed=True) * 1600)
+    robot = Robot(client=SimpleNamespace(connected=True))
+    captured = []
+    monkeypatch.setattr(robot, '_start_audio', lambda mode, pcm, rate, gain_db=0.0, speech_text=None:
+                        captured.append((pcm, gain_db, speech_text)))
+    robot.start_audio_play(source.getvalue())
+    robot.start_audio_play(source.getvalue(), speech=True)
+    assert captured[0] == ((5000).to_bytes(2, 'little', signed=True) * 1600, 0.0, None)
+    assert captured[1] == ((15000).to_bytes(2, 'little', signed=True) * 1600, 9.5, None)
+
+
+def test_watch_text_is_committed_after_audio_transfer_before_play(monkeypatch):
+    async def run():
+        events = []
+        class Device:
+            client = SimpleNamespace(is_connected=True)
+            async def clear_text(self): events.append('clear'); return 'OK:CLEAR'
+            async def send_command(self, command): events.append(('expression', command)); return 'OK:IDLE'
+            async def send_text(self, text): events.append(('text', text)); return 'OK:TEXT'
+        class Audio:
+            def __init__(self, raw): pass
+            async def open(self): events.append('open')
+            async def play(self, pcm, rate, progress, *, before_play=None):
+                events.append('commit')
+                await before_play()
+                events.append('play')
+            async def close(self): events.append('close')
+        monkeypatch.setattr('companion.robot.AudioClient', Audio)
+        robot = Robot(client=Device())
+        await robot._run_audio('play', b'\0' * 3200, 16000, '同步文字')
+        assert events == ['open', 'clear', 'commit', ('expression', 'idle'), ('text', '同步文字'), 'play', 'close']
+        assert robot.text == '同步文字' and robot.flushed_revision == robot.revision
+    asyncio.run(run())
 
 
 def test_audio_timeout_keeps_failure_reason_and_zero_transfer(monkeypatch):
@@ -51,7 +102,9 @@ class FakeRobot:
     async def set_sound_volume(self, volume): self.events.append(('sound-volume', volume)); return {'event':'completed','volume':volume}
     def audio_snapshot(self): return {'job_id':'00000000-0000-0000-0000-000000000001','stage':'received','running':False,'result_ready':True}
     def start_audio_record(self, echo=False): self.events.append(('audio-record',echo)); return self.audio_snapshot()
-    def start_audio_play(self, data): self.events.append(('audio-play',len(data))); return self.audio_snapshot()
+    def start_audio_play(self, data, *, speech=False, speech_text=None):
+        self.events.append(('audio-play',len(data),speech,speech_text))
+        return self.audio_snapshot()
     async def cancel_audio(self): self.events.append(('audio-cancel',)); return self.audio_snapshot()
     def take_audio_result(self, job_id): self.events.append(('audio-result',job_id)); return wav_bytes()
 
@@ -226,6 +279,33 @@ def test_asr_and_edited_tts_share_turn_but_have_distinct_generations():
     asyncio.run(run())
 
 
+def test_watch_speech_defers_text_until_audio_and_stop_invalidates_it():
+    async def run():
+        voice, robot = FakeVoice(), FakeRobot()
+        control = Controller(voice, robot)
+        await control.connect('tab')
+        await control.begin('tab', 1)
+        await control.perform('tab', 1, 'tts', '你好', watch_speech=True)
+        assert robot.events[-1] == ('idle', 1, '')
+        assert control.take_watch_speech_text('tab', 1) == '你好'
+        with pytest.raises(VoiceError): control.take_watch_speech_text('tab', 1)
+        await control.begin('tab', 2)
+        await control.perform('tab', 2, 'tts', '取消前', watch_speech=True)
+        await control.stop('tab', 3)
+        with pytest.raises(VoiceError): control.take_watch_speech_text('tab', 2)
+        class Answer:
+            def capability(self): return {'enabled': True}
+            async def complete(self, text, history): return 'AI 回答'
+            async def close(self): pass
+        control.answer = Answer()
+        control.answer_upload = True
+        await control.begin('tab', 4)
+        assert await control.ask('tab', 4, '问题', defer_watch_text=True) == 'AI 回答'
+        assert robot.events[-1] == ('idle', 4, '')
+        await control.close()
+    asyncio.run(run())
+
+
 def test_api_local_boundary_permissions_and_safe_default():
     control = Controller(FakeVoice(), FakeRobot())
     app = create_app(controller=control)
@@ -250,6 +330,12 @@ def test_api_local_boundary_permissions_and_safe_default():
         job = client.post('/api/device/audio/record', headers=headers, json={'echo':False}).json()
         assert job['stage'] == 'received'
         assert client.post('/api/device/audio/play', headers={**headers,'Content-Type':'audio/wav'}, content=wav_bytes()).status_code == 200
+        assert control.robot.events[-1] == ('audio-play', len(wav_bytes()), False, None)
+        assert client.post('/api/device/audio/speech', headers={**headers,'Content-Type':'audio/wav','X-Generation':'1'}, content=wav_bytes()).status_code == 409
+        assert client.post('/api/tts', headers=headers, json={'generation':1,'text':'你好','watch_speech':True}).status_code == 200
+        assert client.post('/api/device/audio/speech', headers={**headers,'Content-Type':'audio/wav','X-Generation':'1'}, content=wav_bytes()).status_code == 200
+        assert control.robot.events[-1] == ('audio-play', len(wav_bytes()), True, '你好')
+        assert client.post('/api/device/audio/speech', headers={**headers,'Content-Type':'audio/wav','X-Generation':'1'}, content=wav_bytes()).status_code == 409
         assert client.get('/api/device/audio', headers=headers).status_code == 200
         assert client.get('/api/device/audio/result/'+job['job_id'], headers=headers).content[:4] == b'RIFF'
         assert client.delete('/api/device/audio', headers=headers).status_code == 200

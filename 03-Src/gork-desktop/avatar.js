@@ -1,11 +1,11 @@
 const avatar = document.getElementById('avatar');
 const status = document.getElementById('status');
-const bubble = document.getElementById('bubble');
 const face = window.GorkAvatar.mount(document.getElementById('gork-face'));
 let characterRevision = -1;
 let sceneRevision = -1;
 
 function render(state) {
+  face.setAppearance?.(state.appearance);
   const next = ['idle', 'listening', 'thinking', 'happy', 'confused'].includes(state.mode) ? state.mode : 'idle';
   avatar.className = `avatar ${next}`;
   const scene = state.scene;
@@ -21,8 +21,6 @@ function render(state) {
     face.set(manual.expression || 'idle', {mode:manual.mode,force:true});
   } else if (!manual.manual || characterRevision < 0) face.set(next);
   }
-  bubble.textContent = manual.bubble || '';
-  bubble.hidden = !manual.bubble;
   status.textContent = state.label || '就绪';
 }
 

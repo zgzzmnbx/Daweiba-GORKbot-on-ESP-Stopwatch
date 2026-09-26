@@ -66,3 +66,21 @@ def test_desktop_bubble_is_replaced_and_can_be_cleared():
         assert control.desktop_state()["character"]["bubble"] == ""
         await control.close()
     asyncio.run(run())
+
+
+def test_desktop_bubble_reading_time_and_expiry(monkeypatch):
+    async def run():
+        now = [100.0]
+        monkeypatch.setattr("companion.control.time.monotonic", lambda: now[0])
+        control = Controller(FakeVoice(), CharacterRobot())
+        await control.acquire_workspace("tab")
+        await control.set_character_bubble("tab", "你好", "desktop")
+        assert control.character_bubble_deadline == 108.0
+        await control.set_character_bubble("tab", "长" * 300, "desktop")
+        assert control.character_bubble_deadline == 136.0
+        now[0] = 135.0
+        assert control.desktop_state()["character"]["bubble"]
+        now[0] = 137.0
+        assert control.desktop_state()["character"]["bubble"] == ""
+        await control.close()
+    asyncio.run(run())

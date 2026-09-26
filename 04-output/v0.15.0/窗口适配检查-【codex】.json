@@ -1,0 +1,104 @@
+[
+  {
+    "theme": "classic",
+    "document": [
+      1180,
+      820
+    ],
+    "panelWidth": [
+      775,
+      775
+    ],
+    "submitVisible": true,
+    "themeVisible": true,
+    "viewport": [
+      1180,
+      820
+    ]
+  },
+  {
+    "theme": "classic",
+    "document": [
+      800,
+      540
+    ],
+    "panelWidth": [
+      469,
+      469
+    ],
+    "submitVisible": true,
+    "themeVisible": true,
+    "viewport": [
+      800,
+      540
+    ]
+  },
+  {
+    "theme": "classic",
+    "document": [
+      390,
+      540
+    ],
+    "panelWidth": [
+      369,
+      369
+    ],
+    "submitVisible": true,
+    "themeVisible": true,
+    "viewport": [
+      390,
+      540
+    ]
+  },
+  {
+    "theme": "mantine",
+    "document": [
+      1180,
+      820
+    ],
+    "panelWidth": [
+      799,
+      799
+    ],
+    "submitVisible": true,
+    "themeVisible": true,
+    "viewport": [
+      1180,
+      820
+    ]
+  },
+  {
+    "theme": "mantine",
+    "document": [
+      800,
+      540
+    ],
+    "panelWidth": [
+      489,
+      489
+    ],
+    "submitVisible": true,
+    "themeVisible": true,
+    "viewport": [
+      800,
+      540
+    ]
+  },
+  {
+    "theme": "mantine",
+    "document": [
+      390,
+      540
+    ],
+    "panelWidth": [
+      365,
+      365
+    ],
+    "submitVisible": true,
+    "themeVisible": true,
+    "viewport": [
+      390,
+      540
+    ]
+  }
+]
