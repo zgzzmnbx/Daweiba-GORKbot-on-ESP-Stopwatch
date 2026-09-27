@@ -28,7 +28,11 @@ class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("gork", MODE_PRIVATE) }
     private val ble by lazy { WatchBleController(this) }
     private val speech by lazy { LocalSpeech(this) }
+    private val asr by lazy { LocalAsr(this) }
     private var permissionDone: ((Boolean) -> Unit)? = null
+    private var recordPermissionDone: ((Boolean) -> Unit)? = null
+    private var asrRequested = false
+    private var asrStopRequested = false
     private var webViewDestroyed = false
     private var audioPickDone: ((Boolean, String, JSONObject?) -> Unit)? = null
     private var synthToWatchBusy = false
@@ -52,11 +56,13 @@ class MainActivity : Activity() {
                 pageGeneration++
                 ble.disconnect()
                 speech.stop()
+                cancelAsr()
                 audioPickDone?.invoke(false, "PAGE_RELOADED", null)
                 audioPickDone = null
             }
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                 ble.disconnect()
+                cancelAsr()
                 setContentView(TextView(this@MainActivity).apply {
                     text = "Gork 页面进程已退出，所有 Watch 任务已停止。请重新打开应用。"
                     textSize = 18f
@@ -109,7 +115,8 @@ class MainActivity : Activity() {
         }
         if (synthToWatchBusy && method in setOf("device.scan", "device.connect", "character.play",
                 "character.showText", "character.clear", "sound.play", "sound.volume", "sound.stop",
-                "audio.pickAndPlayPcm", "speech.local.speak", "speech.local.synthesizeProbe")) {
+                "audio.pickAndPlayPcm", "speech.local.speak", "speech.local.synthesizeProbe",
+                "speech.local.asr.start")) {
             respond(BridgePolicy.error(id, "DEVICE_BUSY")); return
         }
         val params = request.optJSONObject("params") ?: JSONObject()
@@ -123,6 +130,38 @@ class MainActivity : Activity() {
         when (request.getString("method")) {
             "speech.local.status" -> { speech.status(complete); return }
             "speech.local.speak" -> { speech.speak(params.optString("text"), complete); return }
+            "speech.local.asr.status" -> {
+                complete(true, "OK", JSONObject().put("available", asr.available()).put("onDeviceOnly", true))
+                return
+            }
+            "speech.local.asr.start" -> {
+                if (asrRequested) { complete(false, "ASR_BUSY", null); return }
+                asrRequested = true
+                asrStopRequested = false
+                ensureRecordPermission { allowed ->
+                    if (!asrRequested) return@ensureRecordPermission
+                    if (!allowed || asrStopRequested) {
+                        asrRequested = false
+                        complete(false, if (allowed) "ASR_RELEASED_BEFORE_START" else "RECORD_PERMISSION_DENIED", null)
+                    } else asr.start { ok, code, value ->
+                        asrRequested = false
+                        asrStopRequested = false
+                        complete(ok, code, value?.let { JSONObject().put("text", it).put("onDevice", true) })
+                    }
+                }
+                return
+            }
+            "speech.local.asr.release" -> {
+                asrStopRequested = true
+                if (hasRecordPermission()) asr.release()
+                complete(true, "ASR_STOP_REQUESTED", JSONObject())
+                return
+            }
+            "speech.local.asr.cancel" -> {
+                cancelAsr()
+                complete(true, "ASR_CANCELLED", JSONObject())
+                return
+            }
             "speech.local.synthesizeProbe" -> {
                 speech.synthesize(params.optString("text")) { ok, code, clip ->
                     complete(ok, code, clip?.let { JSONObject().put("rate", it.rate)
@@ -149,7 +188,7 @@ class MainActivity : Activity() {
                 }
                 return
             }
-            "speech.local.stop" -> { speech.stop(); complete(true, "LOCAL_STOPPED", JSONObject()); return }
+            "speech.local.stop" -> { speech.stop(); cancelAsr(); complete(true, "LOCAL_STOPPED", JSONObject()); return }
             "device.scan" -> {
                 ensureBluetoothPermission { allowed ->
                     if (allowed) ble.scan { ok, code, devices ->
@@ -163,7 +202,7 @@ class MainActivity : Activity() {
                 else ble.connect(params.optString("address"), complete)
                 return
             }
-            "device.disconnect" -> { speech.stop(); ble.disconnect(); complete(true, "OK", ble.snapshot()); return }
+            "device.disconnect" -> { speech.stop(); cancelAsr(); ble.disconnect(); complete(true, "OK", ble.snapshot()); return }
             "character.play" -> { ble.expression(params.optString("name"), params.optString("mode", "once"), complete); return }
             "character.showText" -> { ble.bubble(params.optString("text"), complete); return }
             "character.clear" -> { ble.clear(complete); return }
@@ -171,12 +210,12 @@ class MainActivity : Activity() {
             "sound.volume" -> { ble.sound(5, params.optInt("volume"), complete); return }
             "sound.stop" -> { ble.sound(4, 0, complete); return }
             "audio.pickAndPlayPcm" -> { pickAudio(complete); return }
-            "task.cancel" -> { speech.stop(); ble.disconnect(); complete(true, "LOCAL_STOPPED", ble.snapshot()); return }
+            "task.cancel" -> { speech.stop(); cancelAsr(); ble.disconnect(); complete(true, "LOCAL_STOPPED", ble.snapshot()); return }
         }
         val result = when (request.getString("method")) {
             "capabilities.get" -> JSONObject()
                 .put("android", true).put("ble", true).put("speech", true)
-                .put("avatar", true).put("version", "0.1.2-dev").put("generation", pageGeneration)
+                .put("avatar", true).put("version", "0.1.3-dev").put("generation", pageGeneration)
             "state.get" -> ble.snapshot().put("generation", request.getInt("generation"))
             "preferences.get" -> preferences()
             "preferences.set" -> savePreferences(params)
@@ -232,6 +271,25 @@ class MainActivity : Activity() {
         checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
             checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
 
+    private fun hasRecordPermission(): Boolean =
+        checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    private fun ensureRecordPermission(done: (Boolean) -> Unit) {
+        if (hasRecordPermission()) { done(true); return }
+        if (recordPermissionDone != null) { done(false); return }
+        recordPermissionDone = done
+        requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 21)
+    }
+
+    private fun cancelAsr() {
+        val pending = recordPermissionDone
+        recordPermissionDone = null
+        pending?.invoke(false)
+        asr.cancel()
+        asrRequested = false
+        asrStopRequested = false
+    }
+
     private fun ensureBluetoothPermission(done: (Boolean) -> Unit) {
         if (hasBluetoothPermission()) { done(true); return }
         if (permissionDone != null) { done(false); return }
@@ -244,12 +302,21 @@ class MainActivity : Activity() {
         if (requestCode == 20) {
             permissionDone?.invoke(hasBluetoothPermission())
             permissionDone = null
+        } else if (requestCode == 21) {
+            val pending = recordPermissionDone
+            recordPermissionDone = null
+            pending?.invoke(hasRecordPermission())
         }
     }
 
     override fun onResume() {
         super.onResume()
         if (::webView.isInitialized && !hasBluetoothPermission()) ble.disconnect()
+    }
+
+    override fun onStop() {
+        cancelAsr()
+        super.onStop()
     }
 
     private fun preferences(): JSONObject = JSONObject()
@@ -276,6 +343,7 @@ class MainActivity : Activity() {
     )
 
     override fun onDestroy() {
+        cancelAsr()
         audioPickDone?.invoke(false, "ACTIVITY_DESTROYED", null)
         audioPickDone = null
         ble.disconnect()

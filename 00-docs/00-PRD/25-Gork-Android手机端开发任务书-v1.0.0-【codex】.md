@@ -2,7 +2,7 @@
 
 文档版本：v1.0.0
 日期：2026-09-27
-状态：已获开发启动授权，v0.1.2-dev 调试候选实施中；逐项状态见 `04-output/android/v0.1.2/本机TTS与Watch时序实施记录-【codex】.md`。
+状态：已获开发启动授权，v0.1.3-dev 调试候选实施中；逐项状态见 `04-output/android/v0.1.3/设备端ASR源码候选实施记录-【codex】.md`。
 需求基准：[24-Gork-Android手机端PRD-v1.0.0-【codex】.md](24-Gork-Android手机端PRD-v1.0.0-【codex】.md)
 
 ## 1. 目标和完成定义

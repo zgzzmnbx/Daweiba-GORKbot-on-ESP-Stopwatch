@@ -20,7 +20,7 @@
     if (!window.gorkNative) return Promise.reject(new Error('WEBVIEW_BRIDGE_UNAVAILABLE'));
     const requestId = `m${nextId++}`;
     return new Promise((resolve,reject) => {
-      const limit = ['audio.pickAndPlayPcm','speech.local.toWatch'].includes(method) ? 0 : method==='speech.local.synthesizeProbe' ? 65000 : method==='device.connect' ? 80000 : method==='device.scan' ? 15000 : method.startsWith('speech.local.') ? 20000 : 6000;
+      const limit = ['audio.pickAndPlayPcm','speech.local.toWatch','speech.local.asr.start'].includes(method) ? 0 : method==='speech.local.synthesizeProbe' ? 65000 : method==='device.connect' ? 80000 : method==='device.scan' ? 15000 : method.startsWith('speech.local.') ? 20000 : 6000;
       const timer = limit ? setTimeout(() => { pending.delete(requestId); reject(new Error('TIMEOUT')); }, limit) : null;
       pending.set(requestId,{resolve,reject,timer});
       window.gorkNative.postMessage(JSON.stringify({requestId,generation,method,params}));
@@ -117,6 +117,41 @@
     if(!value){get('chat-result').textContent='请输入要朗读的文字。';return;}
     try{await call('speech.local.speak',{text:value});get('chat-result').textContent='已提交本机中文语音引擎；实际听感待确认。';}
     catch(error){get('chat-result').textContent=`本机朗读不可用：${error.message}`;}
+  };
+  let asrActive=false;
+  let asrPressed=false;
+  const asrButton=get('hold-asr');
+  function beginAsr(event){
+    if(asrActive)return;
+    asrActive=true;asrPressed=true;
+    if(event?.pointerId!==undefined){try{asrButton.setPointerCapture(event.pointerId);}catch{}}
+    get('chat-result').textContent='正在等待设备端识别；松开后结束采集。';
+    call('speech.local.asr.start').then(result=>{
+      get('draft').value=result.text;
+      save({draft:result.text});
+      get('chat-result').textContent='设备端识别结果已放入输入框，请确认后再发送。';
+    }).catch(error=>{get('chat-result').textContent=`设备端识别未完成：${error.message}`;})
+      .finally(()=>{asrActive=false;asrPressed=false;});
+  }
+  function releaseAsr(){
+    if(!asrPressed)return;
+    asrPressed=false;
+    call('speech.local.asr.release').catch(()=>{});
+  }
+  function cancelAsr(){
+    if(!asrActive)return;
+    asrPressed=false;
+    call('speech.local.asr.cancel').catch(()=>{});
+  }
+  asrButton.addEventListener('pointerdown',beginAsr);
+  asrButton.addEventListener('pointerup',releaseAsr);
+  asrButton.addEventListener('pointercancel',cancelAsr);
+  asrButton.addEventListener('keydown',event=>{if(!event.repeat&&['Enter',' '].includes(event.key)){event.preventDefault();beginAsr();}});
+  asrButton.addEventListener('keyup',event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();releaseAsr();}});
+  get('check-asr').onclick=async()=>{
+    try {const result=await call('speech.local.asr.status');
+      get('asr-state').textContent=result.available?'设备端识别服务可用；中文语言包和实际识别待实测。':'本机未报告设备端识别服务；不会自动改用联网识别。';
+    } catch(error) {get('asr-state').textContent=`识别服务检查失败：${error.message}`;}
   };
   get('speak-watch').onclick=async()=>{
     const value=get('draft').value.trim();
@@ -219,7 +254,7 @@
     get('audio-state').textContent='传输已中止，Watch 已断开；重新扫描后才能发送。';
   };
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='hidden'){avatar?.dispose();avatar=null;return;}
+    if(document.visibilityState==='hidden'){cancelAsr();avatar?.dispose();avatar=null;return;}
     avatar=GorkAvatar.mount(get('avatar'),GorkCatalog,{expression:'idle',appearance:{id:currentAppearance}});
     call('state.get').then(value=>setReady(value.ready)).catch(()=>setReady(false));
   });

@@ -1,10 +1,10 @@
 # M5Stack StopWatch 嵌入式开发项目
 
-## Android 手机端 v0.1.2-dev 调试候选（2026-09-27）
+## Android 手机端 v0.1.3-dev 调试候选（2026-09-27）
 
 已编制 [Gork Android 手机端 PRD](00-docs/00-PRD/24-Gork-Android手机端PRD-v1.0.0-【codex】.md) 与 [开发任务书](00-docs/00-PRD/25-Gork-Android手机端开发任务书-v1.0.0-【codex】.md)。推荐做成类似“大尾巴闪念”的独立 APK，由 vivo 手机直接通过 BLE 控制 Watch；Android v0.1.0 基础控制、v0.2.0 语音与 AI、v0.3.0 可选悬浮伴侣均为计划版本。现有 Watch 仅绑定一个控制端，首轮手机使用需要明确迁移绑定；电脑和手机免换绑交替控制另需固件专项。
 
-用户已授权按独立 APK、手机 BLE 直连路线开始开发。[Android 工程](03-Src/gork-android/README.md)现为 v0.1.2-dev 调试候选：保留基础控制与手选 WAV→Watch PCM 实验，增加系统本机 TTS 完整文件导出、WAV 转换、三包音频窗口和 COMMIT 后文字再 PLAY 的源码时序。Gradle 构建、12 项桥/协议/WAV/窗口单测、Lint 和资源一致性通过；详见 [本机 TTS 与 Watch 时序记录](04-output/android/v0.1.2/本机TTS与Watch时序实施记录-【codex】.md)。v0.1.0 浏览器替身检查见[开发基线](04-output/android/v0.1.0/开发基线与验收记录-【codex】.md)。ADB 未连接手机，APK 尚未安装，Watch 换绑与真实 GATT/听验、正式签名升级、v0.2.0 ASR/AI/Opus 闭环仍待执行。电脑源码仍 v0.15.0-dev，固件仍 v0.9.1-dev；未重启桌面服务或写固件。
+用户已授权按独立 APK、手机 BLE 直连路线开始开发。[Android 工程](03-Src/gork-android/README.md)现为 v0.1.3-dev 调试候选：保留基础控制、手选 WAV→Watch PCM 和本机 TTS→Watch 实验，增加设备端中文 ASR 按住说话源码入口；结果只填入手机草稿。Gradle 构建、12 项桥/协议/WAV/窗口单测、Lint 和资源一致性通过；详见 [设备端 ASR 源码候选记录](04-output/android/v0.1.3/设备端ASR源码候选实施记录-【codex】.md)。ADB 未连接手机，APK 尚未安装，Watch 换绑与真实 GATT/听验、正式签名升级、v0.2.0 AI/云 Provider/Opus 闭环仍待执行。电脑源码仍 v0.15.0-dev，固件仍 v0.9.1-dev；未重启桌面服务或写固件。
 
 ## v0.15.0-dev：Mantine 控制台与经典主题（2026-09-26）
 

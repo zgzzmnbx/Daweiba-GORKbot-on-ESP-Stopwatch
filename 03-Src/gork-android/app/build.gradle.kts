@@ -13,8 +13,8 @@ android {
         applicationId = "com.daweiba.gork"
         minSdk = 31
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.1.2-dev"
+        versionCode = 4
+        versionName = "0.1.3-dev"
     }
 
     compileOptions {
