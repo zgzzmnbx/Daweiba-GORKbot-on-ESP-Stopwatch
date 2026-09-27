@@ -1,10 +1,10 @@
 # M5Stack StopWatch 嵌入式开发项目
 
-## Android 手机端 v0.1.5-dev 调试候选（2026-09-27）
+## Android 手机端 v0.1.7-dev 调试候选（2026-09-27）
 
 已编制 [Gork Android 手机端 PRD](00-docs/00-PRD/24-Gork-Android手机端PRD-v1.0.0-【codex】.md) 与 [开发任务书](00-docs/00-PRD/25-Gork-Android手机端开发任务书-v1.0.0-【codex】.md)。推荐做成类似“大尾巴闪念”的独立 APK，由 vivo 手机直接通过 BLE 控制 Watch；Android v0.1.0 基础控制、v0.2.0 语音与 AI、v0.3.0 可选悬浮伴侣均为计划版本。现有 Watch 仅绑定一个控制端，首轮手机使用需要明确迁移绑定；电脑和手机免换绑交替控制另需固件专项。
 
-用户已授权按独立 APK、手机 BLE 直连路线开始开发。[Android 工程](03-Src/gork-android/README.md)现为 v0.1.5-dev 调试候选：保留基础控制、手选 WAV→Watch PCM、本机 TTS→Watch、设备端 ASR 与用户配置文字 AI 源码路径，并修正本机 ASR 不可用时仍申请麦克风的顺序。Gradle 构建、13 项单测、Lint 和资源一致性通过；[V2405A 手机实测记录](04-output/android/v0.1.5/手机安装与本机语音实测记录-【codex】.md)确认首次安装、同签名覆盖升级保留“你好”草稿、本机中文 TTS 文件导出及 ASR 不可用提示；用户补充确认手机朗读“你好”可闻。用户要求先停在现有功能，不继续新增云 ASR/TTS、Opus、后台或悬浮功能。Watch 未换绑、真实 GATT/听验和云 AI 请求未测；手机朗读清晰度及其他语句尚未评价。电脑源码仍 v0.15.0-dev，固件仍 v0.9.1-dev；未重启桌面服务或写固件。
+用户已授权按独立 APK、手机 BLE 直连路线开始开发。[Android 工程](03-Src/gork-android/README.md)现为 v0.1.7-dev 调试候选：保留基础控制、手选 WAV→Watch PCM、本机 TTS→Watch、设备端 ASR 与用户配置文字 AI 源码路径，并补齐手机 BLE 扫描的非定位用途声明。Gradle 构建、13 项单测、Lint 和资源一致性通过；[v0.1.5 手机语音实测](04-output/android/v0.1.5/手机安装与本机语音实测记录-【codex】.md)确认手机朗读“你好”可闻、该机设备端 ASR 不可用。[v0.1.7 Watch 实测](04-output/android/v0.1.7/BLE配对与基础控制实测-【codex】.md)确认用户在设备本机清旧绑定后，手机发现、加密配对、三服务发现及通知订阅就绪；用户看到手机触发的表情与“你好”文字，听到短音 1，并确认 Watch 朗读“你好”完整清楚。用户要求先停在现有功能，不继续新增云 ASR/TTS、Opus、后台或悬浮功能。手机已成为 Watch 当前控制端；电脑需重新迁移配对才能控制。云 AI 请求、长稳和完整回归未测。电脑源码仍 v0.15.0-dev，固件仍 v0.9.1-dev；未重启桌面服务或写固件。
 
 ## v0.15.0-dev：Mantine 控制台与经典主题（2026-09-26）
 

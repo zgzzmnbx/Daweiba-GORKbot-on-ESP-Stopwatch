@@ -11,7 +11,6 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.BroadcastReceiver
@@ -21,7 +20,7 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.os.ParcelUuid
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
@@ -95,11 +94,17 @@ class WatchBleController(private val activity: Activity) {
         val scanner = adapter.bluetoothLeScanner ?: run { done(false, "SCAN_UNAVAILABLE", null); return }
         state = "SCANNING"
         scanDone = done
+        var resultCount = 0
+        var namedCount = 0
+        var serviceCount = 0
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 handler.post {
+                    resultCount++
                     val device = result.device
                     val name = result.scanRecord?.deviceName ?: try { device.name } catch (_: SecurityException) { null }
+                    if (name != null) namedCount++
+                    if (!result.scanRecord?.serviceUuids.isNullOrEmpty()) serviceCount++
                     if (name == "GorkBot-SW" || result.scanRecord?.serviceUuids?.any {
                             it.uuid == WatchProtocol.expressionService
                         } == true) candidates[device.address] = device
@@ -111,12 +116,18 @@ class WatchBleController(private val activity: Activity) {
         }
         scanCallback = callback
         try {
+            // Match the Gork name or service UUID from scan results in onScanResult.
             scanner.startScan(
-                listOf(ScanFilter.Builder().setServiceUuid(ParcelUuid(WatchProtocol.expressionService)).build()),
+                null,
                 ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), callback
             )
         } catch (_: Exception) { finishScan(false, "SCAN_FAILED"); return }
-        handler.postDelayed({ if (scanCallback === callback) finishScan(true, "OK") }, 8000)
+        handler.postDelayed({
+            if (scanCallback === callback) {
+                Log.i("GorkBleScan", "results=$resultCount named=$namedCount services=$serviceCount candidates=${candidates.size}")
+                finishScan(true, "OK")
+            }
+        }, 8000)
     }
 
     private fun finishScan(ok: Boolean, code: String) {

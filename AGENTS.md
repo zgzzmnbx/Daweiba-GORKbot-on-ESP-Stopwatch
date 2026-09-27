@@ -11,6 +11,8 @@
 
 ## 2. 当前任务边界
 
+- 2026-09-27 Android v0.1.7-dev：V2405A / Android 16 的 BLE 扫描先前 8 秒内无任何回调；按 Android 官方规则为 `BLUETOOTH_SCAN` 声明 `neverForLocation` 后，用户在 Watch 本机清旧绑定、打开 Pair 窗口，手机发现 GorkBot-SW、配对并完成三服务发现/通知订阅。用户看到了手机发送的表情和“你好”文字，听到了短音 1，并确认 Watch 朗读“你好”完整清楚。手机蓝牙详情中已关闭系统默认勾选的通讯录同步。电脑旧绑定已失效，恢复电脑控制需重新迁移配对。手机现有功能范围不扩展；详见 `04-output/android/v0.1.7/BLE配对与基础控制实测-【codex】.md`。
+
 - 2026-09-27 Android v0.1.5-dev：用户接入 V2405A / Android 16 手机并要求先停在现有功能。修复设备端 ASR 不可用时仍索取麦克风权限；13 项单测、构建、Lint 通过，v0.1.5 调试 APK 已经用户本人确认 vivo 外部安装提示后同签名覆盖安装。手机“你好”草稿保留，TTS 完整文件导出成功，用户补充确认手机朗读“你好”可闻；设备端 ASR 报不可用。声音清晰度、其他语句、Watch 换绑/GATT 和云请求未验收。后续云 ASR/TTS、Opus、后台和悬浮功能暂停新增，详见 `04-output/android/v0.1.5/手机安装与本机语音实测记录-【codex】.md`。
 
 - 2026-09-27 Android v0.1.4-dev：新增用户可配置 HTTPS 文字 AI、Keystore 加密个人 Key、AI 提问及原任务书三项上传许可。默认许可全部关闭，云请求需用户在手机界面显式配置和点击；本机 13 项单测、构建、Lint 通过，APK 位于 `04-output/android/v0.1.4/`。尚无手机或真实云调用，A13 不得标 PASS；云 ASR/TTS、Opus、后台服务仍未完成。
@@ -168,6 +170,8 @@
 - 交付前检查：源码、固件、构建说明、测试结果、已知问题、版本号和 CHANGELOG 一致。
 
 ## 10. 项目经验 / 注意事项
+
+- Android 12+ 使用 `BLUETOOTH_SCAN` 且不通过扫描推导位置时，需在 manifest 声明 `android:usesPermissionFlags="neverForLocation"`；本机 V2405A 在缺少该声明且未申请定位权限时，BLE 扫描返回 0 条回调。系统蓝牙配对弹窗曾默认勾选通讯录访问；GorkBot 不需要这项权限，配对后应在设备详情关闭并核对。
 
 - Mantine UI 权威模板为 `03-Src/stopwatch-voice-companion/ui/console.html`，`npm run build:ui` 用真实 Mantine 组件生成 `static/index.html` 与本地 CSS；不要直接编辑生成 HTML。Mantine 的 SSR 行内变量必须导出为外部样式以满足既有 `style-src self`，不放宽 CSP。静态 `data-disabled` 不得与原控制器更新的原生 disabled 状态冲突。主题只切换样式，不重建 DOM、不刷新、不另起连接。
 

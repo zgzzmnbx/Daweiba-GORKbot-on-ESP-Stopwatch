@@ -1,5 +1,14 @@
 # CHANGELOG 历史归档
 
+## Android v0.1.2-dev - 2026-09-27（本机 TTS 与 Watch 文字时序候选）
+
+- Android versionCode 3；系统声明无需网络的中文音色可异步导出完整音频，应用私有缓存内校验 PCM16 WAV、混声道和采样率转换，超时/停止/重启清理文件；超出 10 秒拒绝，不静默裁剪。
+- 本机合成→Watch PCM 的源码路径在同一 BLE 任务中执行 COMMIT→对应文字 F0/F1/F2→PLAY；最多三包音频在途，底层 GATT 写入串行，进度只按设备 ACK 推进；基础指令同时等待写入回调和设备回执。12 项桥/协议/WAV/窗口单测、构建、Lint 和资源检查通过；APK v2 签名验证。ADB 无手机，未安装、换绑或听验；ASR/AI/Opus 与后台服务待实施。详见 `04-output/android/v0.1.2/本机TTS与Watch时序实施记录-【codex】.md`。
+
+## Android v0.1.1-dev - 2026-09-27（Watch PCM 实验候选）
+
+- Android versionCode 2；增加手选 WAV 的严格 PCM16 单声道 16/24 kHz、0.1–10 秒校验和同一 GATT 上的 HELLO/BEGIN/DATA/COMMIT/PLAY/PLAYED 链路；只按设备 ACK 推进，支持限时与中止。
+- 8 项桥/协议/WAV 单测、构建、Lint 和资源检查通过；页面重载停止旧 BLE 任务并校验桥代际号；调试 APK v2 签名验证。ADB 无手机，未安装、换绑或听验；Opus、TTS/AI 自动闭环与后台服务仍待实施。记录见 `04-output/android/v0.1.1/PCM实验实施与验收记录-【codex】.md`。
 ## Android v0.1.0-dev - 2026-09-27（手机基础控制调试候选）
 
 - 新建独立 Gradle Wrapper / Kotlin / WebView 工程；共用 Gork 角色资源，四标签页面、10 形象与 23 来源表情预览、本机文字与偏好保存。
