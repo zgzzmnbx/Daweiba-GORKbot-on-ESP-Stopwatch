@@ -1,6 +1,6 @@
 # Gork Android
 
-独立 Android 工程，当前为 **v0.1.5-dev 调试候选**。包名 `com.daweiba.gork`，与闪念 `com.dabawei.flashnote` 独立。手机端源码已有本地四标签角色页、偏好与草稿保存、受限 WebView 桥、原生 BLE 基础控制、手选 WAV 的 Watch PCM 传输实验、本机中文 TTS 文件导出→格式转换→Watch PCM、显式设备端中文 ASR 按住说话，以及用户配置的 HTTPS 文字 AI 与独立上传许可。V2405A（Android 16）已安装并做部分手机实测；Watch 未换绑，云端未调用，声音实际听感未确认。
+独立 Android 工程，当前为 **v0.1.5-dev 调试候选**。包名 `com.daweiba.gork`，与闪念 `com.dabawei.flashnote` 独立。手机端源码已有本地四标签角色页、偏好与草稿保存、受限 WebView 桥、原生 BLE 基础控制、手选 WAV 的 Watch PCM 传输实验、本机中文 TTS 文件导出→格式转换→Watch PCM、显式设备端中文 ASR 按住说话，以及用户配置的 HTTPS 文字 AI 与独立上传许可。V2405A（Android 16）已安装并做部分手机实测；用户确认手机朗读“你好”可闻。Watch 未换绑，云端未调用，其他语句和音质未评价。
 
 ## 环境与构建
 
@@ -20,4 +20,4 @@
 
 ## 测试状态
 
-本机 Gradle 构建、13 项桥/协议/WAV 转换、音频窗口及云地址校验单测、资产一致性检查已执行；v0.1.5 手机结果见项目 `04-output/android/v0.1.5/手机安装与本机语音实测记录-【codex】.md`。该手机设备端 ASR 不可用；本机 TTS 文件导出成功，实际可闻性待确认。Watch GATT、设备回执、真实云请求和其余验收仍不能由本机检查替代。
+本机 Gradle 构建、13 项桥/协议/WAV 转换、音频窗口及云地址校验单测、资产一致性检查已执行；v0.1.5 手机结果见项目 `04-output/android/v0.1.5/手机安装与本机语音实测记录-【codex】.md`。该手机设备端 ASR 不可用；本机 TTS 文件导出成功，用户确认手机朗读“你好”可闻。Watch GATT、设备回执、真实云请求和其余验收仍不能由本机检查替代。
