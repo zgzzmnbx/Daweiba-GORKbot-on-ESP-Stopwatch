@@ -4,6 +4,7 @@
 
 ## Android v0.1.7-dev - 2026-09-27（手机 BLE 扫描与真机控制）
 
+- 后续需求记录：大尾巴确认 Watch 双端可信绑定及电脑认证后优先接管，方案见 `00-docs/00-PRD/26-Watch双端可信绑定与电脑优先方案-【codex】.md`；当前固件未修改、未写入。
 - Android versionCode 8；为不用于定位的 `BLUETOOTH_SCAN` 补齐官方 `neverForLocation` 声明。13 项单测、构建与 Lint 通过；用户本人确认 vivo 安全守护后同签名覆盖安装。
 - 用户在 Watch 清旧绑定后，手机发现设备并完成系统配对、三服务发现和通知订阅；用户看到表情与“你好”文字、听到短音 1，并确认 Watch 朗读“你好”完整清楚。系统默认勾选的通讯录同步已在手机蓝牙设备详情关闭。详见 `04-output/android/v0.1.7/BLE配对与基础控制实测-【codex】.md`。
 
