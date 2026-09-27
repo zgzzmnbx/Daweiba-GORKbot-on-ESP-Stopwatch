@@ -1,5 +1,11 @@
 # M5Stack StopWatch 嵌入式开发项目
 
+## Android 手机端 v0.1.1-dev 调试候选（2026-09-27）
+
+已编制 [Gork Android 手机端 PRD](00-docs/00-PRD/24-Gork-Android手机端PRD-v1.0.0-【codex】.md) 与 [开发任务书](00-docs/00-PRD/25-Gork-Android手机端开发任务书-v1.0.0-【codex】.md)。推荐做成类似“大尾巴闪念”的独立 APK，由 vivo 手机直接通过 BLE 控制 Watch；Android v0.1.0 基础控制、v0.2.0 语音与 AI、v0.3.0 可选悬浮伴侣均为计划版本。现有 Watch 仅绑定一个控制端，首轮手机使用需要明确迁移绑定；电脑和手机免换绑交替控制另需固件专项。
+
+用户已授权按独立 APK、手机 BLE 直连路线开始开发。[Android 工程](03-Src/gork-android/README.md)现为 v0.1.1-dev 调试候选：保留 v0.1.0 角色/页面、原生 BLE 基础控制和本地中文 TTS 探测，新增手选 WAV→Watch PCM 传输实验及页面重载代际拦截。Gradle 构建、8 项桥/协议/WAV 单测、Lint、资源一致性已通过；v0.1.0 的浏览器替身布局检查见[开发基线](04-output/android/v0.1.0/开发基线与验收记录-【codex】.md)，本轮详情见 [PCM 实验记录](04-output/android/v0.1.1/PCM实验实施与验收记录-【codex】.md)。ADB 未连接手机，APK 尚未安装，Watch 换绑与真实 GATT/听验、正式签名升级、v0.2.0 语音 AI 闭环仍待执行。电脑源码仍 v0.15.0-dev，固件仍 v0.9.1-dev；未重启桌面服务或写固件。
+
 ## v0.15.0-dev：Mantine 控制台与经典主题（2026-09-26）
 
 六个功能页使用 Mantine 9.6.2 组件重绘，保留左侧常驻 Gork、右侧标签页和轻量输入区。右上角「经典主题 / Mantine 主题」即时切换并记住；仅切换样式，不刷新页面，不丢失草稿/记录/开关，不新建语音或 BLE 连接。角色形象、表情、桌面大小/气泡、设备控制、语音设置、造价助手和日志沿用现有逻辑。

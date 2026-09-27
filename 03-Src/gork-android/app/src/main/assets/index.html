@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'; img-src 'self' data:">
+  <title>Gork</title>
+  <link rel="stylesheet" href="shell.css">
+  <script defer src="shared/avatar-presets.js"></script>
+  <script defer src="shared/avatar-engine.js"></script>
+  <script defer src="shared/gork-appearance.js"></script>
+  <script defer src="shared/gork-catalog.js"></script>
+  <script defer src="shared/gork-avatar.js"></script>
+  <script defer src="mobile.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header><strong>Gork</strong><span id="top-status">手机页面可用 · Watch 未连接</span></header>
+    <section class="companion" aria-label="手机角色">
+      <canvas id="avatar" width="280" height="280" aria-label="Gork 角色动画"></canvas>
+      <div id="bubble" class="bubble" hidden></div>
+    </section>
+    <main>
+      <section id="tab-chat" class="panel" data-panel="chat">
+        <h1>对话</h1>
+        <p class="subtle">输入文字，在手机角色上显示。Watch 输出将在设备连接后启用。</p>
+        <label for="draft">文字</label>
+        <textarea id="draft" rows="3" maxlength="300" placeholder="输入要让 Gork 表达的话"></textarea>
+        <fieldset><legend>显示目标</legend>
+          <label><input type="radio" name="target" value="phone" checked> 手机</label>
+          <label><input type="radio" name="target" value="watch" disabled> Watch</label>
+          <label><input type="radio" name="target" value="both" disabled> 两端</label>
+        </fieldset>
+        <div class="actions"><button id="send" class="primary">显示文字</button><button id="speak-local">手机朗读</button><button id="stop">停止</button></div>
+        <p id="chat-result" class="result" role="status"></p>
+      </section>
+      <section id="tab-character" class="panel" data-panel="character" hidden>
+        <h1>角色</h1>
+        <label for="appearance">手机形象</label><select id="appearance"></select>
+        <p class="subtle">手机形象只在本机显示。Watch 当前固定 Gork。</p>
+        <h2>表情预览</h2><div id="expressions" class="expression-grid"></div>
+        <div class="watch-control"><label for="watch-expression">发送给 Watch</label><select id="watch-expression"></select>
+          <select id="watch-mode" aria-label="Watch 播放方式"><option value="once">播放一次</option><option value="loop">循环</option><option value="pingpong">往返循环</option></select>
+          <button id="send-expression" disabled>发送表情到 Watch</button></div>
+      </section>
+      <section id="tab-watch" class="panel" data-panel="watch" hidden>
+        <h1>StopWatch</h1>
+        <p id="watch-state" class="state-card" role="status">未连接。请先扫描附近的 GorkBot-SW。</p>
+        <p class="subtle">当前固件只保存一个控制端。手机真机使用前需先在设备上明确迁移绑定；电脑连接会暂时中断。</p>
+        <button id="scan">扫描 Watch</button>
+        <label for="devices">扫描结果</label><select id="devices"><option value="">暂无设备</option></select>
+        <label class="ack"><input id="migration-ack" type="checkbox"> 我已了解：绑定迁移会暂时中断电脑控制，并需在 Watch 本机操作</label>
+        <div class="actions"><button id="connect" disabled>配对并连接</button><button id="disconnect">断开</button></div>
+        <h2>内置短音</h2><div id="sounds" class="sound-grid"></div>
+        <label for="volume">音量 <output id="volume-value">50%</output></label><input id="volume" type="range" min="0" max="100" value="50" disabled>
+        <div class="actions"><button id="set-volume" disabled>设置音量</button><button id="stop-sound" disabled>停止短音</button></div>
+        <h2>Watch 朗读传输实验</h2>
+        <p class="subtle">选择完整语句的 WAV：PCM16、单声道、16 或 24 kHz、0.1–10 秒。传输成功仅表示收到设备 PLAYED 回执，仍需听验。</p>
+        <div class="actions"><button id="play-wav" disabled>选择 WAV 并发送</button><button id="cancel-audio" disabled>中止传输并断开</button></div>
+        <p id="audio-state" class="subtle" role="status">尚未开始传输。</p>
+      </section>
+      <section id="tab-settings" class="panel" data-panel="settings" hidden>
+        <h1>设置</h1>
+        <label for="theme">主题</label><select id="theme"><option value="light">浅色</option><option value="dark">深色</option></select>
+        <button id="check-tts">检测本机中文语音</button><p id="tts-state" class="subtle" role="status">仅选用系统报告为无需网络的中文音色；实际可用性待本机检测。</p>
+        <p class="subtle">云语音、录音、AI 和后台连接尚未启用。不会自动录音、上传或控制 Watch。</p>
+        <p class="version">Gork Android v0.1.1-dev · 工程候选</p>
+      </section>
+    </main>
+    <nav aria-label="主导航">
+      <button data-tab="chat" aria-current="page">对话</button>
+      <button data-tab="character">角色</button>
+      <button data-tab="watch">Watch</button>
+      <button data-tab="settings">设置</button>
+    </nav>
+  </div>
+</body>
+</html>
