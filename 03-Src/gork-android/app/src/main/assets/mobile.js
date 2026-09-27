@@ -20,7 +20,7 @@
     if (!window.gorkNative) return Promise.reject(new Error('WEBVIEW_BRIDGE_UNAVAILABLE'));
     const requestId = `m${nextId++}`;
     return new Promise((resolve,reject) => {
-      const limit = method==='audio.pickAndPlayPcm' ? 0 : method==='device.connect' ? 80000 : method==='device.scan' ? 15000 : method.startsWith('speech.local.') ? 15000 : 6000;
+      const limit = ['audio.pickAndPlayPcm','speech.local.toWatch'].includes(method) ? 0 : method==='speech.local.synthesizeProbe' ? 65000 : method==='device.connect' ? 80000 : method==='device.scan' ? 15000 : method.startsWith('speech.local.') ? 20000 : 6000;
       const timer = limit ? setTimeout(() => { pending.delete(requestId); reject(new Error('TIMEOUT')); }, limit) : null;
       pending.set(requestId,{resolve,reject,timer});
       window.gorkNative.postMessage(JSON.stringify({requestId,generation,method,params}));
@@ -32,12 +32,13 @@
   let currentAppearance='gork';
   let ready=false;
   let audioBusy=false;
-  const watchControls=['send-expression','set-volume','stop-sound','volume','play-wav'];
+  const watchControls=['send-expression','set-volume','stop-sound','volume','play-wav','speak-watch'];
   let savedTarget='phone';
   function setReady(value) {
     ready=Boolean(value);
     watchControls.forEach(id=>{get(id).disabled=!ready;});
     get('play-wav').disabled=!ready||audioBusy;
+    get('speak-watch').disabled=!ready||audioBusy;
     document.querySelectorAll('#sounds button').forEach(button=>{button.disabled=!ready;});
     document.querySelectorAll('input[name=target]').forEach(input=>{
       if(input.value!=='phone')input.disabled=!ready;
@@ -117,10 +118,37 @@
     try{await call('speech.local.speak',{text:value});get('chat-result').textContent='已提交本机中文语音引擎；实际听感待确认。';}
     catch(error){get('chat-result').textContent=`本机朗读不可用：${error.message}`;}
   };
+  get('speak-watch').onclick=async()=>{
+    const value=get('draft').value.trim();
+    if(!value){get('chat-result').textContent='请输入完整语句。';return;}
+    if(!ready){get('chat-result').textContent='Watch 未连接。';return;}
+    audioBusy=true;
+    setReady(true);
+    get('chat-result').textContent='正在本机合成完整音频，然后传给 Watch…';
+    try {
+      await call('speech.local.toWatch',{text:value});
+      get('chat-result').textContent='设备报告 PLAYED；文字在 COMMIT 后发送。请听验完整语句。';
+    } catch(error) {
+      get('chat-result').textContent=`Watch 朗读未完成：${error.message}`;
+      call('state.get').then(state=>setReady(state.ready)).catch(()=>setReady(false));
+    } finally {audioBusy=false;setReady(ready);}
+  };
   get('check-tts').onclick=async()=>{
     get('tts-state').textContent='正在检测系统中文音色…';
     try{const result=await call('speech.local.status');get('tts-state').textContent=`可用的本机中文音色：${result.voice}。`;
     }catch(error){get('tts-state').textContent=`本机中文音色不可用：${error.message}`;}
+  };
+  get('probe-tts-file').onclick=async()=>{
+    const value=get('draft').value.trim();
+    if(!value){get('tts-file-state').textContent='先在对话页输入完整语句。';return;}
+    const button=get('probe-tts-file');
+    button.disabled=true;
+    get('tts-file-state').textContent='正在等待本机语音引擎生成完整文件…';
+    try {
+      const result=await call('speech.local.synthesizeProbe',{text:value});
+      get('tts-file-state').textContent=`完整文件已转为 ${result.rate} Hz PCM16、${result.seconds.toFixed(2)} 秒（${result.bytes} 字节）；尚未发送 Watch。`;
+    } catch(error) {get('tts-file-state').textContent=`本机文件合成不可用：${error.message}`;}
+    finally {button.disabled=false;}
   };
   const devices=get('devices');
   get('scan').onclick=async () => {

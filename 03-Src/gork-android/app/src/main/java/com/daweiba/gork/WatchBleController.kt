@@ -51,15 +51,20 @@ class WatchBleController(private val activity: Activity) {
     private data class AudioTask(
         val connection: Int,
         val clip: WavPcm16.Clip,
+        val textPackets: List<WatchProtocol.ExpectedPacket>,
         val done: (Boolean, String, JSONObject?) -> Unit,
         var transfer: Int = 0xf00d,
         var session: Long = 0,
         var stage: String = "HELLO",
-        var offset: Int = 0,
-        var nextOffset: Int = 0,
+        var window: AudioWindow? = null,
+        var dataWritePending: Boolean = false,
+        var dataAckMarker: Int = 0,
         var writeDone: Boolean = false,
         var receipt: WatchProtocol.AudioPacket? = null,
         var serial: Int = 0,
+        var textIndex: Int = 0,
+        var textWriteDone: Boolean = false,
+        var textReceipt: Boolean = false,
     )
 
     private data class Task(
@@ -69,11 +74,14 @@ class WatchBleController(private val activity: Activity) {
         val soundRequest: Int,
         val done: (Boolean, String, JSONObject?) -> Unit,
         var index: Int = 0,
+        var writeDone: Boolean = false,
+        var confirmedStatus: String? = null,
     )
 
     fun snapshot(): JSONObject = JSONObject().put("device", state).put("ready", state == "READY")
         .put("audio", audio?.let {
-            JSONObject().put("stage", it.stage).put("confirmedBytes", it.offset).put("totalBytes", it.clip.pcm.size)
+            JSONObject().put("stage", it.stage).put("confirmedBytes", it.window?.confirmedBytes ?: 0)
+                .put("totalBytes", it.clip.pcm.size)
         } ?: JSONObject.NULL)
 
     fun scan(done: (Boolean, String, JSONArray?) -> Unit) {
@@ -240,8 +248,24 @@ class WatchBleController(private val activity: Activity) {
                 if (status != BluetoothGatt.GATT_SUCCESS) { close("WRITE_FAILED_$status"); return@post }
                 if (characteristic.uuid == WatchProtocol.audioInput) {
                     val current = audio ?: return@post
-                    current.writeDone = true
-                    if (current.receipt != null) advanceAudio(current)
+                    if (current.stage == "DATA") {
+                        current.dataWritePending = false
+                        pumpAudioData(current)
+                    } else {
+                        current.writeDone = true
+                        if (current.receipt != null) advanceAudio(current)
+                    }
+                } else if (characteristic.uuid == WatchProtocol.expressionCommand && audio?.stage == "TEXT") {
+                    val current = audio ?: return@post
+                    current.textWriteDone = true
+                    if (current.textReceipt) advanceAudioText(current)
+                } else {
+                    val current = task ?: return@post
+                    val expected = if (current.kind == "sound") WatchProtocol.soundCommand else WatchProtocol.expressionCommand
+                    if (characteristic.uuid == expected) {
+                        current.writeDone = true
+                        if (current.confirmedStatus != null) advanceTask(current)
+                    }
                 }
             }
         }
@@ -288,23 +312,29 @@ class WatchBleController(private val activity: Activity) {
                 onAudioNotification(bytes)
                 return@post
             }
+            if (uuid == WatchProtocol.expressionStatus && audio?.stage == "TEXT") {
+                onAudioTextNotification(bytes)
+                return@post
+            }
             val current = task ?: return@post
             if (current.epoch != connectionEpoch) return@post
             if (current.kind == "expression" && uuid == WatchProtocol.expressionStatus) {
                 val status = try { String(bytes, StandardCharsets.US_ASCII).trim() } catch (_: Exception) { return@post }
-                if (status.startsWith("ERR:")) { finishTask(false, status); return@post }
+                if (status.startsWith("ERR:")) { close(status); return@post }
                 if (status == current.packets[current.index].status) {
-                    current.index++
-                    if (current.index == current.packets.size) finishTask(true, status)
-                    else writeCurrent()
+                    current.confirmedStatus = status
+                    if (current.writeDone) advanceTask(current)
                 }
             } else if (current.kind == "sound" && uuid == WatchProtocol.soundEvent) {
                 val frame = try { WatchProtocol.SoundFrame.decode(bytes) } catch (_: Exception) { return@post }
                 if (frame.id != current.soundRequest) return@post
                 val requested = current.packets[0].bytes[1].toInt() and 0xff
                 when (frame.operation) {
-                    0xff -> finishTask(false, "SOUND_REJECTED")
-                    else -> if (WatchProtocol.soundTerminal(requested, frame.operation)) finishTask(true, "SOUND_CONFIRMED")
+                    0xff -> close("SOUND_REJECTED")
+                    else -> if (WatchProtocol.soundTerminal(requested, frame.operation)) {
+                        current.confirmedStatus = "SOUND_CONFIRMED"
+                        if (current.writeDone) advanceTask(current)
+                    }
                 }
             }
         }
@@ -352,6 +382,8 @@ class WatchBleController(private val activity: Activity) {
         val service = if (current.kind == "sound") WatchProtocol.soundService else WatchProtocol.expressionService
         val char = client.getService(service)?.getCharacteristic(uuid) ?: run { close("SERVICES_MISSING"); return }
         val bytes = current.packets[current.index].bytes
+        current.writeDone = false
+        current.confirmedStatus = null
         val started = if (Build.VERSION.SDK_INT >= 33)
             client.writeCharacteristic(char, bytes, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) == BluetoothStatusCodes.SUCCESS
         else {
@@ -365,17 +397,28 @@ class WatchBleController(private val activity: Activity) {
         }, if (current.kind == "sound") 4000 else 2000)
     }
 
+    private fun advanceTask(current: Task) {
+        val status = current.confirmedStatus ?: return
+        current.index++
+        if (current.index == current.packets.size) finishTask(true, status)
+        else writeCurrent()
+    }
+
     private fun finishTask(ok: Boolean, code: String) {
         val current = task ?: return
         task = null
         current.done(ok, code, if (ok) JSONObject().put("receipt", code) else null)
     }
 
-    fun playPcm(clip: WavPcm16.Clip, done: (Boolean, String, JSONObject?) -> Unit) {
+    fun playPcm(clip: WavPcm16.Clip, text: String?, done: (Boolean, String, JSONObject?) -> Unit) {
         if (state != "READY") { done(false, "NOT_READY", null); return }
         if (task != null || audio != null) { done(false, "DEVICE_BUSY", null); return }
         if (audioTransferId >= 65535) { done(false, "AUDIO_SESSION_EXHAUSTED_RECONNECT", null); return }
-        val current = AudioTask(connectionEpoch, clip, done)
+        val textPackets = if (text == null) emptyList() else try {
+            WatchProtocol.bubble(text, textId)
+        } catch (_: Exception) { done(false, "INVALID_WATCH_TEXT", null); return }
+        if (textPackets.isNotEmpty()) textId = if (textId == 255) 1 else textId + 1
+        val current = AudioTask(connectionEpoch, clip, textPackets, done)
         audio = current
         handler.postDelayed({
             if (audio === current && current.connection == connectionEpoch) close("AUDIO_TOTAL_TIMEOUT")
@@ -384,6 +427,8 @@ class WatchBleController(private val activity: Activity) {
     }
 
     private fun sendAudio(current: AudioTask) {
+        if (current.stage == "TEXT") { sendAudioText(current); return }
+        if (current.stage == "DATA") { pumpAudioData(current); return }
         val client = gatt ?: run { close("DISCONNECTED"); return }
         val char = client.getService(WatchProtocol.audioService)?.getCharacteristic(WatchProtocol.audioInput)
             ?: run { close("SERVICES_MISSING"); return }
@@ -391,12 +436,6 @@ class WatchBleController(private val activity: Activity) {
             "HELLO" -> WatchProtocol.AudioPacket(1, current.transfer, 0, audioPacketBytes.toLong())
             "BEGIN" -> WatchProtocol.AudioPacket(4, current.transfer, current.session,
                 current.clip.rate.toLong(), WatchProtocol.pcmBeginMetadata(current.clip.pcm.size))
-            "DATA" -> {
-                val chunk = ((audioPacketBytes - 12) and -2).coerceAtLeast(2)
-                current.nextOffset = (current.offset + chunk).coerceAtMost(current.clip.pcm.size)
-                WatchProtocol.AudioPacket(5, current.transfer, current.session, current.offset.toLong(),
-                    current.clip.pcm.copyOfRange(current.offset, current.nextOffset))
-            }
             "COMMIT" -> WatchProtocol.AudioPacket(6, current.transfer, current.session, current.clip.pcm.size.toLong())
             "PLAY" -> WatchProtocol.AudioPacket(7, current.transfer, current.session)
             else -> return
@@ -419,6 +458,93 @@ class WatchBleController(private val activity: Activity) {
         }, 5000)
     }
 
+    private fun pumpAudioData(current: AudioTask) {
+        if (current.dataWritePending || current.stage != "DATA") return
+        val window = current.window ?: run { close("AUDIO_WINDOW_MISSING"); return }
+        if (window.complete) {
+            current.stage = "COMMIT"
+            sendAudio(current)
+            return
+        }
+        val outstandingBefore = window.outstanding
+        val block = window.next() ?: return
+        val client = gatt ?: run { close("DISCONNECTED"); return }
+        val char = client.getService(WatchProtocol.audioService)?.getCharacteristic(WatchProtocol.audioInput)
+            ?: run { close("SERVICES_MISSING"); return }
+        val packet = WatchProtocol.AudioPacket(5, current.transfer, current.session, block.start.toLong(),
+            current.clip.pcm.copyOfRange(block.start, block.end))
+        current.dataWritePending = true
+        current.serial++
+        val started = if (Build.VERSION.SDK_INT >= 33)
+            client.writeCharacteristic(char, packet.encode(), BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) == BluetoothStatusCodes.SUCCESS
+        else {
+            char.value = packet.encode()
+            @Suppress("DEPRECATION") client.writeCharacteristic(char)
+        }
+        if (!started) { close("AUDIO_DATA_WRITE_FAILED"); return }
+        val serial = current.serial
+        handler.postDelayed({
+            if (audio === current && current.connection == connectionEpoch && current.stage == "DATA" &&
+                current.serial == serial && current.dataWritePending) close("AUDIO_DATA_WRITE_TIMEOUT")
+        }, 5000)
+        if (outstandingBefore == 0) scheduleDataAckTimeout(current)
+    }
+
+    private fun scheduleDataAckTimeout(current: AudioTask) {
+        val marker = ++current.dataAckMarker
+        handler.postDelayed({
+            if (audio === current && current.connection == connectionEpoch && current.stage == "DATA" &&
+                current.dataAckMarker == marker && (current.window?.outstanding ?: 0) > 0)
+                close("AUDIO_DATA_ACK_TIMEOUT")
+        }, 5000)
+    }
+
+    private fun onAudioDataAck(current: AudioTask, packet: WatchProtocol.AudioPacket) {
+        if (packet.operation != 129 || !packet.data.contentEquals(byteArrayOf(5)) ||
+            packet.value > current.clip.pcm.size.toLong()) return
+        val window = current.window ?: run { close("AUDIO_WINDOW_MISSING"); return }
+        if (!window.acknowledge(packet.value.toInt())) return
+        if (window.outstanding > 0) scheduleDataAckTimeout(current)
+        pumpAudioData(current)
+    }
+
+    private fun sendAudioText(current: AudioTask) {
+        val client = gatt ?: run { close("DISCONNECTED"); return }
+        val char = client.getService(WatchProtocol.expressionService)?.getCharacteristic(WatchProtocol.expressionCommand)
+            ?: run { close("SERVICES_MISSING"); return }
+        current.textWriteDone = false
+        current.textReceipt = false
+        current.serial++
+        val bytes = current.textPackets[current.textIndex].bytes
+        val started = if (Build.VERSION.SDK_INT >= 33)
+            client.writeCharacteristic(char, bytes, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) == BluetoothStatusCodes.SUCCESS
+        else {
+            char.value = bytes
+            @Suppress("DEPRECATION") client.writeCharacteristic(char)
+        }
+        if (!started) { close("AUDIO_TEXT_WRITE_FAILED"); return }
+        val serial = current.serial
+        handler.postDelayed({
+            if (audio === current && current.connection == connectionEpoch && current.serial == serial)
+                close("AUDIO_TEXT_TIMEOUT")
+        }, 2000)
+    }
+
+    private fun onAudioTextNotification(bytes: ByteArray) {
+        val current = audio ?: return
+        val status = String(bytes, StandardCharsets.US_ASCII).trim()
+        if (status.startsWith("ERR:")) { close(status); return }
+        if (status != current.textPackets[current.textIndex].status) return
+        current.textReceipt = true
+        if (current.textWriteDone) advanceAudioText(current)
+    }
+
+    private fun advanceAudioText(current: AudioTask) {
+        current.textIndex++
+        if (current.textIndex == current.textPackets.size) current.stage = "PLAY"
+        sendAudio(current)
+    }
+
     private fun onAudioNotification(bytes: ByteArray) {
         val current = audio ?: return
         if (bytes.size > audioPacketBytes) { close("AUDIO_RECEIPT_OVERSIZE"); return }
@@ -434,6 +560,7 @@ class WatchBleController(private val activity: Activity) {
             if (packet.operation == 134) finishAudio(true, "WATCH_PLAYED_RECEIPT")
             return
         }
+        if (current.stage == "DATA") { onAudioDataAck(current, packet); return }
         val expected = when (current.stage) { "HELLO" -> 128; "PLAY" -> 133; else -> 129 }
         if (packet.operation != expected) return
         if (current.stage == "HELLO") {
@@ -446,10 +573,9 @@ class WatchBleController(private val activity: Activity) {
         } else if (current.stage == "PLAY") {
             if (packet.value != current.clip.pcm.size.toLong()) return
         } else {
-            val op = when (current.stage) { "BEGIN" -> 4; "DATA" -> 5; "COMMIT" -> 6; else -> return }
+            val op = when (current.stage) { "BEGIN" -> 4; "COMMIT" -> 6; else -> return }
             if (!packet.data.contentEquals(byteArrayOf(op.toByte()))) return
-            val expectedOffset = if (current.stage == "DATA") current.nextOffset.toLong()
-                else if (current.stage == "COMMIT") current.clip.pcm.size.toLong() else 0L
+            val expectedOffset = if (current.stage == "COMMIT") current.clip.pcm.size.toLong() else 0L
             if (packet.value != expectedOffset) return
         }
         current.receipt = packet
@@ -466,12 +592,11 @@ class WatchBleController(private val activity: Activity) {
                 current.transfer = audioTransferId
                 current.stage = "BEGIN"
             }
-            "BEGIN" -> current.stage = "DATA"
-            "DATA" -> {
-                current.offset = current.nextOffset
-                current.stage = if (current.offset == current.clip.pcm.size) "COMMIT" else "DATA"
+            "BEGIN" -> {
+                current.stage = "DATA"
+                current.window = AudioWindow(current.clip.pcm.size, (audioPacketBytes - 12) and -2)
             }
-            "COMMIT" -> current.stage = "PLAY"
+            "COMMIT" -> current.stage = if (current.textPackets.isEmpty()) "PLAY" else "TEXT"
             "PLAY" -> {
                 current.stage = "PLAYED"
                 current.serial++

@@ -31,6 +31,7 @@ class MainActivity : Activity() {
     private var permissionDone: ((Boolean) -> Unit)? = null
     private var webViewDestroyed = false
     private var audioPickDone: ((Boolean, String, JSONObject?) -> Unit)? = null
+    private var synthToWatchBusy = false
     private var pageGeneration = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,6 +107,11 @@ class MainActivity : Activity() {
         if (!BridgePolicy.validGeneration(generation, pageGeneration, method)) {
             respond(BridgePolicy.error(id, "STALE_GENERATION")); return
         }
+        if (synthToWatchBusy && method in setOf("device.scan", "device.connect", "character.play",
+                "character.showText", "character.clear", "sound.play", "sound.volume", "sound.stop",
+                "audio.pickAndPlayPcm", "speech.local.speak", "speech.local.synthesizeProbe")) {
+            respond(BridgePolicy.error(id, "DEVICE_BUSY")); return
+        }
         val params = request.optJSONObject("params") ?: JSONObject()
         val complete: (Boolean, String, JSONObject?) -> Unit = { ok, code, result ->
             val payload = if (generation != pageGeneration && method != "capabilities.get")
@@ -117,6 +123,32 @@ class MainActivity : Activity() {
         when (request.getString("method")) {
             "speech.local.status" -> { speech.status(complete); return }
             "speech.local.speak" -> { speech.speak(params.optString("text"), complete); return }
+            "speech.local.synthesizeProbe" -> {
+                speech.synthesize(params.optString("text")) { ok, code, clip ->
+                    complete(ok, code, clip?.let { JSONObject().put("rate", it.rate)
+                        .put("seconds", it.seconds).put("bytes", it.pcm.size) })
+                }
+                return
+            }
+            "speech.local.toWatch" -> {
+                val text = params.optString("text").trim()
+                try { WatchProtocol.bubble(text, 1) } catch (_: Exception) {
+                    complete(false, "WATCH_TEXT_MAX_24_CHARS_72_BYTES_NO_EMOJI", null); return
+                }
+                if (!ble.snapshot().optBoolean("ready")) { complete(false, "NOT_READY", null); return }
+                if (synthToWatchBusy) { complete(false, "DEVICE_BUSY", null); return }
+                synthToWatchBusy = true
+                speech.synthesize(text) { ok, code, clip ->
+                    if (!ok || clip == null) {
+                        synthToWatchBusy = false
+                        complete(false, code, null)
+                    } else ble.playPcm(clip, text) { played, receipt, result ->
+                        synthToWatchBusy = false
+                        complete(played, receipt, result)
+                    }
+                }
+                return
+            }
             "speech.local.stop" -> { speech.stop(); complete(true, "LOCAL_STOPPED", JSONObject()); return }
             "device.scan" -> {
                 ensureBluetoothPermission { allowed ->
@@ -131,7 +163,7 @@ class MainActivity : Activity() {
                 else ble.connect(params.optString("address"), complete)
                 return
             }
-            "device.disconnect" -> { ble.disconnect(); complete(true, "OK", ble.snapshot()); return }
+            "device.disconnect" -> { speech.stop(); ble.disconnect(); complete(true, "OK", ble.snapshot()); return }
             "character.play" -> { ble.expression(params.optString("name"), params.optString("mode", "once"), complete); return }
             "character.showText" -> { ble.bubble(params.optString("text"), complete); return }
             "character.clear" -> { ble.clear(complete); return }
@@ -139,12 +171,12 @@ class MainActivity : Activity() {
             "sound.volume" -> { ble.sound(5, params.optInt("volume"), complete); return }
             "sound.stop" -> { ble.sound(4, 0, complete); return }
             "audio.pickAndPlayPcm" -> { pickAudio(complete); return }
-            "task.cancel" -> { ble.disconnect(); complete(true, "LOCAL_STOPPED", ble.snapshot()); return }
+            "task.cancel" -> { speech.stop(); ble.disconnect(); complete(true, "LOCAL_STOPPED", ble.snapshot()); return }
         }
         val result = when (request.getString("method")) {
             "capabilities.get" -> JSONObject()
                 .put("android", true).put("ble", true).put("speech", true)
-                .put("avatar", true).put("version", "0.1.1-dev").put("generation", pageGeneration)
+                .put("avatar", true).put("version", "0.1.2-dev").put("generation", pageGeneration)
             "state.get" -> ble.snapshot().put("generation", request.getInt("generation"))
             "preferences.get" -> preferences()
             "preferences.set" -> savePreferences(params)
@@ -193,7 +225,7 @@ class MainActivity : Activity() {
         } catch (_: Exception) {
             done(false, "AUDIO_WAV_INVALID_PCM16_MONO_16_OR_24KHZ_0_1_TO_10S", null); return
         }
-        ble.playPcm(clip, done)
+        ble.playPcm(clip, null, done)
     }
 
     private fun hasBluetoothPermission(): Boolean =

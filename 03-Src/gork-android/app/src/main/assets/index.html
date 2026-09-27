@@ -32,6 +32,8 @@
           <label><input type="radio" name="target" value="both" disabled> 两端</label>
         </fieldset>
         <div class="actions"><button id="send" class="primary">显示文字</button><button id="speak-local">手机朗读</button><button id="stop">停止</button></div>
+        <button id="speak-watch" disabled>本机合成后由 Watch 朗读</button>
+        <p class="subtle">实验入口：对应文字最多 24 字、72 个 UTF-8 字节；设备确认音频后才显示文字并开始播放。真实响度与完整性待听验。</p>
         <p id="chat-result" class="result" role="status"></p>
       </section>
       <section id="tab-character" class="panel" data-panel="character" hidden>
@@ -63,8 +65,9 @@
         <h1>设置</h1>
         <label for="theme">主题</label><select id="theme"><option value="light">浅色</option><option value="dark">深色</option></select>
         <button id="check-tts">检测本机中文语音</button><p id="tts-state" class="subtle" role="status">仅选用系统报告为无需网络的中文音色；实际可用性待本机检测。</p>
+        <button id="probe-tts-file">用当前输入测试完整音频导出</button><p id="tts-file-state" class="subtle" role="status">音频仅存于应用私有临时目录，转换检查后立即删除。</p>
         <p class="subtle">云语音、录音、AI 和后台连接尚未启用。不会自动录音、上传或控制 Watch。</p>
-        <p class="version">Gork Android v0.1.1-dev · 工程候选</p>
+        <p class="version">Gork Android v0.1.2-dev · 工程候选</p>
       </section>
     </main>
     <nav aria-label="主导航">
