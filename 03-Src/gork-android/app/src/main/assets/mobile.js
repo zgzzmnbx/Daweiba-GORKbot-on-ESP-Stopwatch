@@ -20,7 +20,7 @@
     if (!window.gorkNative) return Promise.reject(new Error('WEBVIEW_BRIDGE_UNAVAILABLE'));
     const requestId = `m${nextId++}`;
     return new Promise((resolve,reject) => {
-      const limit = ['audio.pickAndPlayPcm','speech.local.toWatch','speech.local.asr.start'].includes(method) ? 0 : method==='speech.local.synthesizeProbe' ? 65000 : method==='device.connect' ? 80000 : method==='device.scan' ? 15000 : method.startsWith('speech.local.') ? 20000 : 6000;
+      const limit = ['audio.pickAndPlayPcm','speech.local.toWatch','speech.local.asr.start'].includes(method) ? 0 : method==='cloud.ai.ask' ? 75000 : method==='speech.local.synthesizeProbe' ? 65000 : method==='device.connect' ? 80000 : method==='device.scan' ? 15000 : method.startsWith('speech.local.') ? 20000 : 6000;
       const timer = limit ? setTimeout(() => { pending.delete(requestId); reject(new Error('TIMEOUT')); }, limit) : null;
       pending.set(requestId,{resolve,reject,timer});
       window.gorkNative.postMessage(JSON.stringify({requestId,generation,method,params}));
@@ -118,6 +118,30 @@
     try{await call('speech.local.speak',{text:value});get('chat-result').textContent='已提交本机中文语音引擎；实际听感待确认。';}
     catch(error){get('chat-result').textContent=`本机朗读不可用：${error.message}`;}
   };
+  let aiAnswer='';
+  get('ask-ai').onclick=async()=>{
+    const value=get('draft').value.trim();
+    if(!value){get('ai-result').textContent='请先输入提问文字。';return;}
+    get('ask-ai').disabled=true;
+    get('cancel-ai').disabled=false;
+    get('use-ai-answer').disabled=true;
+    aiAnswer='';
+    get('ai-result').textContent='正在等待云端 AI 回答…';
+    try {
+      const result=await call('cloud.ai.ask',{text:value});
+      aiAnswer=result.text;
+      get('ai-result').textContent=result.text;
+      get('use-ai-answer').disabled=result.text.length>300;
+    } catch(error) {get('ai-result').textContent=`AI 请求未完成：${error.message}`;}
+    finally {get('ask-ai').disabled=false;get('cancel-ai').disabled=true;}
+  };
+  get('cancel-ai').onclick=()=>call('cloud.ai.cancel').catch(()=>{});
+  get('use-ai-answer').onclick=()=>{
+    if(!aiAnswer||aiAnswer.length>300)return;
+    get('draft').value=aiAnswer;
+    save({draft:aiAnswer});
+    get('chat-result').textContent='AI 回答已放入输入框，请确认后再选择显示或朗读。';
+  };
   let asrActive=false;
   let asrPressed=false;
   const asrButton=get('hold-asr');
@@ -184,6 +208,38 @@
       get('tts-file-state').textContent=`完整文件已转为 ${result.rate} Hz PCM16、${result.seconds.toFixed(2)} 秒（${result.bytes} 字节）；尚未发送 Watch。`;
     } catch(error) {get('tts-file-state').textContent=`本机文件合成不可用：${error.message}`;}
     finally {button.disabled=false;}
+  };
+  const cloudConsentIds={allowPromptUpload:'allow-prompt-upload',allowAudioUpload:'allow-audio-upload',
+    allowSynthesisTextUpload:'allow-synthesis-text-upload',allowAnswerTextUpload:'allow-answer-text-upload'};
+  function showCloudSettings(value){
+    get('cloud-endpoint').value=value.endpoint||'';
+    get('cloud-model').value=value.model||'';
+    get('cloud-timeout').value=value.timeoutSeconds||35;
+    get('cloud-key-state').textContent=value.hasKey?'个人 Key 已安全保存；内容不回显。':'尚未保存个人 Key。';
+    for(const [key,id] of Object.entries(cloudConsentIds))get(id).checked=Boolean(value[key]);
+  }
+  call('cloud.settings.get').then(showCloudSettings).catch(error=>{get('cloud-state').textContent=`云设置不可用：${error.message}`;});
+  get('save-cloud').onclick=async()=>{
+    try {const value=await call('cloud.settings.set',{endpoint:get('cloud-endpoint').value.trim(),
+      model:get('cloud-model').value.trim(),timeoutSeconds:Number(get('cloud-timeout').value)});
+      showCloudSettings(value);get('cloud-state').textContent='接口设置已保存。';
+    } catch(error){get('cloud-state').textContent=`接口设置未保存：${error.message}`;}
+  };
+  get('save-cloud-key').onclick=async()=>{
+    const key=get('cloud-key').value;
+    get('cloud-key').value='';
+    try {showCloudSettings(await call('cloud.key.save',{key}));get('cloud-state').textContent='Key 已由 Android Keystore 加密保存。';}
+    catch(error){get('cloud-state').textContent=`Key 保存失败：${error.message}`;}
+  };
+  get('clear-cloud-key').onclick=async()=>{
+    try{showCloudSettings(await call('cloud.key.clear'));get('cloud-state').textContent='Key 已清除。';}
+    catch(error){get('cloud-state').textContent=`Key 清除失败：${error.message}`;}
+  };
+  for(const id of Object.values(cloudConsentIds))get(id).onchange=async()=>{
+    const values=Object.fromEntries(Object.entries(cloudConsentIds).map(([key,input])=>[key,get(input).checked]));
+    try{showCloudSettings(await call('cloud.consents.set',values));get('cloud-state').textContent='上传许可已更新；撤销会取消在途请求。';}
+    catch(error){get('cloud-state').textContent=`上传许可未保存：${error.message}`;
+      call('cloud.settings.get').then(showCloudSettings).catch(()=>{});}
   };
   const devices=get('devices');
   get('scan').onclick=async () => {

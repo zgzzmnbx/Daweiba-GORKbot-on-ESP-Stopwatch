@@ -29,6 +29,7 @@ class MainActivity : Activity() {
     private val ble by lazy { WatchBleController(this) }
     private val speech by lazy { LocalSpeech(this) }
     private val asr by lazy { LocalAsr(this) }
+    private val cloud by lazy { CloudText(this) }
     private var permissionDone: ((Boolean) -> Unit)? = null
     private var recordPermissionDone: ((Boolean) -> Unit)? = null
     private var asrRequested = false
@@ -57,12 +58,14 @@ class MainActivity : Activity() {
                 ble.disconnect()
                 speech.stop()
                 cancelAsr()
+                cloud.cancel()
                 audioPickDone?.invoke(false, "PAGE_RELOADED", null)
                 audioPickDone = null
             }
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                 ble.disconnect()
                 cancelAsr()
+                cloud.cancel()
                 setContentView(TextView(this@MainActivity).apply {
                     text = "Gork 页面进程已退出，所有 Watch 任务已停止。请重新打开应用。"
                     textSize = 18f
@@ -128,6 +131,29 @@ class MainActivity : Activity() {
             respond(payload)
         }
         when (request.getString("method")) {
+            "cloud.settings.get" -> { complete(true, "OK", cloud.settings()); return }
+            "cloud.settings.set" -> {
+                val error = cloud.saveSettings(params)
+                complete(error == null, error ?: "OK", if (error == null) cloud.settings() else null)
+                return
+            }
+            "cloud.consents.set" -> {
+                val saved = cloud.saveConsents(params)
+                complete(saved, if (saved) "OK" else "CONSENT_SAVE_FAILED", if (saved) cloud.settings() else null)
+                return
+            }
+            "cloud.key.save" -> {
+                val error = cloud.saveKey(params.optString("key"))
+                complete(error == null, error ?: "OK", if (error == null) cloud.settings() else null)
+                return
+            }
+            "cloud.key.clear" -> {
+                val cleared = cloud.clearKey()
+                complete(cleared, if (cleared) "OK" else "KEY_CLEAR_FAILED", if (cleared) cloud.settings() else null)
+                return
+            }
+            "cloud.ai.ask" -> { cloud.ask(params.optString("text"), complete); return }
+            "cloud.ai.cancel" -> { cloud.cancel(); complete(true, "AI_CANCELLED", JSONObject()); return }
             "speech.local.status" -> { speech.status(complete); return }
             "speech.local.speak" -> { speech.speak(params.optString("text"), complete); return }
             "speech.local.asr.status" -> {
@@ -188,7 +214,7 @@ class MainActivity : Activity() {
                 }
                 return
             }
-            "speech.local.stop" -> { speech.stop(); cancelAsr(); complete(true, "LOCAL_STOPPED", JSONObject()); return }
+            "speech.local.stop" -> { speech.stop(); cancelAsr(); cloud.cancel(); complete(true, "LOCAL_STOPPED", JSONObject()); return }
             "device.scan" -> {
                 ensureBluetoothPermission { allowed ->
                     if (allowed) ble.scan { ok, code, devices ->
@@ -210,12 +236,12 @@ class MainActivity : Activity() {
             "sound.volume" -> { ble.sound(5, params.optInt("volume"), complete); return }
             "sound.stop" -> { ble.sound(4, 0, complete); return }
             "audio.pickAndPlayPcm" -> { pickAudio(complete); return }
-            "task.cancel" -> { speech.stop(); cancelAsr(); ble.disconnect(); complete(true, "LOCAL_STOPPED", ble.snapshot()); return }
+            "task.cancel" -> { speech.stop(); cancelAsr(); cloud.cancel(); ble.disconnect(); complete(true, "LOCAL_STOPPED", ble.snapshot()); return }
         }
         val result = when (request.getString("method")) {
             "capabilities.get" -> JSONObject()
                 .put("android", true).put("ble", true).put("speech", true)
-                .put("avatar", true).put("version", "0.1.3-dev").put("generation", pageGeneration)
+                .put("avatar", true).put("version", "0.1.4-dev").put("generation", pageGeneration)
             "state.get" -> ble.snapshot().put("generation", request.getInt("generation"))
             "preferences.get" -> preferences()
             "preferences.set" -> savePreferences(params)
@@ -316,6 +342,7 @@ class MainActivity : Activity() {
 
     override fun onStop() {
         cancelAsr()
+        cloud.cancel()
         super.onStop()
     }
 
@@ -344,6 +371,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         cancelAsr()
+        cloud.shutdown()
         audioPickDone?.invoke(false, "ACTIVITY_DESTROYED", null)
         audioPickDone = null
         ble.disconnect()

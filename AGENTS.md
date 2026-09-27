@@ -11,6 +11,8 @@
 
 ## 2. 当前任务边界
 
+- 2026-09-27 Android v0.1.4-dev：新增用户可配置 HTTPS 文字 AI、Keystore 加密个人 Key、AI 提问及原任务书三项上传许可。默认许可全部关闭，云请求需用户在手机界面显式配置和点击；本机 13 项单测、构建、Lint 通过，APK 位于 `04-output/android/v0.1.4/`。尚无手机或真实云调用，A13 不得标 PASS；云 ASR/TTS、Opus、后台服务仍未完成。
+
 - 2026-09-27 Android v0.1.3-dev：增加仅使用 Android 设备端 `SpeechRecognizer` 的中文按住说话源码入口，麦克风许可、松开/取消/后台停止与 30 秒超时；识别结果只入草稿。构建、12 项既有单测、Lint 通过，APK 位于 `04-output/android/v0.1.3/`。目标 vivo 中文模型、断网识别和权限/来电场景未实测；不把系统报告的服务可用当 A12 PASS。桌面/固件版本不变。
 
 - 2026-09-27 Android v0.1.2-dev：本机中文 TTS 完整文件导出、PCM16 格式转换、最多三包音频窗口及 Watch COMMIT→对应文字→PLAY 源码候选；12 项桥/协议/WAV/窗口单测、构建、Lint 通过，APK 位于 `04-output/android/v0.1.2/`。目标手机、Watch 换绑/听验、ASR/AI/Opus 与后台服务仍待实施；桌面/固件版本不变。详见该目录实施记录。
