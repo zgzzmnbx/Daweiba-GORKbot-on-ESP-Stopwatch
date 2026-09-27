@@ -161,6 +161,7 @@ class MainActivity : Activity() {
                 return
             }
             "speech.local.asr.start" -> {
+                if (!asr.available()) { complete(false, "ON_DEVICE_ASR_UNAVAILABLE", null); return }
                 if (asrRequested) { complete(false, "ASR_BUSY", null); return }
                 asrRequested = true
                 asrStopRequested = false
@@ -241,7 +242,7 @@ class MainActivity : Activity() {
         val result = when (request.getString("method")) {
             "capabilities.get" -> JSONObject()
                 .put("android", true).put("ble", true).put("speech", true)
-                .put("avatar", true).put("version", "0.1.4-dev").put("generation", pageGeneration)
+                .put("avatar", true).put("version", "0.1.5-dev").put("generation", pageGeneration)
             "state.get" -> ble.snapshot().put("generation", request.getInt("generation"))
             "preferences.get" -> preferences()
             "preferences.set" -> savePreferences(params)

@@ -2,6 +2,11 @@
 
 > 仅保留最近 5 个版本；更早记录转入 `CHANGELOG-历史归档.md`。
 
+## Android v0.1.5-dev - 2026-09-27（手机权限修复与首次实测）
+
+- Android versionCode 6；设备端 ASR 服务不可用时先返回错误，不再无谓申请麦克风权限。13 项单测、构建、Lint、资源检查及 APK v2 签名验证通过。
+- V2405A / Android 16 首次安装 v0.1.4 并由用户确认 vivo 安全守护后同签名升级 v0.1.5；“你好”草稿保留。本机中文 TTS 完整文件导出成功，设备端 ASR 不可用，撤销权限后无新弹窗且已恢复原授权。Watch 与云端未实测，用户要求暂停新增功能。详见 `04-output/android/v0.1.5/手机安装与本机语音实测记录-【codex】.md`。
+
 ## Android v0.1.4-dev - 2026-09-27（文字 AI 与上传许可源码候选）
 
 - Android versionCode 5；增加用户配置的 HTTPS Chat Completions 文字 AI、Android Keystore 加密个人 Key 和四项独立许可。AI 需显式开启提问上传并点击发送；撤销、停止或进入后台取消在途任务，回复只作纯文本展示，不自动发 Watch。
@@ -25,9 +30,3 @@
 
 - Android versionCode 2；增加手选 WAV 的严格 PCM16 单声道 16/24 kHz、0.1–10 秒校验和同一 GATT 上的 HELLO/BEGIN/DATA/COMMIT/PLAY/PLAYED 链路；只按设备 ACK 推进，支持限时与中止。
 - 8 项桥/协议/WAV 单测、构建、Lint 和资源检查通过；页面重载停止旧 BLE 任务并校验桥代际号；调试 APK v2 签名验证。ADB 无手机，未安装、换绑或听验；Opus、TTS/AI 自动闭环与后台服务仍待实施。记录见 `04-output/android/v0.1.1/PCM实验实施与验收记录-【codex】.md`。
-
-## Android v0.1.0-dev - 2026-09-27（手机基础控制调试候选）
-
-- 新建独立 Gradle Wrapper / Kotlin / WebView 工程；共用 Gork 角色资源，四标签页面、10 形象与 23 来源表情预览、本机文字与偏好保存。
-- 原生 BLE 扫描、系统配对、三服务发现与通知订阅、表情/文字/清屏/短音/音量基础指令代码候选；系统本地中文音色探测与显式朗读。现有 Watch 单绑定要求仍保留，不自动迁移或放宽认证。
-- 标准 Wrapper 构建、3 项跨语言协议单测、资产一致性、Lint 0 error 和浏览器 360/390/412 dp 及横屏替身检查通过；调试 APK v2 签名验证通过。ADB 无手机，未安装、换绑或验收真实 BLE/声音，版本保持候选。详见 `04-output/android/v0.1.0/开发基线与验收记录-【codex】.md`。

@@ -1,12 +1,12 @@
 # Gork Android
 
-独立 Android 工程，当前为 **v0.1.4-dev 调试候选**。包名 `com.daweiba.gork`，与闪念 `com.dabawei.flashnote` 独立。手机端源码已实现本地四标签角色页、偏好与草稿保存、受限 WebView 桥、原生 BLE 基础控制、手选 WAV 的 Watch PCM 传输实验、本机中文 TTS 文件导出→格式转换→Watch PCM、显式设备端中文 ASR 按住说话，以及用户配置的 HTTPS 文字 AI 与独立上传许可源码候选。尚未连接目标手机或迁移 Watch 绑定，所有真机与声音项目均未验收。
+独立 Android 工程，当前为 **v0.1.5-dev 调试候选**。包名 `com.daweiba.gork`，与闪念 `com.dabawei.flashnote` 独立。手机端源码已有本地四标签角色页、偏好与草稿保存、受限 WebView 桥、原生 BLE 基础控制、手选 WAV 的 Watch PCM 传输实验、本机中文 TTS 文件导出→格式转换→Watch PCM、显式设备端中文 ASR 按住说话，以及用户配置的 HTTPS 文字 AI 与独立上传许可。V2405A（Android 16）已安装并做部分手机实测；Watch 未换绑，云端未调用，声音实际听感未确认。
 
 ## 环境与构建
 
 - JDK 17、Android SDK API 35、Build Tools 35.0.0；minSdk 31、targetSdk/compileSdk 35。Gradle Wrapper 8.13、Android Gradle Plugin 8.13.2、Kotlin 2.2.20、AndroidX WebKit 1.17.1 固定版本。参见 Android 官方 [AGP 8.13 兼容表](https://developer.android.com/build/releases/agp-8-13-0-release-notes)和 [WebKit 版本](https://developer.android.com/jetpack/androidx/releases/webkit)。
 - 设置 `ANDROID_HOME` 或在被忽略的 `local.properties` 中写 `sdk.dir`。在本目录运行 `./gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:lintDebug`。如本机 Gradle Wrapper 需经代理下载，代理仅配置于个人环境或 Gradle 用户目录，不写进项目文件。
-- 调试 APK 为 `app/build/outputs/apk/debug/app-debug.apk`；当前候选副本位于项目 `04-output/android/v0.1.4/`，历史版本保存在各自版本目录。调试签名只供开发。要承诺覆盖升级，须固定正式签名并在目标手机执行 A01/A19。
+- 调试 APK 为 `app/build/outputs/apk/debug/app-debug.apk`；当前候选副本位于项目 `04-output/android/v0.1.5/`，历史版本保存在各自版本目录。调试签名只供开发。v0.1.4→v0.1.5 同签名覆盖升级已在 V2405A 上保留“你好”草稿；正式签名、完整设置和回退仍待 A19 验收。
 - 构建前自动运行 `tools/export_shared_assets.py` 从桌面权威资源同步角色资产；交付前运行 `python tools/export_shared_assets.py --check`，不要手改 `app/src/main/assets/shared/`。如 Python 命令不在系统路径，可设置个人环境变量 `PYTHON`。来源为固定 Avatar Lab 快照，见项目第三方来源记录。
 
 ## 当前能力和边界
@@ -20,4 +20,4 @@
 
 ## 测试状态
 
-本机 Gradle 构建、13 项桥/协议/WAV 转换、音频窗口及云地址校验单测、资产一致性及浏览器离线布局检查已执行；v0.1.4 结果见项目 `04-output/android/v0.1.4/文字AI与上传许可源码候选实施记录-【codex】.md`。浏览器检查不能替代 Android WebView、真实云请求、vivo 蓝牙、设备回执、用户听验或覆盖升级验收。
+本机 Gradle 构建、13 项桥/协议/WAV 转换、音频窗口及云地址校验单测、资产一致性检查已执行；v0.1.5 手机结果见项目 `04-output/android/v0.1.5/手机安装与本机语音实测记录-【codex】.md`。该手机设备端 ASR 不可用；本机 TTS 文件导出成功，实际可闻性待确认。Watch GATT、设备回执、真实云请求和其余验收仍不能由本机检查替代。
