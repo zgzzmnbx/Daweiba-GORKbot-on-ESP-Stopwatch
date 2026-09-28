@@ -71,6 +71,8 @@ class Target:
     name: str
     address: str
     rssi: Optional[int] = None
+    pair_on_connect: bool = True
+    connect_timeout: float = 60
 
 
 def _load_bleak() -> tuple[Any, Any]:
@@ -177,6 +179,20 @@ def _device_target(device: Any, advertisement: Any = None) -> Target:
     )
 
 
+def known_bond_target(address: str) -> Target:
+    """Reconnect the configured Windows bond when an active link hides adverts.
+
+    WinRT can resolve a previously paired BLE address without a new scan. This
+    path never requests pairing; the Watch still requires its encrypted bond.
+    """
+    if sys.platform != "win32":
+        raise BleConsoleError("已保存设备的地址直连仅支持 Windows")
+    from bleak.backends.device import BLEDevice
+
+    return Target(BLEDevice(address, DEVICE_NAME, None), DEVICE_NAME, address,
+                  pair_on_connect=False, connect_timeout=20)
+
+
 async def scan_targets(
     timeout: float = 10.0,
     scanner: Any = None,
@@ -229,20 +245,30 @@ class BleExpressionClient:
         self.status_characteristic: Any = STATUS_UUID
         self._status_queue: Optional[asyncio.Queue[str]] = None
         self._disconnected = False
+        self._ready = False
         self._next_text_id = 1
         self._write_lock = asyncio.Lock()
         self._connection_epoch = 0
 
     @property
     def connected(self) -> bool:
-        return bool(self.client is not None and getattr(self.client, "is_connected", False))
+        return bool(self.client is not None and self._ready and not self._disconnected
+                    and getattr(self.client, "is_connected", False))
 
-    def _on_disconnected(self, _client: Any) -> None:
+    def _on_disconnected(self, epoch: int, _client: Any) -> None:
+        if epoch != self._connection_epoch or _client is not self.client:
+            return
         self._disconnected = True
+        self._ready = False
 
     async def connect(self, target: Target | Any) -> None:
         if self.connected:
             return
+        # A dropped radio link can leave WinRT GATT service objects open even
+        # though is_connected is already false. Release them before replacing
+        # the client; otherwise the next discovery may get Access Denied.
+        if self.client is not None:
+            await self.disconnect()
         device = target.device if isinstance(target, Target) else target
         if self._client_factory is None:
             bleak_client, _ = _load_bleak()
@@ -250,20 +276,26 @@ class BleExpressionClient:
         else:
             factory = self._client_factory
         self._disconnected = False
+        self._ready = False
         self._connection_epoch += 1
         epoch = self._connection_epoch
         self._status_queue = asyncio.Queue()
-        options = {"pair": True, "disconnected_callback": self._on_disconnected}
+        timeout = target.connect_timeout if isinstance(target, Target) else 60
+        options = {
+            "pair": target.pair_on_connect if isinstance(target, Target) else True,
+            "disconnected_callback":
+                lambda client: self._on_disconnected(epoch, client),
+        }
         # The real Windows connection explicitly discovers the three services on
         # the one shared client. Injected test transports keep their small API.
         if self._client_factory is None:
-            options.update(timeout=60,
+            options.update(timeout=timeout,
                            services=[SERVICE_UUID, SOUND_SERVICE_UUID, AUDIO_SERVICE_UUID],
                            winrt={"use_cached_services": False})
         self.client = factory(device, **options)
         try:
             # Windows may show a first-pairing confirmation while pair=True runs.
-            await asyncio.wait_for(self.client.connect(), 60)
+            await asyncio.wait_for(self.client.connect(), timeout)
             services = getattr(self.client, "services", None)
             service = services.get_service(SERVICE_UUID) if services is not None else None
             if service is None:
@@ -279,6 +311,9 @@ class BleExpressionClient:
                 lambda characteristic, payload: self._on_status_notification(characteristic, payload)
                 if epoch == self._connection_epoch else None,
             )
+            if self._disconnected or not getattr(self.client, "is_connected", False):
+                raise BleConsoleError("BLE 链路在服务发现期间断开；稍后重试")
+            self._ready = True
         except BleConsoleError:
             await self.disconnect()
             raise
@@ -350,11 +385,13 @@ class BleExpressionClient:
 
     async def disconnect(self) -> None:
         self._connection_epoch += 1
+        self._ready = False
         if self.client is None:
             return
         try:
-            if getattr(self.client, "is_connected", False):
-                await self.client.disconnect()
+            # Bleak WinRT closes requested GATT services, the session and the
+            # requester in disconnect(), even after the physical link drops.
+            await self.client.disconnect()
         finally:
             self.client = None
             self._status_queue = None

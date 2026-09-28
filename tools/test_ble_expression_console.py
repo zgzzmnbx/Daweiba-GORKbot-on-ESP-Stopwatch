@@ -39,6 +39,7 @@ class FakeClient:
         self.pair = pair
         self.disconnected_callback = disconnected_callback
         self.is_connected = False
+        self.disconnect_calls = 0
         self.services = FakeServices()
         self.notify_callback = None
         self.writes = []
@@ -75,6 +76,7 @@ class FakeClient:
         return b"OK:HAPPY"
 
     async def disconnect(self):
+        self.disconnect_calls += 1
         self.is_connected = False
 
 
@@ -154,6 +156,90 @@ class BleConsoleTests(unittest.TestCase):
             self.assertEqual(status, "OK:HAPPY")
             self.assertEqual(created[0].writes[0][1], b"happy")
             self.assertTrue(created[0].writes[0][2])
+            await controller.disconnect()
+
+        asyncio.run(scenario())
+
+    def test_disconnect_callback_marks_stale_transport_offline(self):
+        async def scenario():
+            controller = MODULE.BleExpressionClient(client_factory=FakeClient)
+            await controller.connect(FakeDevice())
+            self.assertTrue(controller.connected)
+            # WinRT can report the callback before its is_connected property
+            # changes. The supervisor must start looking for the Watch now.
+            controller.client.disconnected_callback(controller.client)
+            self.assertTrue(controller.client.is_connected)
+            self.assertFalse(controller.connected)
+            await controller.disconnect()
+
+        asyncio.run(scenario())
+
+    def test_radio_drop_releases_winrt_services_before_reconnect(self):
+        created = []
+
+        def factory(*args, **kwargs):
+            client = FakeClient(*args, **kwargs)
+            created.append(client)
+            return client
+
+        async def scenario():
+            controller = MODULE.BleExpressionClient(client_factory=factory)
+            await controller.connect(FakeDevice())
+            old_client = created[0]
+            old_client.is_connected = False
+            old_client.disconnected_callback(old_client)
+            await controller.connect(FakeDevice())
+            self.assertEqual(old_client.disconnect_calls, 1)
+            self.assertIs(controller.client, created[1])
+            self.assertTrue(controller.connected)
+            # A delayed WinRT callback from the released session must not
+            # invalidate the newly established session.
+            old_client.disconnected_callback(old_client)
+            self.assertTrue(controller.connected)
+            await controller.disconnect()
+            self.assertEqual(created[1].disconnect_calls, 1)
+
+        asyncio.run(scenario())
+
+    def test_known_bond_reconnect_does_not_request_pairing(self):
+        created = []
+
+        def factory(*args, **kwargs):
+            client = FakeClient(*args, **kwargs)
+            created.append(client)
+            return client
+
+        async def scenario():
+            controller = MODULE.BleExpressionClient(client_factory=factory)
+            saved = MODULE.Target(FakeDevice(), FakeDevice.name,
+                                  FakeDevice.address, pair_on_connect=False,
+                                  connect_timeout=20)
+            await controller.connect(saved)
+            self.assertFalse(created[0].pair)
+            self.assertTrue(controller.connected)
+            await controller.disconnect()
+
+        asyncio.run(scenario())
+
+    def test_link_is_not_reported_connected_before_gatt_ready(self):
+        entered = asyncio.Event()
+        release = asyncio.Event()
+
+        class SlowNotifyClient(FakeClient):
+            async def start_notify(self, characteristic, callback):
+                entered.set()
+                await release.wait()
+                await super().start_notify(characteristic, callback)
+
+        async def scenario():
+            controller = MODULE.BleExpressionClient(client_factory=SlowNotifyClient)
+            connecting = asyncio.create_task(controller.connect(FakeDevice()))
+            await entered.wait()
+            self.assertTrue(controller.client.is_connected)
+            self.assertFalse(controller.connected)
+            release.set()
+            await connecting
+            self.assertTrue(controller.connected)
             await controller.disconnect()
 
         asyncio.run(scenario())

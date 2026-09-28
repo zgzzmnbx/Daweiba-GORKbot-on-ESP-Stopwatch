@@ -18,6 +18,8 @@ Codex-Temp/
 
 # Computer companion local routing/device preferences and test caches
 03-Src/stopwatch-voice-companion/config.local.toml
+03-Src/stopwatch-voice-companion/sentinel.local.json
+03-Src/stopwatch-voice-companion/sentinel.local.json.tmp
 **/.pytest_cache/
 **/node_modules/
 

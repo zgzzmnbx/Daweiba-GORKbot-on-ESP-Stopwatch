@@ -42,6 +42,24 @@ class Controller:
         self.speech = None
         self.character = {"expression": "idle", "mode": "loop", "bubble": "", "manual": False, "revision": 0}
         self.character_bubble_deadline = 0.0
+        self.manual_until = 0.0
+        self.task_monitor = None
+
+    def auto_block_reason(self):
+        audio = self.robot.audio_snapshot() if hasattr(self.robot, 'audio_snapshot') else {}
+        if self.phase in {'listening', 'processing', 'generating', 'speaking'}:
+            return '语音操作进行中'
+        if audio.get('running'):
+            return 'Watch 音频进行中'
+        if time.monotonic() < self.manual_until:
+            return '人工角色操作优先'
+        return ''
+
+    def auto_available(self):
+        # A manual pose remains the idle preference, but it must not disable
+        # an explicitly enabled sentinel forever. The recent action has a
+        # bounded priority window; after it, automatic task cues may resume.
+        return not self.auto_block_reason()
 
     def authorize(self, owner):
         if self.workspace_explicit and self.workspace_deadline <= time.monotonic():
@@ -207,6 +225,8 @@ class Controller:
             return {"generation": generation, "status": "stopped"}
 
     async def desktop_stop(self):
+        if self.task_monitor:
+            await self.task_monitor.stop()
         async with self.lock:
             if self.owner:
                 self.invalidate(self.generation + 1)
@@ -221,12 +241,25 @@ class Controller:
             self.character["bubble"] = ""
             self.character_bubble_deadline = 0.0
             self.character["revision"] += 1
+        character = dict(self.character)
+        monitor = self.task_monitor
+        if monitor and monitor.enabled and self.auto_available():
+            presentation = monitor.presentation
+            if presentation and time.monotonic() < presentation['until']:
+                character.update(expression=presentation['expression'], bubble=presentation['bubble'],
+                                 revision=character['revision'] + monitor.epoch + len(monitor.history) + 1,
+                                 auto=True)
+            elif not monitor.connection_error and monitor.current and monitor.current['activity']['status'] == 'running':
+                character.update(expression='working', bubble='',
+                                 revision=character['revision'] + monitor.epoch + len(monitor.history) + 1,
+                                 auto=True)
         return {"phase": self.phase, "robot": self.robot.snapshot(),
                 "workspace_active": bool(self.owner), "session_active": bool(self.voice_owner and self.voice.session),
-                "character": dict(self.character)}
+                "character": character}
 
     async def play_character(self, owner, expression, mode, target):
         self.authorize(owner)
+        self.manual_until = time.monotonic() + 15
         if expression not in BLE_EXPRESSIONS:
             raise VoiceError(422, "EXPRESSION_INVALID", "请选择目录中的角色表情")
         if mode not in ("once", "loop") or target not in ("desktop", "watch", "both"):
@@ -248,11 +281,13 @@ class Controller:
 
     async def restore_character_auto(self, owner):
         self.authorize(owner)
+        self.manual_until = 0.0
         self.character.update(expression="idle", mode="loop", manual=False, revision=self.character["revision"] + 1)
         return {"desktop": {"requested": True, "accepted": True}}
 
     async def set_character_bubble(self, owner, text, target):
         self.authorize(owner)
+        self.manual_until = time.monotonic() + 15
         if not text or len(text) > 300 or any(not c.isprintable() and c not in "\n\r" for c in text):
             raise VoiceError(422, "BUBBLE_INVALID", "气泡需为 1–300 个可显示字符")
         if target not in ("desktop", "watch", "both"):
@@ -273,6 +308,7 @@ class Controller:
 
     async def clear_character_bubble(self, owner, target):
         self.authorize(owner)
+        self.manual_until = time.monotonic() + 15
         if target not in ("desktop", "watch", "both"):
             raise VoiceError(422, "CHARACTER_TARGET_INVALID", "请选择桌面、StopWatch 或两端")
         result = {"desktop": {"requested": target in ("desktop", "both"), "accepted": False},

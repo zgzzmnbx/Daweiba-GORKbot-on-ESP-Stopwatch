@@ -112,6 +112,12 @@ small {
 .version {
   font-size:10px;
   color:var(--muted)}
+.wordmark .version {
+  display:block;
+  margin-top:3px;
+  font:600 11px/1.2 'Segoe UI',sans-serif;
+  letter-spacing:.02em;
+  color:var(--accent)}
 main {
   flex:1;
   min-height:0;
@@ -561,8 +567,6 @@ code {
   grid-template-columns:280px minmax(0,1fr)}
 .companion-stage {
   padding:0 16px 0 0}
-.version {
-  display:none}
 .primary-nav a {
   padding:10px 12px}
 .global-status {

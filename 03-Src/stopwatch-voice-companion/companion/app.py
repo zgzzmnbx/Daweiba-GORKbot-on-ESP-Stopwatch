@@ -1,6 +1,7 @@
 """Loopback-only browser facade. The voice session token never leaves Python."""
 from contextlib import asynccontextmanager
 import asyncio
+import json
 import os
 from pathlib import Path
 from typing import Literal
@@ -15,7 +16,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from . import __version__
 from .control import Controller
 from .answer import AnswerClient
-from .cost import CostClient
+from .cost import CostClient, MONITOR_TASK_ID
+from .task_monitor import TaskMonitor
 from .robot import Robot, BleConsoleError
 from .voice import VoiceClient, VoiceError
 
@@ -73,6 +75,16 @@ class CostQuery(Generation):
     allow_ai: bool = False
 
 
+class MonitorSettings(Payload):
+    enabled: bool
+    mode: Literal['auto', 'specific'] = 'auto'
+    task_id: str = Field(default='', max_length=28)
+    target: Literal['desktop', 'watch', 'both'] = 'desktop'
+    sound: bool = False
+    sound_kind: Literal['speech', 'beep'] = 'speech'
+    sound_target: Literal['pc', 'watch'] = 'pc'
+
+
 class State(Generation):
     state: Literal["idle", "listening", "speaking", "error"]
 
@@ -106,6 +118,28 @@ class SoundVolume(Payload):
 
 class AudioRecord(Payload):
     echo: bool = False
+
+
+SENTINEL_DEFAULTS = {'enabled': True, 'mode': 'auto', 'task_id': '',
+                     'target': 'desktop', 'sound': False, 'sound_kind': 'speech', 'sound_target': 'pc'}
+
+
+def _sentinel_preferences(path):
+    try:
+        value = json.loads(path.read_text(encoding='utf-8'))
+        return MonitorSettings.model_validate(value).model_dump()
+    except FileNotFoundError:
+        return dict(SENTINEL_DEFAULTS)
+    except (OSError, ValueError):
+        # An unreadable saved "off" preference must not silently enable polling.
+        return {**SENTINEL_DEFAULTS, 'enabled': False}
+
+
+def _save_sentinel_preferences(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + '.tmp')
+    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    temporary.replace(path)
 
 
 def owner(request):
@@ -146,6 +180,10 @@ def create_app(config=None, controller=None, cost_client=None):
         AnswerClient(config.get("answer_base_url", ""), config.get("answer_model", ""),
             config.get("answer_api_key_env", "GORK_ANSWER_API_KEY"), config.get("request_timeout", 60)),
         config.get("answer_history_turns", 4))
+    monitor = TaskMonitor(cost, control)
+    control.task_monitor = monitor
+    sentinel_path = Path(config.get('sentinel_state_path', ROOT / 'sentinel.local.json'))
+    sentinel_initial = _sentinel_preferences(sentinel_path)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -153,9 +191,11 @@ def create_app(config=None, controller=None, cost_client=None):
         if controller is None and auto_connect_device:
             control.robot.start_auto_connect(config.get("device_address", ""))
         start_service()
+        await monitor.configure(**sentinel_initial)
         try:
             yield
         finally:
+            await monitor.stop()
             await control.close()
             await cost.close()
             if manager:
@@ -166,6 +206,7 @@ def create_app(config=None, controller=None, cost_client=None):
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.control = control
     app.state.cost = cost
+    app.state.task_monitor = monitor
     allowed = {f"127.0.0.1:{port}", f"localhost:{port}"}
 
     @app.middleware("http")
@@ -249,6 +290,22 @@ def create_app(config=None, controller=None, cost_client=None):
     @app.get('/api/cost/health')
     async def cost_health():
         return await cost.health()
+
+    @app.get('/api/cost/sentinel')
+    async def sentinel_state():
+        return monitor.state()
+
+    @app.put('/api/cost/sentinel')
+    async def sentinel_settings(payload: MonitorSettings, request: Request):
+        control.renew_workspace(owner(request))
+        if payload.enabled and payload.mode == 'specific' and not MONITOR_TASK_ID.fullmatch(payload.task_id):
+            raise VoiceError(422, 'COST_TASK_ID', '请选择有效的智算任务')
+        settings = payload.model_dump()
+        try:
+            await asyncio.to_thread(_save_sentinel_preferences, sentinel_path, settings)
+        except OSError as exc:
+            raise VoiceError(503, 'MONITOR_PREFERENCES', '任务哨兵设置无法保存，请检查本机目录权限') from exc
+        return await monitor.configure(**settings)
 
     @app.get('/api/cost/projects')
     async def cost_projects(request: Request, page: int = 1):

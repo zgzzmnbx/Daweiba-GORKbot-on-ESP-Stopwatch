@@ -33,6 +33,7 @@ test('20 intermediate stops invalidate old playback/HTTP generations', () => {
 
 function workbench(saved = {}, uiOptions = {}) {
   const elements = new Map(), waiting = [], played = [], requests = [], events = {}, avatarStates = [], previewMounts = [];
+  let sentinel = uiOptions.sentinel || {enabled:true,mode:'auto',task_id:'',target:'desktop',sound:false,sound_target:'pc',current:null,last_result:null,last_success_at:'',connection_error:'',history:[],presentation:null};
   const nodes = name => ({nodeName:name, children:[], dataset:{}, listeners:{}, hidden:false,
     classList:{toggle(){}},setAttribute(){},focus(){this.focused=true;},remove(){this.removed=true;},
     append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;this.options=[];this.value='';},
@@ -78,10 +79,14 @@ function workbench(saved = {}, uiOptions = {}) {
         if (uiOptions.delayCost) return await new Promise(resolve => waiting.push(() => resolve({ok:true,json:async()=>result})));
         return {ok:true,json:async()=>result};
       }
+      if (url === '/api/cost/sentinel') {
+        if (options.method === 'PUT') sentinel = {...sentinel,...JSON.parse(options.body)};
+        return {ok:true,json:async()=>sentinel};
+      }
       if (url === '/api/device/audio/speech' && uiOptions.oldBackend)
         return {ok:false,status:404,json:async()=>({})};
       if(url==='/api/tts') return await new Promise(resolve=>waiting.push(()=>resolve({ok:true,arrayBuffer:async()=>new ArrayBuffer(44)})));
-      return {ok:true,json:async()=>url==='/api/health'?{auto_connect_voice:uiOptions.autoConnectVoice === true,watch_speech_sync:uiOptions.oldBackend !== true,voice:{ready:true},voice_url:'local',robot:{connected:uiOptions.robotConnected === true},answer:{enabled:true},
+      return {ok:true,json:async()=>url==='/api/health'?{version:uiOptions.healthVersion || '9.8.7-test',auto_connect_voice:uiOptions.autoConnectVoice === true,watch_speech_sync:uiOptions.oldBackend !== true,voice:{ready:true},voice_url:'local',robot:{connected:uiOptions.robotConnected === true},answer:{enabled:true},
         capabilities:{protocol_version:1,tts:{speakers:[{id:3,label:'local 3'},{id:58,label:'local 58'}]},
           cloud:{request_voice:true,voices:[{id:'Cherry',label:'Cherry'},{id:'Ethan',label:'Ethan'}]}}}:url==='/api/answer'?{text:'单独的回答'}:
         url==='/api/character/bubble'?{desktop:{requested:true,accepted:true},watch:{requested:true,accepted:true,receipt:'OK:TEXT'}}:
@@ -91,13 +96,19 @@ function workbench(saved = {}, uiOptions = {}) {
   });
   const script = fs.readFileSync(new URL('../static/app.js', import.meta.url),'utf8').replace(/^import .*;\r?\n/gm, '');
   vm.runInContext(script,context);
-  return {element,waiting,played,requests,pages,tabs,location,events,avatarStates,saved,previewMounts};
+  return {element,waiting,played,requests,pages,tabs,location,events,avatarStates,saved,previewMounts,context};
 }
 const settle = () => new Promise(resolve=>setImmediate(resolve));
 
+test('settings shows the running console version from health', async () => {
+  const ui=workbench({}, {hash:'#settings'}); await settle();
+  assert.equal(ui.element('desktop-version').textContent,'v9.8.7-test');
+  assert.equal(ui.element('header-version').textContent,'v9.8.7-test');
+});
+
 test('cost query is opt-in AI, labels demo, renders literal sources and never speaks', async () => {
   const ui=workbench({}, {hash:'#cost'}); await settle();
-  assert.equal(ui.requests.some(r=>r.url.startsWith('/api/cost')),false);
+  assert.equal(ui.requests.some(r=>r.url.startsWith('/api/cost') && r.url!=='/api/cost/sentinel'),false);
   ui.element('cost-question').value='计费依据';
   await ui.element('cost-query').onclick();
   assert.equal(JSON.parse(ui.requests.find(r=>r.url==='/api/cost/query').body).allow_ai,false);
@@ -107,6 +118,52 @@ test('cost query is opt-in AI, labels demo, renders literal sources and never sp
   await ui.element('cost-query').onclick();
   assert.equal(ui.element('cost-ai').checked,false);
   assert.equal(ui.requests.some(r=>['/api/tts','/api/answer','/api/device/audio/speech','/api/character/bubble'].includes(r.url)),false);
+});
+
+test('task sentinel starts on and the switch can turn it off without fetching business data', async () => {
+  const ui=workbench({}, {hash:'#cost'}); await settle();
+  assert.equal(ui.element('sentinel-enable').checked,true);
+  assert.equal(ui.requests.filter(r=>r.url==='/api/cost/sentinel' && r.body).length,0);
+  assert.equal(ui.requests.some(r=>r.url==='/api/cost/projects'),false);
+  ui.element('sentinel-enable').checked=false;
+  await ui.element('sentinel-enable').onchange();
+  const request=ui.requests.find(r=>r.url==='/api/cost/sentinel' && r.body);
+  assert.deepEqual(JSON.parse(request.body),{enabled:false,mode:'auto',task_id:'',target:'desktop',sound:false,sound_kind:'speech',sound_target:'pc'});
+});
+
+test('task sentinel switch is rendered as a switch in the generated console', () => {
+  const html=fs.readFileSync(new URL('../static/index.html',import.meta.url),'utf8');
+  assert.match(html,/<input(?=[^>]*id="sentinel-enable")(?=[^>]*role="switch")[^>]*>/);
+});
+
+test('manual character preview returns to the active sentinel after its priority window', async () => {
+  const ui=workbench({}, {hash:'#character',sentinel:{enabled:true,mode:'auto',task_id:'',target:'desktop',sound:false,sound_target:'pc',current:{activity:{status:'running'},attention:{review_rows:0,warning_rows:0},task_id:'tsk_test',task_name:'测试任务'},last_result:null,last_success_at:'',connection_error:'',history:[],presentation:null}});
+  await settle();
+  await vm.runInContext('refreshSentinel()',ui.context);
+  assert.equal(ui.avatarStates.at(-1),'working');
+  ui.element('character-expression').value='happy';
+  await ui.element('character-expression').onchange();
+  assert.equal(ui.avatarStates.at(-1),'happy');
+  vm.runInContext('manualPreviewUntil = Date.now() - 1; render()',ui.context);
+  assert.equal(ui.avatarStates.at(-1),'working');
+});
+
+test('task sentinel explains when a human action postpones a real reminder', async () => {
+  const sentinel={enabled:true,mode:'auto',task_id:'',target:'both',sound:false,sound_target:'pc',current:null,last_result:null,last_success_at:'',connection_error:'',history:[],presentation:null,
+    deferred:{task_id:'tsk_test',message:'本次处理结束，请复核结果。',reason:'人工角色操作优先'}};
+  const ui=workbench({}, {hash:'#cost',sentinel}); await settle();
+  assert.match(ui.element('sentinel-status').textContent,/提醒暂缓：人工角色操作优先/);
+  assert.match(ui.element('sentinel-status').textContent,/空闲后自动提示/);
+});
+
+test('stage reminders remain visible without an active batch-match snapshot', async () => {
+  const record={at:'2026-09-28',task_id:'tsk_stage',task_name:'转换任务',message:'开始转换，正在识别表格。',
+    delivery:{desktop:'displayed',watch:'not_requested',sound:'off'}};
+  const sentinel={enabled:true,mode:'auto',task_id:'',target:'desktop',sound:false,sound_target:'pc',
+    current:null,last_result:null,last_success_at:'2026-09-28',connection_error:'',history:[record],presentation:null};
+  const ui=workbench({}, {hash:'#cost',sentinel}); await settle();
+  assert.match(ui.element('sentinel-status').textContent,/最近节点：开始转换/);
+  assert.match(ui.element('sentinel-current').textContent,/转换任务/);
 });
 
 test('cost late result is discarded after stop and summary handoff cannot autoplay', async () => {

@@ -27,6 +27,59 @@ SOURCE_FIELDS = ('id', 'source_file', 'source_type', 'title', 'title_path', 'aut
                  'library_name', 'page', 'line_start', 'line_end', 'score')
 TASK_FIELDS = ('task_id', 'title', 'task_name', 'task_type', 'status', 'status_label', 'stage_label',
                'created_at', 'updated_at', 'progress')
+MONITOR_TASK_ID = re.compile(r'^tsk_[a-f0-9]{24}$')
+
+
+def monitor_snapshot(data):
+    if not isinstance(data, dict) or not MONITOR_TASK_ID.fullmatch(str(data.get('task_id') or '')):
+        raise VoiceError(502, 'COST_MONITOR_SCHEMA', '造价任务监控接口字段不兼容')
+    activity, attention = data.get('activity'), data.get('attention')
+    if (not isinstance(activity, dict) or activity.get('type') != 'batch_match'
+            or not isinstance(attention, dict)):
+        raise VoiceError(502, 'COST_MONITOR_SCHEMA', '造价任务监控接口字段不兼容')
+    status = activity.get('status')
+    if status not in ('running', 'completed', 'failed', 'interrupted', 'unknown'):
+        raise VoiceError(502, 'COST_MONITOR_SCHEMA', '造价任务监控状态不兼容')
+    def count(key):
+        value = attention.get(key)
+        return value if type(value) is int and value >= 0 else None
+    return {'task_id': data['task_id'], 'task_name': str(data.get('task_name') or '')[:180],
+            'project_id': str(data.get('project_id') or '')[:160],
+            'task_status': str(data.get('task_status') or '')[:40],
+            'task_updated_at': str(data.get('task_updated_at') or '')[:50],
+            'data_status': str(data.get('data_status') or '')[:40],
+            'activity': {'type': 'batch_match', 'status': status,
+                         'attempt': str(activity.get('attempt') or '')[:80],
+                         'started_at': str(activity.get('started_at') or '')[:50],
+                         'updated_at': str(activity.get('updated_at') or '')[:50]},
+            'attention': {'review_rows': count('review_rows'), 'warning_rows': count('warning_rows'),
+                          'warning_checked': attention.get('warning_checked') is True}}
+
+
+MONITOR_STAGES = frozenset({'conversion_start', 'match_start', 'match_result',
+                            'warning_start', 'warning_result', 'report_generated',
+                            'review_requested', 'review_sent'})
+
+
+def monitor_events(data):
+    values = data.get('events', [])
+    if not isinstance(values, list):
+        raise VoiceError(502, 'COST_MONITOR_SCHEMA', '造价任务节点格式不兼容')
+    result = []
+    for item in values[:50]:
+        if (not isinstance(item, dict) or not MONITOR_TASK_ID.fullmatch(str(item.get('task_id') or ''))
+                or item.get('stage') not in MONITOR_STAGES
+                or not re.fullmatch(r'[a-f0-9]{32}|[a-zA-Z0-9_-]{1,100}:sent', str(item.get('event_id') or ''))):
+            raise VoiceError(502, 'COST_MONITOR_SCHEMA', '造价任务节点格式不兼容')
+        result.append({'event_id': item['event_id'], 'task_id': item['task_id'],
+                       'task_name': str(item.get('task_name') or '')[:180],
+                       'stage': item['stage'], 'status': str(item.get('status') or '')[:24],
+                       'platform': 'feishu' if item.get('platform') == 'feishu' else 'other',
+                       'attempt': str(item.get('attempt') or '')[:80],
+                       'occurred_at': str(item.get('occurred_at') or '')[:50],
+                       'review_rows': item.get('review_rows') if type(item.get('review_rows')) is int else None,
+                       'warning_rows': item.get('warning_rows') if type(item.get('warning_rows')) is int else None})
+    return result
 
 
 class CostClient:
@@ -78,6 +131,25 @@ class CostClient:
         tasks = await self._request('GET', f'/api/projects/{project_id}/tasks')
         return {'project': fields(data.get('project', data), PROJECT_FIELDS),
                 'tasks': records(tasks, 'items', TASK_FIELDS)}
+
+    async def monitor_feed(self):
+        await self.health()
+        data = await self._request('GET', '/api/task-monitor/current', timeout=4)
+        if not isinstance(data.get('recent'), list):
+            raise VoiceError(502, 'COST_MONITOR_SCHEMA', '造价任务监控接口缺少近期结果，请更新业务服务')
+        return {'task': monitor_snapshot(data['task']) if data.get('task') is not None else None,
+                'recent': [monitor_snapshot(item) for item in data['recent'][:20]],
+                'events': monitor_events(data)}
+
+    async def current_task(self):
+        return (await self.monitor_feed())['task']
+
+    async def monitor_task(self, task_id):
+        if not MONITOR_TASK_ID.fullmatch(task_id):
+            raise VoiceError(422, 'COST_TASK_ID', '任务 ID 格式无效')
+        await self.health()
+        data = await self._request('GET', f'/api/tasks/{task_id}/monitor', timeout=4)
+        return monitor_snapshot(data)
 
     async def query(self, question, allow_ai=False):
         question = question.strip()

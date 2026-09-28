@@ -87,7 +87,9 @@ async function pollState() {
     const response = await fetch(`${BACKEND_URL}/api/desktop/state`, { signal: AbortSignal.timeout(2000) });
     const data = await response.json();
     const modes = { listening: 'listening', processing: 'thinking', generating: 'thinking', speaking: 'happy', error: 'confused' };
-    sharedState = { mode: modes[data.phase] || 'idle', label: data.phase === 'idle' ? '就绪' : ({listening:'正在聆听',processing:'处理中',generating:'正在回答',speaking:'正在说话',error:'需要检查'}[data.phase] || data.phase), robotConnected: Boolean(data.robot?.connected), character: data.character || { revision: 0, bubble: '' }, scene: avatarScene };
+    const character = data.character || { revision: 0, bubble: '' };
+    const autoScene = character.auto ? {expression:character.expression, mode:'loop', startedAt:Date.now(), revision:1000000 + character.revision} : null;
+    sharedState = { mode: modes[data.phase] || 'idle', label: data.phase === 'idle' ? '就绪' : ({listening:'正在聆听',processing:'处理中',generating:'正在回答',speaking:'正在说话',error:'需要检查'}[data.phase] || data.phase), robotConnected: Boolean(data.robot?.connected), character, scene: autoScene || avatarScene };
   } catch { sharedState = { mode: 'confused', label: '后端未就绪', robotConnected: false, character: { revision: 0, bubble: '' }, scene: avatarScene }; }
   sharedState.appearance=appearance;
   if (avatarWindow && !avatarWindow.isDestroyed()) avatarWindow.webContents.send('gork:state', sharedState);

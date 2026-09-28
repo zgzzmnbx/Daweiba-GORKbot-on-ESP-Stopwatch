@@ -27,6 +27,7 @@ test('Mantine shell keeps every legacy control once, with compatible native type
   for(const el of after.window.document.querySelectorAll('script[src],link[href]'))assert.match(el.getAttribute('src')||el.getAttribute('href'),/^\/static\//);
   assert.ok(after.window.document.querySelectorAll('.mantine-Button-root').length>30);
   assert.equal(after.window.document.querySelectorAll('[data-page]').length,6);
+  assert.equal(after.window.document.querySelector('.wordmark #header-version')?.textContent,'版本读取中');
   before.window.close();after.window.close();
 });
 test('theme switch preserves node identity, drafts, history, values, listeners and disabled state',async()=>{

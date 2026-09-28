@@ -39,7 +39,7 @@ def target(address):
     (["A"], "", "A", ""),
     (["A", "B"], "b", "B", ""),
     (["A", "B"], "", None, "多台"),
-    (["A"], "B", None, "已配置"),
+    (["A"], "B", "B", ""),
     ([], "", None, "未发现"),
 ])
 def test_startup_selects_only_unambiguous_advertised_target(
@@ -53,11 +53,53 @@ def test_startup_selects_only_unambiguous_advertised_target(
 
     async def run():
         ble = FakeBle()
-        robot = Robot(client=ble, sound=FakeSound())
+        robot = Robot(client=ble, sound=FakeSound(),
+                      known_target_factory=target)
         robot.start_auto_connect(preferred)
         await robot.auto_task
         assert ble.connections == ([selected] if selected else [])
         assert (error in robot.snapshot()["error"]) if error else robot.snapshot()["connected"]
+        await robot.close()
+
+    asyncio.run(run())
+
+
+def test_bonded_watch_reconnects_without_new_advertisement(monkeypatch):
+    monkeypatch.setattr(robot_module, "RECONNECT_INITIAL_DELAY", .01)
+    monkeypatch.setattr(robot_module, "CONNECTION_POLL_SECONDS", .01)
+    scans = 0
+
+    async def fake_scan(**kwargs):
+        nonlocal scans
+        scans += 1
+        return [target("A")] if scans == 1 else []
+
+    monkeypatch.setattr(robot_module, "scan_targets", fake_scan)
+
+    async def until(predicate):
+        for _ in range(100):
+            if predicate():
+                return
+            await asyncio.sleep(.01)
+        raise AssertionError("bonded Watch did not reconnect")
+
+    async def run():
+        ble = FakeBle()
+        known = []
+
+        def saved(address):
+            known.append(address)
+            return target(address)
+
+        robot = Robot(client=ble, sound=FakeSound(),
+                      known_target_factory=saved)
+        robot.start_auto_connect("A")
+        await robot.auto_task
+        assert ble.connected
+        ble.connected = False  # Watch power cycle; Windows keeps the bond.
+        await until(lambda: len(ble.connections) == 2 and ble.connected)
+        assert known == ["A"]
+        assert ble.connections == ["A", "A"]
         await robot.close()
 
     asyncio.run(run())
@@ -161,6 +203,61 @@ def test_background_retries_initial_failure_and_later_drop(monkeypatch):
         attempts = len(ble.connections)
         await asyncio.sleep(.05)
         assert len(ble.connections) == attempts and not ble.connected
+        await robot.close()
+
+    asyncio.run(run())
+
+
+def test_manual_scan_during_watch_reboot_keeps_background_reconnect(monkeypatch):
+    monkeypatch.setattr(robot_module, "RECONNECT_INITIAL_DELAY", .01)
+    monkeypatch.setattr(robot_module, "RECONNECT_MAX_DELAY", .02)
+    monkeypatch.setattr(robot_module, "CONNECTION_POLL_SECONDS", .01)
+    scans = 0
+
+    async def fake_scan(**kwargs):
+        nonlocal scans
+        scans += 1
+        # Initial startup sees the Watch; the user's scan during reboot does
+        # not. The next background scan sees the restarted Watch again.
+        return [] if scans == 2 else [target("A")]
+
+    monkeypatch.setattr(robot_module, "scan_targets", fake_scan)
+
+    async def run():
+        ble = FakeBle()
+        robot = Robot(client=ble, sound=FakeSound())
+        robot.start_auto_connect("A")
+        await robot.auto_task
+        assert ble.connected
+        ble.connected = False
+        assert await robot.scan() == []
+        for _ in range(100):
+            if ble.connected and len(ble.connections) == 2:
+                break
+            await asyncio.sleep(.01)
+        assert ble.connections == ["A", "A"]
+        assert ble.connected
+        await robot.close()
+
+    asyncio.run(run())
+
+
+def test_scan_after_explicit_disconnect_does_not_reenable_auto_connect(monkeypatch):
+    async def fake_scan(**kwargs):
+        return [target("A")]
+
+    monkeypatch.setattr(robot_module, "scan_targets", fake_scan)
+
+    async def run():
+        ble = FakeBle()
+        robot = Robot(client=ble, sound=FakeSound())
+        robot.start_auto_connect("A")
+        await robot.auto_task
+        await robot.disconnect()
+        assert len(await robot.scan()) == 1
+        assert robot.maintain_task.done()
+        assert not ble.connected
+        assert ble.connections == ["A"]
         await robot.close()
 
     asyncio.run(run())

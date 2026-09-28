@@ -28,4 +28,4 @@
 .companion-stage .debug-console{order:1}
 .companion-stage .robot-console{order:2}
 .companion-stage>.eyebrow,.companion-stage>.companion-portrait,.companion-stage>.expression-menu{order:0}
-@media(max-width:700px){.version{display:none}.app-header{gap:8px;padding:0 12px}.global-status{gap:6px}.global-status>span{display:none}#global-stop,#theme-toggle{font-size:10px;padding:7px}#theme-toggle{margin-left:auto}.wordmark{font-size:22px}}
+@media(max-width:700px){.app-header{gap:8px;padding:0 12px}.global-status{gap:6px}.global-status>span{display:none}#global-stop,#theme-toggle{font-size:10px;padding:7px}#theme-toggle{margin-left:auto}.wordmark{font-size:22px}}

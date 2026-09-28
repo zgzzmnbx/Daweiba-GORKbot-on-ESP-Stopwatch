@@ -73,13 +73,14 @@ class SoundClient:
         await client.start_notify(self.events, self._notify)
 
     async def detach(self):
-        if self.client and getattr(self.client, "is_connected", False):
-            try:
-                await self.client.stop_notify(self.events)
-            except Exception:
-                pass
+        client = self.client
         self.client = None
         self.queue = None
+        if client and getattr(client, "is_connected", False):
+            try:
+                await asyncio.wait_for(client.stop_notify(self.events), 2)
+            except Exception:
+                pass
 
     def _notify(self, _sender, data):
         try:

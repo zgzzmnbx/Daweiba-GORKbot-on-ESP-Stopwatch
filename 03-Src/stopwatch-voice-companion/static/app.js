@@ -10,7 +10,9 @@ try { debugStorage = window.localStorage; } catch {}
 const debugConsole = createDebugConsole(document, debugStorage, text => navigator.clipboard.writeText(text));
 const face = window.GorkAvatar?.mount($('gork-face'));
 const characterFace = face;
-let manualPreview = false, lastFaceState = '', renderedPage = '';
+let manualPreview = false, manualPreviewUntil = 0, lastFaceState = '', renderedPage = '';
+let sentinelFace = 'idle';
+let sentinelEnabled = false;
 let expressionMenu = null, expressionPending = false;
 function shareAvatarScene(expression, mode = 'loop', startedAt = Date.now()) {
   window.gorkDesktop?.setAvatarScene?.({expression, mode, startedAt})?.catch(() => {});
@@ -91,7 +93,10 @@ function navigate() {
 }
 function render(next = phase) {
   phase = next; document.body.dataset.phase = phase;
-  const faceState = $('expression-follow').checked ? next : 'idle';
+  if (manualPreview && sentinelEnabled && Date.now() >= manualPreviewUntil) {
+    manualPreview = false; lastFaceState = '';
+  }
+  const faceState = $('expression-follow').checked ? (next === 'idle' ? sentinelFace : next) : 'idle';
   if (!manualPreview && faceState !== lastFaceState) {
     const startedAt = Date.now();
     face?.set(faceState, {startedAt, force:true}); shareAvatarScene(faceState, 'loop', startedAt); lastFaceState = faceState;
@@ -390,6 +395,9 @@ function submitComposer() {
 async function refresh() {
   try {
     const data = await api('/health'); suggestedAddress = data.device_address;
+    const runningVersion = data.version ? `v${data.version}` : '未知';
+    $('desktop-version').textContent = runningVersion;
+    $('header-version').textContent = runningVersion;
     watchSpeechSync = data.watch_speech_sync === true;
     startupVoice.enabled = data.auto_connect_voice !== false;
     if (!startupVoice.enabled) { clearStartupVoiceTimer(); startupVoice.done = true; }
@@ -418,6 +426,8 @@ async function refresh() {
       scheduleStartupVoice(ready ? 0 : 1000);
     }
   } catch (error) {
+    $('desktop-version').textContent = '无法读取';
+    $('header-version').textContent = '版本无法读取';
     $('voice-status').textContent = '工作台断开'; failed(error);
     scheduleStartupVoice(1000);
   }
@@ -599,6 +609,101 @@ async function acquireWorkspace(replace = false) {
 
 // Business content stays in this page's memory; never send it to the status log.
 let costBusy = false, costPage = 1, costTotal = 0;
+let sentinelPending = false, sentinelLoaded = false, sentinelProjectPage = 1, sentinelProjectTotal = 0, sentinelSelectedTaskId = '';
+function sentinelSpecificVisibility() {
+  $('sentinel-specific').hidden = $('sentinel-mode').value !== 'specific';
+}
+function paintSentinel(data) {
+  sentinelEnabled = data.enabled === true;
+  if (!sentinelLoaded) {
+    $('sentinel-mode').value = data.mode;
+    $('sentinel-target').value = data.target;
+    $('sentinel-sound').checked = data.sound;
+    $('sentinel-sound-kind').value = data.sound_kind || 'speech';
+    $('sentinel-sound-target').value = data.sound_target || 'pc';
+    sentinelSelectedTaskId = data.task_id || '';
+    sentinelSpecificVisibility();
+    sentinelLoaded = true;
+  }
+  if (!sentinelPending) $('sentinel-enable').checked = data.enabled;
+  const current = data.current, last = data.last_result;
+  const activityNames = {running:'正在批量匹配', completed:'本次匹配结束', failed:'本次匹配失败', interrupted:'运行未确认，可能中断', unknown:'尚无可信运行状态'};
+  $('sentinel-status').textContent = !data.enabled ? '任务哨兵已关闭；不读取智算任务。' :
+    data.connection_error ? `${data.connection_error}最近成功读取：${data.last_success_at || '无'}。` :
+    data.deferred ? `任务已变化，提醒暂缓：${data.deferred.reason || '排队等待发送'}；空闲后自动提示。` :
+    current?.activity.status === 'running' ? `正在关注：${current.task_name || current.task_id} · ${activityNames[current.activity.status]}` :
+    data.history?.length ? `已开启，最近节点：${data.history[0].message}` :
+    current ? `正在关注：${current.task_name || current.task_id} · ${activityNames[current.activity.status]}` : '已开启，等待智算任务。';
+  const item = current?.activity.status === 'unknown' && data.history?.length ? null : current || last;
+  $('sentinel-current').textContent = item ?
+    `任务：${item.task_name || item.task_id}\n编号：${item.task_id}\n运行：${activityNames[item.activity.status]}\n任务登记：${item.task_status || '未知'}\n待复核：${item.attention.review_rows ?? '未知'}；预警：${item.attention.warning_rows ?? '未核实'}\n最近读取：${data.last_success_at || '无'}` :
+    (data.history?.length ? `最近任务：${data.history[0].task_name || data.history[0].task_id}\n编号：${data.history[0].task_id}\n节点：${data.history[0].message}\n最近读取：${data.last_success_at || '无'}` : '尚无已核实的任务。');
+  $('sentinel-history').replaceChildren();
+  for (const record of data.history || []) {
+    const p = document.createElement('p');
+    p.textContent = `${record.at} · ${record.task_name || record.task_id} · ${record.message}（桌面 ${record.delivery.desktop}；Watch ${record.delivery.watch}；声音 ${record.delivery.sound}）`;
+    $('sentinel-history').append(p);
+  }
+  if (!(data.history || []).length) $('sentinel-history').textContent = '暂无提醒。';
+  sentinelFace = data.enabled && !data.connection_error ?
+    (data.presentation?.expression || (current?.activity.status === 'running' ? 'working' : 'idle')) : 'idle';
+  render();
+}
+async function refreshSentinel() {
+  try { paintSentinel(await api('/cost/sentinel')); }
+  catch (error) { $('sentinel-status').textContent = `哨兵状态无法读取：${error.message}`; sentinelFace = 'idle'; render(); }
+}
+async function applySentinel() {
+  if (sentinelPending) return;
+  sentinelPending = true;
+  $('sentinel-apply').disabled = true;
+  try {
+    if (!workspace) await acquireWorkspace();
+    if (!workspace) throw new Error('请先取得工作台控制权。');
+    const wasEnabled = sentinelEnabled;
+    const enabled = $('sentinel-enable').checked;
+    const mode = enabled ? $('sentinel-mode').value : 'auto';
+    const task_id = mode === 'specific' ? ($('sentinel-task').value || sentinelSelectedTaskId) : '';
+    if (enabled && mode === 'specific' && !task_id) throw new Error('请先选择要关注的任务。');
+    const result = await api('/cost/sentinel', 'PUT', {enabled, mode, task_id,
+      target:$('sentinel-target').value, sound:$('sentinel-sound').checked,
+      sound_kind:$('sentinel-sound-kind').value,
+      sound_target:$('sentinel-sound-target').value});
+    if (result.enabled && !wasEnabled) { manualPreview = false; lastFaceState = ''; }
+    sentinelLoaded = false; paintSentinel(result);
+  } catch (error) { $('sentinel-status').textContent = error.message; await refreshSentinel(); }
+  finally { sentinelPending = false; $('sentinel-apply').disabled = false; }
+}
+async function loadSentinelProjects(page = 1) {
+  try {
+    if (!workspace) await acquireWorkspace();
+    if (!workspace) return;
+    const result = await api(`/cost/projects?page=${page}`);
+    sentinelProjectPage = page; sentinelProjectTotal = result.total;
+    $('sentinel-page').textContent = `第 ${page} 页 · 共 ${result.total} 项`;
+    $('sentinel-project').replaceChildren(new Option('请选择项目', ''));
+    $('sentinel-task').replaceChildren(new Option('请选择任务', ''));
+    for (const item of result.items) if (item.project_id) $('sentinel-project').add(new Option(item.project_name || item.project_id, item.project_id));
+    $('sentinel-status').textContent = `本页已加载 ${result.items.length} 个项目。`;
+  } catch (error) { $('sentinel-status').textContent = error.message; }
+}
+$('sentinel-projects').onclick = () => loadSentinelProjects(1);
+$('sentinel-prev').onclick = () => { if (sentinelProjectPage > 1) loadSentinelProjects(sentinelProjectPage - 1); };
+$('sentinel-next').onclick = () => { if (sentinelProjectPage * 20 < sentinelProjectTotal) loadSentinelProjects(sentinelProjectPage + 1); };
+$('sentinel-project').onchange = async () => {
+  sentinelSelectedTaskId = '';
+  $('sentinel-task').replaceChildren(new Option('请选择任务', ''));
+  const id = $('sentinel-project').value; if (!id) return;
+  try {
+    const result = await api(`/cost/projects/${encodeURIComponent(id)}`);
+    for (const item of result.tasks) if (item.task_id) $('sentinel-task').add(new Option(item.task_name || item.task_id, item.task_id));
+  } catch (error) { $('sentinel-status').textContent = error.message; }
+};
+$('sentinel-task').onchange = () => { sentinelSelectedTaskId = $('sentinel-task').value; };
+$('sentinel-mode').onchange = () => { sentinelSpecificVisibility(); if ($('sentinel-mode').value === 'specific') loadSentinelProjects(1); };
+$('sentinel-target').onchange = sentinelSpecificVisibility;
+$('sentinel-enable').onchange = applySentinel;
+$('sentinel-apply').onclick = applySentinel;
 async function costOperation(run) {
   if (costBusy) return;
   costBusy = true;
@@ -706,7 +811,7 @@ async function quickExpression(expression, target, mode) {
     const result = await api('/character','POST',{expression,target,mode},{signal});
     if (!epoch.valid(gen)) throw new DOMException('操作已取消','AbortError');
     if (target !== 'watch' && result.desktop?.accepted) {
-      const startedAt = Date.now(); manualPreview = true;
+      const startedAt = Date.now(); manualPreview = true; manualPreviewUntil = startedAt + 15000;
       characterFace?.set(expression,{mode,startedAt,force:true});
       shareAvatarScene(expression,mode,startedAt);
     }
@@ -717,7 +822,7 @@ async function previewCharacter() {
   const name = $('character-expression').value;
   if (name === 'happy-work') { message('开心工作包含设备专属纸笔层，请发送到 StopWatch 查看。'); return; }
   const startedAt = Date.now();
-  manualPreview = true; characterFace?.set(name, {mode:$('character-mode').value, startedAt, force:true});
+  manualPreview = true; manualPreviewUntil = startedAt + 15000; characterFace?.set(name, {mode:$('character-mode').value, startedAt, force:true});
   shareAvatarScene(name, $('character-mode').value, startedAt);
   $('character-status').textContent = `正在本地预览：${name}`;
 }
@@ -804,7 +909,7 @@ $('scan').onclick = async () => {
     for (const item of devices) $('device').add(new Option(`${item.name} · ${item.address}`, item.address));
     if (devices.some(x => x.address === suggestedAddress)) $('device').value = suggestedAddress;
     $('device').disabled = !devices.length; $('pair').disabled = !devices.length;
-    message(devices.length ? '选择设备后连接。首次配对请同时检查设备 Pair 状态。' : '未发现设备。检查 BLE 开关、Pair 状态和电脑蓝牙。');
+    message(devices.length ? '选择设备后连接。已绑定设备无需重开 Pair。' : '未发现设备。请确认 Watch 蓝牙为 ON，待开机广播稳定后重扫；已绑定设备无需清除配对。');
   } catch (error) { message(error.message, true); }
   finally { $('scan').disabled = !workspace; }
 };
@@ -822,6 +927,7 @@ expressionMenu = createExpressionMenu(document,{catalog:window.GorkCatalog,rende
 if(window.GorkAppearance) createAppearancePicker(document,{library:window.GorkAppearance,renderer:window.GorkAvatar,catalog:window.GorkCatalog,storage:debugStorage,bridge:window.gorkDesktop,onChange:value=>{face?.setAppearance(value);expressionMenu.setAppearance(value);}});
 characterOptions(); fillVoices(); navigate(); render(); refresh(); setInterval(heartbeat, 1000); setInterval(workspaceHeartbeat, 1000);
 setInterval(refresh, 5000);
+refreshSentinel(); setInterval(() => { if (sentinelEnabled) refreshSentinel(); }, 2500);
 
 $('quick-connect').onclick = () => connect();
 for (const id of ['auto-read','expression-follow']) $(id).onchange = () => {

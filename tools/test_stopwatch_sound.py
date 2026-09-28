@@ -118,6 +118,25 @@ def test_sound_client_matches_request_and_ignores_stale_event():
     asyncio.run(run())
 
 
+def test_detach_releases_state_even_when_old_notification_hangs():
+    class StaleBle:
+        is_connected = True
+
+        async def start_notify(self, _uuid, _callback):
+            pass
+
+        async def stop_notify(self, _uuid):
+            await asyncio.Future()
+
+    async def run():
+        sound = SoundClient()
+        await sound.attach(StaleBle())
+        await asyncio.wait_for(sound.detach(), 3)
+        assert sound.client is None and sound.queue is None
+
+    asyncio.run(run())
+
+
 def test_sound_client_waits_for_terminal_completion_after_started():
     class FakeBle:
         is_connected = True

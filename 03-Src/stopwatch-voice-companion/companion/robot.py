@@ -9,7 +9,9 @@ import uuid
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools"))
-from stopwatch_ble import BleExpressionClient, BleConsoleError, EXPRESSIONS as BLE_EXPRESSIONS, scan_targets
+from stopwatch_ble import (BleExpressionClient, BleConsoleError,
+                           EXPRESSIONS as BLE_EXPRESSIONS, known_bond_target,
+                           scan_targets)
 from stopwatch_sound import SoundClient
 from stopwatch_audio import AudioClient, make_wav, read_wav
 
@@ -44,10 +46,12 @@ def boost_watch_speech(pcm):
 
 
 class Robot:
-    def __init__(self, client=None, scanner=None, sound=None):
+    def __init__(self, client=None, scanner=None, sound=None,
+                 known_target_factory=None):
         self.client = client or BleExpressionClient()
         self.scanner = scanner
         self.sound = sound or SoundClient()
+        self.known_target_factory = known_target_factory or known_bond_target
         self.targets = {}
         self.target = None
         self.enabled = False
@@ -63,6 +67,8 @@ class Robot:
         self.auto_task = None
         self.maintain_task = None
         self.operation_epoch = 0
+        self.reconnect_enabled = False
+        self.preferred_address = ""
         self.audio = None
         self.audio_task = None
         self.audio_job = ""
@@ -77,10 +83,12 @@ class Robot:
 
     def start_auto_connect(self, preferred_address=""):
         """Start the background connection supervisor for this StopWatch."""
+        self.reconnect_enabled = True
+        self.preferred_address = preferred_address.strip()
         if self.auto_task is None:
             self.auto_task = asyncio.create_task(
-                self._auto_connect(preferred_address.strip(), self.operation_epoch))
-            self._start_maintain(preferred_address.strip(), self.auto_task)
+                self._auto_connect(self.preferred_address, self.operation_epoch))
+            self._start_maintain(self.preferred_address, self.auto_task)
 
     def _start_maintain(self, preferred_address, initial=None):
         if self.maintain_task is None or self.maintain_task.done():
@@ -125,6 +133,11 @@ class Robot:
                                   if value.address.casefold() == last_address.casefold()]
                     if not candidates and not pinned_address and len(values) == 1:
                         candidates = values
+                    if not candidates and pinned_address:
+                        # Windows may keep the bonded Watch physically linked
+                        # after the app's old session drops. It then stops
+                        # advertising, so scanning alone cannot recover it.
+                        candidates = [self.known_target_factory(last_address)]
                     if not candidates:
                         self.error = ("未发现已配置的 StopWatch，等待设备广播后重试"
                                       if last_address else "未发现唯一 StopWatch，等待设备广播后重试")
@@ -157,8 +170,7 @@ class Robot:
                     candidates = [value for value in values
                         if value.address.casefold() == preferred_address.casefold()]
                     if not candidates:
-                        self.error = "未发现已配置的 StopWatch，请手动扫描连接"
-                        return
+                        candidates = [self.known_target_factory(preferred_address)]
                 elif len(values) == 1:
                     candidates = values
                 elif not values:
@@ -219,9 +231,16 @@ class Robot:
     async def scan(self):
         self.operation_epoch += 1
         await self._stop_auto_connect()
-        async with self.lock:
-            values = await scan_targets(timeout=5, scanner=self.scanner)
-            self.targets = {value.address: value for value in values}
+        try:
+            async with self.lock:
+                values = await scan_targets(timeout=5, scanner=self.scanner)
+                self.targets = {value.address: value for value in values}
+        finally:
+            # A manual scan may finish before the Watch starts advertising after
+            # power-on. Keep the existing connection policy alive in that case.
+            if self.reconnect_enabled:
+                address = self.target.address if self.target else self.preferred_address
+                self._start_maintain(address)
         return [{"name": x.name, "address": x.address} for x in values]
 
     async def connect(self, address):
@@ -230,6 +249,8 @@ class Robot:
         async with self.lock:
             if address not in self.targets:
                 raise BleConsoleError("请先扫描并选择当次发现的设备")
+            self.reconnect_enabled = True
+            self.preferred_address = address
             try:
                 await self._connect_locked(self.targets[address])
             finally:
@@ -237,6 +258,7 @@ class Robot:
 
     async def disconnect(self):
         self.operation_epoch += 1
+        self.reconnect_enabled = False
         self.enabled = False
         await self._stop_auto_connect()
         await self.cancel_audio()
@@ -320,7 +342,7 @@ class Robot:
         if not self.enabled or not self.client.connected:
             raise BleConsoleError("StopWatch 未连接")
 
-    async def _run_audio(self, mode, pcm=None, rate=None, speech_text=None):
+    async def _run_audio(self, mode, pcm=None, rate=None, speech_text=None, speech_expression=None):
         async with self.lock:
             raw = getattr(self.client, "client", None)
             if raw is None or not getattr(raw, "is_connected", False):
@@ -330,7 +352,7 @@ class Robot:
             bubble_started = False
             async def reveal_after_transfer():
                 nonlocal bubble_started
-                self.receipt = await self.client.send_command(EXPRESSIONS["idle"])
+                self.receipt = await self.client.send_command(speech_expression or EXPRESSIONS["idle"])
                 bubble_started = True
                 self.receipt = await self.client.send_text(bubble)
                 self.state, self.text = "idle", bubble
@@ -373,7 +395,7 @@ class Robot:
                 await self.audio.close()
                 self.audio = None
 
-    def _start_audio(self, mode, pcm=None, rate=None, gain_db=0.0, speech_text=None):
+    def _start_audio(self, mode, pcm=None, rate=None, gain_db=0.0, speech_text=None, speech_expression=None):
         self._require_audio_idle()
         self.audio_job, self.audio_mode = str(uuid.uuid4()), mode
         self.audio_result, self.audio_error = None, ""
@@ -381,7 +403,7 @@ class Robot:
         self.audio_progress = {"stage": "starting", "bytes": 0, "total": len(pcm or b""), "elapsed": 0, "rate": 0}
         async def runner():
             try:
-                await self._run_audio(mode, pcm, rate, speech_text)
+                await self._run_audio(mode, pcm, rate, speech_text, speech_expression)
             except asyncio.CancelledError:
                 self.audio_progress = {**self.audio_progress, "stage": "cancelled"}
                 raise
@@ -396,13 +418,14 @@ class Robot:
     def start_audio_record(self, echo=False):
         return self._start_audio("echo" if echo else "record")
 
-    def start_audio_play(self, wav, *, speech=False, speech_text=None):
+    def start_audio_play(self, wav, *, speech=False, speech_text=None, speech_expression=None):
         try:
             pcm, rate = read_wav(wav)
         except ValueError as exc:
             raise BleConsoleError(str(exc)) from exc
         pcm, gain_db = boost_watch_speech(pcm) if speech else (pcm, 0.0)
-        return self._start_audio("play", pcm, rate, gain_db, speech_text if speech else None)
+        return self._start_audio("play", pcm, rate, gain_db, speech_text if speech else None,
+                                 speech_expression if speech else None)
 
     async def cancel_audio(self):
         task = self.audio_task
@@ -444,6 +467,49 @@ class Robot:
             self.receipt = await self.client.send_command(command)
             self.state, self.text, self.error = expression, "", ""
             return {"receipt": self.receipt, "expression": expression, "mode": mode}
+
+    async def auto_expression(self, expression, guard):
+        """Use the existing BLE writer; recheck cancellation after waiting for it."""
+        if not self.client.connected or not self.enabled:
+            return "offline"
+        async with self.lock:
+            if not guard():
+                return "suppressed"
+            self._require_audio_idle()
+            self.receipt = await self.client.send_command(f"loop {expression}")
+            return "accepted"
+
+    async def auto_notify(self, expression, text, guard):
+        if not self.client.connected or not self.enabled:
+            return "offline"
+        async with self.lock:
+            if not guard():
+                return "suppressed"
+            self._require_audio_idle()
+            self.receipt = await self.client.send_command(expression)
+            if not guard():
+                return "suppressed"
+            self.receipt = await self.client.send_text(text)
+            return "accepted"
+
+    async def auto_sound(self, sound_id, guard):
+        if not self.client.connected or not self.enabled:
+            return "offline"
+        async with self.lock:
+            if not guard():
+                return "suppressed"
+            self._require_audio_idle()
+            await self.sound.play(sound_id)
+            return "device_acknowledged"
+
+    async def auto_speech(self, wav, phrase, guard, expression=None):
+        if not self.client.connected or not self.enabled:
+            return "offline"
+        if not guard():
+            return "suppressed"
+        self.start_audio_play(wav, speech=True, speech_text=phrase, speech_expression=expression)
+        await self.audio_task
+        return "device_playback_completed" if not self.audio_error else "failed"
 
     async def set_bubble(self, text):
         self._require_audio_idle()

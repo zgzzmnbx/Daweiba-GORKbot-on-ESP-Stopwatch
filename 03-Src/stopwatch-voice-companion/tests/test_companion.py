@@ -41,7 +41,7 @@ def test_robot_boosts_speech_but_preserves_diagnostic_wav(monkeypatch):
         wav.writeframes((5000).to_bytes(2, 'little', signed=True) * 1600)
     robot = Robot(client=SimpleNamespace(connected=True))
     captured = []
-    monkeypatch.setattr(robot, '_start_audio', lambda mode, pcm, rate, gain_db=0.0, speech_text=None:
+    monkeypatch.setattr(robot, '_start_audio', lambda mode, pcm, rate, gain_db=0.0, speech_text=None, speech_expression=None:
                         captured.append((pcm, gain_db, speech_text)))
     robot.start_audio_play(source.getvalue())
     robot.start_audio_play(source.getvalue(), speech=True)
@@ -70,6 +70,9 @@ def test_watch_text_is_committed_after_audio_transfer_before_play(monkeypatch):
         await robot._run_audio('play', b'\0' * 3200, 16000, '同步文字')
         assert events == ['open', 'clear', 'commit', ('expression', 'idle'), ('text', '同步文字'), 'play', 'close']
         assert robot.text == '同步文字' and robot.flushed_revision == robot.revision
+        events.clear()
+        await robot._run_audio('play', b'\0' * 3200, 16000, '待复核', 'curious')
+        assert ('expression', 'curious') in events and ('expression', 'idle') not in events
     asyncio.run(run())
 
 
