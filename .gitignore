@@ -20,6 +20,8 @@ Codex-Temp/
 03-Src/stopwatch-voice-companion/config.local.toml
 03-Src/stopwatch-voice-companion/sentinel.local.json
 03-Src/stopwatch-voice-companion/sentinel.local.json.tmp
+03-Src/stopwatch-voice-companion/codex-sentinel.local.json
+03-Src/stopwatch-voice-companion/codex-sentinel.local.json.tmp
 **/.pytest_cache/
 **/node_modules/
 

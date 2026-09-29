@@ -2,8 +2,12 @@
 import asyncio
 import contextlib
 import time
+from pathlib import Path
+import sys
+import wave
 
 from .voice import VoiceError
+from .notification_coordinator import NotificationCoordinator
 
 
 SAFE_ROUTING = {"asr": "local", "tts": "local", "allow_audio_upload": False, "allow_text_upload": False}
@@ -44,6 +48,34 @@ class Controller:
         self.character_bubble_deadline = 0.0
         self.manual_until = 0.0
         self.task_monitor = None
+        self.codex_monitor = None
+        self.codex_spool = Path(__file__).resolve().parents[3] / 'Codex-Temp' / 'codex-sentinel-hook-queue'
+        self.notifications = NotificationCoordinator(self)
+
+    async def play_auto_tone(self, guard):
+        if sys.platform != 'win32' or not guard():
+            return 'unavailable' if guard() else 'suppressed'
+        import winsound
+        path = Path(__file__).resolve().parents[3] / '01-assets' / 'audio' / 'source' / '02-confirm.wav'
+        if not path.is_file():
+            return 'failed'
+        try:
+            with wave.open(str(path), 'rb') as sound:
+                duration = min(2.0, sound.getnframes() / sound.getframerate())
+            winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+            await asyncio.sleep(duration)
+            return 'started_by_os' if guard() else 'suppressed'
+        except asyncio.CancelledError:
+            winsound.PlaySound(None, 0)
+            raise
+        except Exception:
+            return 'failed'
+
+    def stop_auto_tone(self):
+        if sys.platform == 'win32':
+            import winsound
+            with contextlib.suppress(Exception):
+                winsound.PlaySound(None, 0)
 
     def auto_block_reason(self):
         audio = self.robot.audio_snapshot() if hasattr(self.robot, 'audio_snapshot') else {}
@@ -138,6 +170,10 @@ class Controller:
 
     async def acquire_workspace(self, owner, replace=False):
         async with self.lock:
+            if self.workspace_explicit and self.workspace_deadline <= time.monotonic():
+                self.owner = None
+                self.voice_owner = None
+                self.workspace_explicit = False
             if self.owner and self.owner != owner and not replace:
                 raise VoiceError(409, "WORKSPACE_BUSY", "另一窗口正在控制，请明确接管")
             if self.owner and self.owner != owner:
@@ -227,6 +263,10 @@ class Controller:
     async def desktop_stop(self):
         if self.task_monitor:
             await self.task_monitor.stop()
+        if self.codex_monitor:
+            await self.codex_monitor.stop()
+        self.notifications.clear()
+        self.stop_auto_tone()
         async with self.lock:
             if self.owner:
                 self.invalidate(self.generation + 1)
@@ -253,9 +293,24 @@ class Controller:
                 character.update(expression='working', bubble='',
                                  revision=character['revision'] + monitor.epoch + len(monitor.history) + 1,
                                  auto=True)
+        codex = self.codex_monitor
+        if (codex and codex.enabled and codex.target in ('desktop', 'both')
+                and codex.state()['current'] and codex.state()['current']['status'] == 'running'
+                and self.auto_available() and not self.notifications.current()
+                and not (monitor and monitor.enabled and monitor.current
+                         and monitor.current['activity']['status'] == 'running')):
+            character.update(expression='working', bubble='',
+                             revision=character['revision'] + codex.epoch + len(codex.history) + 30000,
+                             auto=True)
+        presentation = self.notifications.current()
+        if presentation and self.auto_available():
+            character.update(expression=presentation['expression'], bubble=presentation['bubble'],
+                             revision=character['revision'] + presentation['revision'] + 10000,
+                             dismissOnClick=presentation['dismiss_on_click'], auto=True)
         return {"phase": self.phase, "robot": self.robot.snapshot(),
                 "workspace_active": bool(self.owner), "session_active": bool(self.voice_owner and self.voice.session),
-                "character": character}
+                "character": character,
+                "codex": self.codex_monitor.desktop_summary() if self.codex_monitor else {'enabled': False}}
 
     async def play_character(self, owner, expression, mode, target):
         self.authorize(owner)

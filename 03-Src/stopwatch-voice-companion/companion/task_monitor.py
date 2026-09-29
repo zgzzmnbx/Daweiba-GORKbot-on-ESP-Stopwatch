@@ -2,18 +2,20 @@
 import asyncio
 import contextlib
 from datetime import datetime
-import hashlib
-from pathlib import Path
-import shutil
-import subprocess
 import time
 import sys
+import wave
 
 from .voice import VoiceError
+from .sentinel_voice_library import cached_path
 
 
 def _now():
     return datetime.now().astimezone().isoformat(timespec='seconds')
+
+
+def _now_ms():
+    return datetime.now().astimezone().isoformat(timespec='milliseconds')
 
 
 def _pc_beep(guard):
@@ -22,43 +24,21 @@ def _pc_beep(guard):
     if sys.platform != 'win32':
         return 'unavailable'
     import winsound
-    winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
-    return 'played_by_os'
+    winsound.PlaySound('SystemExclamation', winsound.SND_ALIAS | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+    return 'started_by_os'
 
 
 def _fixed_wav(phrase):
-    """Generate one local PCM file per fixed phrase; never call a cloud voice API."""
-    if sys.platform != 'win32':
-        raise RuntimeError('Windows speech unavailable')
-    powershell = shutil.which('powershell.exe')
-    if not powershell:
-        raise RuntimeError('Windows PowerShell unavailable')
-    folder = Path(__file__).resolve().parents[3] / 'Codex-Temp' / 'sentinel-speech'
-    folder.mkdir(parents=True, exist_ok=True)
-    path = folder / (hashlib.sha256(phrase.encode('utf-8')).hexdigest() + '.wav')
-    if not path.is_file():
-        temporary = path.with_suffix('.tmp.wav')
-        try:
-            subprocess.run([powershell, '-NoProfile', '-NonInteractive', '-File',
-                            str(Path(__file__).with_name('sentinel_speech.ps1')),
-                            '-OutputPath', str(temporary), '-Text', phrase],
-                           check=True, timeout=20, capture_output=True)
-            from .robot import read_wav
-            pcm, rate = read_wav(temporary.read_bytes())
-            if len(pcm) > rate * 2 * 10:
-                raise RuntimeError('Fixed phrase is too long for Watch')
-            temporary.replace(path)
-        finally:
-            temporary.unlink(missing_ok=True)
-    return path
+    """Read a pre-generated Cherry WAV; never synthesize during a task reminder."""
+    return cached_path(phrase)
 
 
 def _pc_speech(path, guard):
     if not guard():
         return 'suppressed'
     import winsound
-    winsound.PlaySound(str(path), winsound.SND_FILENAME)
-    return 'played_by_os'
+    winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+    return 'started_by_os'
 
 
 def _attention(snapshot):
@@ -132,6 +112,33 @@ def _stage_event(item):
         label = '飞书复核' if item.get('platform') == 'feishu' else '协同复核'
         return ('review_sent', f'{label}已发送，请等待同事反馈。', 'curious', 2, f'{label}已发送')
     raise ValueError(stage)
+
+
+def _start_superseded(item, events):
+    """Do not announce a start after the same operation has already advanced."""
+    followups = {'conversion_start': {'match_start', 'match_result'},
+                 'match_start': {'match_result'}, 'warning_start': {'warning_result'}}
+    expected = followups.get(item['stage'])
+    if not expected:
+        return False
+    try:
+        started = datetime.fromisoformat(item['occurred_at'])
+        if started.tzinfo is None:
+            return False
+    except (KeyError, TypeError, ValueError):
+        return False
+    for later in events:
+        if later['task_id'] != item['task_id'] or later['stage'] not in expected:
+            continue
+        if item['stage'] == 'match_start' and (not item.get('attempt') or later.get('attempt') != item['attempt']):
+            continue
+        try:
+            finished = datetime.fromisoformat(later['occurred_at'])
+            if finished.tzinfo is not None and finished > started:
+                return True
+        except (KeyError, TypeError, ValueError):
+            continue
+    return False
 
 
 class TaskMonitor:
@@ -229,10 +236,13 @@ class TaskMonitor:
                                   and item['event_id'] not in self.seen_event_ids}
                 for item in reversed(events):
                     event_id = item['event_id']
-                    if baseline and event_id not in self.seen_event_ids:
+                    if baseline and event_id not in self.seen_event_ids and not _start_superseded(item, events):
                         self.pending.append({'snapshot': item, 'event': _stage_event(item),
-                                             'until': time.monotonic() + 300, 'milestone': True})
+                                             'until': time.monotonic() + 300, 'milestone': True,
+                                             'detected_at': _now_ms()})
                     self.seen_event_ids.add(event_id)
+                self.pending = [entry for entry in self.pending
+                                if not entry.get('milestone') or not _start_superseded(entry['snapshot'], events)]
                 if len(self.seen_event_ids) > 2000:
                     self.seen_event_ids = {item['event_id'] for item in events}
                 observed = ([snapshot] if snapshot else []) + list(reversed(recent))
@@ -246,7 +256,8 @@ class TaskMonitor:
                         event = _terminal_event(previous, item)
                         if event:
                             self.pending.append({'snapshot': item, 'event': event,
-                                                 'until': time.monotonic() + 90})
+                                                 'until': time.monotonic() + 90,
+                                                 'detected_at': _now_ms()})
                             self.last_result = item
                     elif event := next((entry for entry in events if entry['task_id'] == item['task_id']
                                         and entry['stage'] == 'match_result'
@@ -257,17 +268,6 @@ class TaskMonitor:
                     del self.seen[next(iter(self.seen))]
                 baseline = True
                 if snapshot is not None:
-                    watch_key = (snapshot['task_id'], snapshot['activity']['attempt'])
-                    if (snapshot['activity']['status'] == 'running'
-                            and self.target in ('watch', 'both')
-                            and watch_key != self.watch_started_for
-                            and self.control.auto_available()):
-                        guard = lambda: self.enabled and epoch == self.epoch and self.control.auto_available()
-                        try:
-                            if await self.control.robot.auto_expression('working', guard) == 'accepted':
-                                self.watch_started_for = watch_key
-                        except Exception:
-                            pass
                     self.current = snapshot if self.mode == 'specific' or snapshot['activity']['status'] == 'running' else None
                 else:
                     self.current = None
@@ -277,10 +277,33 @@ class TaskMonitor:
                     if time.monotonic() >= pending['until']:
                         self.pending.pop(0)
                     elif self.control.auto_available():
-                        if await self._notify(epoch, pending['snapshot'], pending['event']):
+                        if await self._notify(epoch, pending['snapshot'], pending['event'],
+                                              pending.get('detected_at', '')):
+                            if (snapshot is not None and pending['event'][0] in ('conversion_start', 'match_start')
+                                    and pending['snapshot']['task_id'] == snapshot['task_id']
+                                    and (not pending['snapshot'].get('attempt')
+                                         or pending['snapshot']['attempt'] == snapshot['activity']['attempt'])
+                                    and self.history and self.history[0]['delivery']['watch'] == 'accepted'):
+                                self.watch_started_for = (snapshot['task_id'], snapshot['activity']['attempt'])
                             self.pending.pop(0)
+                if snapshot is not None:
+                    watch_key = (snapshot['task_id'], snapshot['activity']['attempt'])
+                    if (snapshot['activity']['status'] == 'running'
+                            and self.target in ('watch', 'both')
+                            and watch_key != self.watch_started_for
+                            and not getattr(getattr(self.control, 'notifications', None), 'active', False)
+                            and not getattr(getattr(self.control, 'notifications', None), 'queue', [])
+                            and self.control.auto_available()):
+                        guard = lambda: self.enabled and epoch == self.epoch and self.control.auto_available()
+                        try:
+                            if await self.control.robot.auto_expression('working', guard) == 'accepted':
+                                self.watch_started_for = watch_key
+                        except Exception:
+                            pass
                 failures = 0
-                delay = 1 if self.pending else (2 if snapshot and snapshot['activity']['status'] == 'running' else 5)
+                # Event discovery should not trail a new operation by an idle 5 s or running 2 s sleep.
+                # Drain already queued milestones immediately, but wait when human/device priority blocks output.
+                delay = 0 if self.pending and self.control.auto_available() else 1
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -296,45 +319,97 @@ class TaskMonitor:
                 delay = min(30, 2 ** min(failures, 5))
             await asyncio.sleep(delay)
 
-    async def _notify(self, epoch, snapshot, event):
+    async def _notify(self, epoch, snapshot, event, detected_at=''):
         kind, message, expression, sound_id = event[:4]
         speech = event[4] if len(event) > 4 else message
         valid = lambda: self.enabled and epoch == self.epoch and self.control.auto_available()
         if not valid():
             return False
+        async def coordinated():
+            return await self._notify_locked(epoch, snapshot, event, detected_at)
+        coordinator = getattr(self.control, 'notifications', None)
+        if coordinator is None:
+            return await coordinated()
+        return await coordinator.dispatch(
+            source='cost', priority=event[3] if len(event) > 3 else 2,
+            valid=valid, action=coordinated)
+
+    async def _notify_locked(self, epoch, snapshot, event, detected_at=''):
+        kind, message, expression, sound_id = event[:4]
+        speech = event[4] if len(event) > 4 else message
+        valid = lambda: self.enabled and epoch == self.epoch and self.control.auto_available()
+        if not valid():
+            return False
+        started_at = _now_ms()
         delivery = {'desktop': 'not_requested', 'watch': 'not_requested', 'sound': 'off'}
         if self.target in ('desktop', 'both'):
             self.presentation = {'expression': expression, 'bubble': message,
                                  'at': _now(), 'until': time.monotonic() + 12}
+            if getattr(self.control, 'notifications', None):
+                self.control.notifications.show('cost', expression, message,
+                                                self.epoch + len(self.history) + 1,
+                                                priority=sound_id)
             delivery['desktop'] = 'displayed'
-        if self.target in ('watch', 'both'):
-            try:
-                watch_message = message if len(message) <= 24 else message[:23] + '…'
-                delivery['watch'] = await self.control.robot.auto_notify(expression, watch_message, valid)
-            except Exception:
-                delivery['watch'] = 'failed'
-        if self.sound and valid():
+        async def pc_alert():
             try:
                 if self.sound_kind == 'speech':
                     wav = await asyncio.to_thread(_fixed_wav, speech)
                     if not valid():
-                        delivery['sound'] = 'suppressed'
-                    elif self.sound_target == 'pc':
-                        delivery['sound'] = await asyncio.to_thread(_pc_speech, wav, valid)
-                    else:
-                        watch_text = message if self.target in ('watch', 'both') else ''
-                        delivery['sound'] = await self.control.robot.auto_speech(
-                            wav.read_bytes(), watch_text, valid,
-                            expression if watch_text else None)
-                elif self.sound_target == 'pc':
-                    delivery['sound'] = await asyncio.to_thread(_pc_beep, valid)
+                        return 'suppressed'
+                    with wave.open(str(wav), 'rb') as sound:
+                        duration = min(15, sound.getnframes() / sound.getframerate())
+                    result = _pc_speech(wav, valid)
                 else:
-                    delivery['sound'] = await self.control.robot.auto_sound(sound_id, valid)
+                    duration = 0.5
+                    result = _pc_beep(valid)
+                await asyncio.sleep(duration)
+                return result if valid() else 'suppressed'
+            except asyncio.CancelledError:
+                self.control.stop_auto_tone()
+                raise
+            except FileNotFoundError:
+                return 'cache_missing'
             except Exception:
-                delivery['sound'] = 'failed'
+                return 'failed'
+        # PC audio can start while Watch receives its independent expression/text channel.
+        pc_task = (asyncio.create_task(pc_alert())
+                   if self.sound and self.sound_target == 'pc' and valid() else None)
+        try:
+            if self.target in ('watch', 'both'):
+                try:
+                    watch_message = message if len(message) <= 24 else message[:23] + '…'
+                    delivery['watch'] = await self.control.robot.auto_notify(expression, watch_message, valid)
+                except Exception:
+                    delivery['watch'] = 'failed'
+            if pc_task:
+                delivery['sound'] = await pc_task
+            elif self.sound and valid():
+                try:
+                    if self.sound_kind == 'speech':
+                        wav = await asyncio.to_thread(_fixed_wav, speech)
+                        if not valid():
+                            delivery['sound'] = 'suppressed'
+                        else:
+                            watch_text = message if self.target in ('watch', 'both') else ''
+                            delivery['sound'] = await self.control.robot.auto_speech(
+                                wav.read_bytes(), watch_text, valid,
+                                expression if watch_text else None)
+                    else:
+                        delivery['sound'] = await self.control.robot.auto_sound(sound_id, valid)
+                except FileNotFoundError:
+                    delivery['sound'] = 'cache_missing'
+                except Exception:
+                    delivery['sound'] = 'failed'
+        finally:
+            if pc_task and not pc_task.done():
+                pc_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await pc_task
         if epoch != self.epoch:
             return False
-        self.history.insert(0, {'at': _now(), 'task_id': snapshot['task_id'],
+        self.history.insert(0, {'at': _now(), 'source_at': snapshot.get('occurred_at') or snapshot.get('activity', {}).get('updated_at', ''),
+                                'detected_at': detected_at, 'response_started_at': started_at,
+                                'task_id': snapshot['task_id'],
                                 'task_name': snapshot['task_name'], 'kind': kind,
                                 'message': message, 'delivery': delivery})
         del self.history[20:]

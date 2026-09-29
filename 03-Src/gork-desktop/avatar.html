@@ -10,8 +10,10 @@
 <body>
   <main id="avatar" class="avatar idle" aria-label="Gork 桌面小人">
     <div class="drag-zone" aria-hidden="true"></div>
-    <canvas id="gork-face" class="face" aria-label="Grok bot 黑色圆体白色双眼"></canvas>
+    <div class="face-wrap"><div id="quota-ring-outer" class="quota-ring quota-outer" aria-hidden="true"></div><div id="quota-ring-inner" class="quota-ring quota-inner" aria-hidden="true"></div><canvas id="gork-face" class="face" aria-label="Grok bot 黑色圆体白色双眼"></canvas></div>
     <p id="status">就绪</p>
+    <button id="quota-detail" class="quota-detail" type="button" title="Codex 额度未知" aria-label="Codex 额度未知" hidden>额度</button>
+    <div id="quota-tooltip" class="quota-tooltip" role="status" hidden></div>
     <div class="actions">
       <button id="console">控制台</button><button id="hide">隐藏</button>
     </div>

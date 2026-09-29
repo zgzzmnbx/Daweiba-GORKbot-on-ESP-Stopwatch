@@ -81,7 +81,7 @@ function addMessage(role, text) {
 }
 function navigate() {
   if (!globalThis.location) return;
-  const page = ['dialogue', 'cost', 'character', 'watch', 'settings', 'logs'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dialogue';
+  const page = ['dialogue', 'cost', 'codex', 'character', 'watch', 'settings', 'logs'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dialogue';
   if (location.hash !== `#${page}`) history.replaceState(null, '', `#${page}`);
   document.querySelectorAll?.('[data-page]').forEach(item => { item.hidden = item.dataset.page !== page; });
   document.querySelectorAll?.('[data-page-link]').forEach(item => {
@@ -595,20 +595,120 @@ async function release() {
   try { await api('/voice/session', 'DELETE'); message('已释放语音会话；角色和 StopWatch 控制权保留。'); } catch (error) { message(error.message, true); }
 }
 async function acquireWorkspace(replace = false) {
-  if (replace && !confirm('接管会使另一窗口的操作失效。确认接管工作台？')) return;
+  if (replace && !confirm('接管会使另一窗口的操作失效。确认接管工作台？')) return false;
   try {
     const result = await api('/workspace', 'POST', {replace}); workspace = true;
     if (Number.isInteger(result.generation)) epoch.value = Math.max(epoch.value, result.generation);
     $('character-status').textContent = result.voice_connected ? '工作台与语音已连接' : '工作台控制中';
-    $('workspace-takeover').hidden = true; render(); message('已取得工作台控制权；语音服务仍按需连接。');
+    $('workspace-takeover').hidden = true; $('codex-takeover').hidden = true; render(); refreshCodex(); message('已取得工作台控制权；语音服务仍按需连接。');
+    return true;
   } catch (error) {
-    if (error.code === 'WORKSPACE_BUSY') { $('workspace-takeover').hidden = false; message('另一窗口正在控制；如需接管，请点击“接管工作台”。', true); }
+    if (error.code === 'WORKSPACE_BUSY') { $('workspace-takeover').hidden = false; $('codex-takeover').hidden = false; message('另一窗口正在控制；如需接管，请点击“接管工作台”。', true); }
     else message(error.message, true);
+    return false;
   }
 }
 
 // Business content stays in this page's memory; never send it to the status log.
 let costBusy = false, costPage = 1, costTotal = 0;
+let codexLoaded = false, codexPending = false, codexEnabled = false, codexFailure = '';
+const codexLabels = {disabled:'已关闭', connecting:'连接中', available:'可用', partial:'部分可用',
+  stale:'已过期', unavailable:'不可用', no_windows:'无窗口', cli_missing:'缺少 CLI',
+  api_key:'API Key 模式', unsupported_account:'账号不支持', not_logged_in:'未登录',
+  unsupported_rpc:'接口不支持', auth_failed:'认证失败', running:'正在执行',
+  waiting_approval:'等待确认', waiting_input:'等待补充信息', turn_completed:'本轮结束',
+  failed:'本轮失败', interrupted:'已中断', jsonl:'本机会话日志', hook:'已信任 hook'};
+const codexLabel = value => codexLabels[value] || '未知';
+function codexText(parent, lines, empty) {
+  parent.replaceChildren();
+  if (!lines.length) { parent.textContent = empty; return; }
+  for (const line of lines) { const row = document.createElement('p'); row.textContent = line; parent.append(row); }
+}
+function paintCodex(data) {
+  codexEnabled = data.enabled === true;
+  if (!codexLoaded) {
+    $('codex-mode').value = data.mode;
+    $('codex-target').value = data.target;
+    $('codex-sound').checked = data.sound;
+    $('codex-sound-target').value = data.sound_target;
+    $('codex-threshold').value = data.threshold;
+    $('codex-ring-mode').value = data.ring_mode;
+    codexLoaded = true;
+  }
+  if (!codexPending) $('codex-enable').checked = data.enabled;
+  $('codex-status').textContent = !data.enabled ? '监测已关闭；下次启动仍默认关闭。' :
+    `任务通道：${codexLabel(data.task_status)} · 额度通道：${codexLabel(data.quota_status)}${data.quota_error ? ' · ' + data.quota_error : ''}`;
+  if (codexFailure) $('codex-status').textContent = `设置未保存：${codexFailure}`;
+  $('codex-capability').textContent = '本机会话日志：明确的轮次开始/结束；只读有界尾部无法重建开启前较早开始的长轮次，等待下一轮。审批状态需已审核信任的 hook。';
+  const previousThread = $('codex-thread').value || data.thread_id || '';
+  $('codex-thread').replaceChildren(new Option('请选择任务', ''));
+  for (const item of data.threads || []) $('codex-thread').add(new Option(`${item.label} · ${codexLabel(item.status)} · ${codexLabel(item.source)}`, item.thread_id));
+  if (previousThread && !Array.from($('codex-thread').options).some(x => x.value === previousThread))
+    $('codex-thread').add(new Option(`指定任务 ${previousThread.slice(0, 8)} · 未观察到`, previousThread));
+  $('codex-thread').value = previousThread;
+  codexText($('codex-threads'), (data.threads || []).map(x => `${x.label} · ${codexLabel(x.status)} · ${codexLabel(x.source)} · ${x.last_seen || '时间未知'}`), '暂无已观察任务。');
+  codexText($('codex-history'), (data.history || []).map(x => `${x.at} · ${x.message} · 桌面 ${x.delivery.desktop} / Watch ${x.delivery.watch} / 声音 ${x.delivery.sound}`), '暂无提醒。');
+  const previousBucket = $('codex-bucket').value || data.bucket_id || '';
+  const buckets = data.quota?.buckets || {};
+  $('codex-bucket').replaceChildren(new Option('自动选择第一个额度桶', ''));
+  for (const [id, item] of Object.entries(buckets)) $('codex-bucket').add(new Option(item.name || id, id));
+  $('codex-bucket').value = previousBucket in buckets ? previousBucket : '';
+  const selected = buckets[$('codex-bucket').value] || Object.values(buckets)[0];
+  const rows = selected?.windows?.map((window, index) => {
+    const value = window.remaining_percent == null ? '未知' : `${window.remaining_percent}%`;
+    const reset = window.resets_at ? new Date(window.resets_at * 1000).toLocaleString() : '未知';
+    return `${window.name || `窗口 ${index + 1}`}：剩余 ${value} · 重置 ${reset}`;
+  }) || [];
+  codexText($('codex-quota'), rows, '无可用额度窗口。');
+  if (data.quota?.sampled_at) {
+    const sample = document.createElement('small'); sample.textContent = `采样 ${new Date(data.quota.sampled_at).toLocaleString()}${data.quota.stale ? ' · 已过期，等待刷新确认' : ''}`;
+    $('codex-quota').append(sample);
+  }
+}
+async function refreshCodex() {
+  if (codexPending) return;
+  try { paintCodex(await api('/codex/sentinel')); }
+  catch (error) { $('codex-status').textContent = `Codex 状态暂不可读取：${error.message}`; }
+}
+async function applyCodex() {
+  if (codexPending) return;
+  codexPending = true;
+  $('codex-apply').disabled = true;
+  let failure = '';
+  try {
+    if (!workspace) {
+      if (!await acquireWorkspace()) throw new Error('另一窗口可能正在控制。请使用本页“接管工作台”或先取得控制权。');
+    }
+    const values = {enabled:$('codex-enable').checked, mode:$('codex-mode').value,
+      thread_id:$('codex-mode').value === 'specific' ? $('codex-thread').value : '',
+      target:$('codex-target').value, sound:$('codex-sound').checked,
+      sound_target:$('codex-sound-target').value, threshold:Number($('codex-threshold').value),
+      bucket_id:$('codex-bucket').value, ring_mode:$('codex-ring-mode').value};
+    let data;
+    try { data = await api('/codex/sentinel', 'PUT', values); }
+    catch (error) {
+      if (error.code !== 'WORKSPACE_INVALID') throw error;
+      workspace = false; render();
+      if (!await acquireWorkspace()) throw new Error('工作台控制权已失效。请使用本页“接管工作台”后重试。');
+      data = await api('/codex/sentinel', 'PUT', values);
+    }
+    codexFailure = '';
+    codexLoaded = false; paintCodex(data);
+  } catch (error) { failure = error.message; codexFailure = failure; }
+  finally { codexPending = false; $('codex-apply').disabled = false; await refreshCodex(); if (failure) $('codex-status').textContent = `设置未保存：${failure}`; }
+}
+$('codex-enable').onchange = applyCodex;
+$('codex-apply').onclick = applyCodex;
+$('codex-acquire').onclick = () => acquireWorkspace();
+$('codex-takeover').onclick = () => acquireWorkspace(true);
+$('codex-refresh').onclick = async () => {
+  try {
+    if (!workspace) { await acquireWorkspace(); if (!workspace) return; }
+    paintCodex(await api('/codex/quota/refresh', 'POST'));
+    $('codex-status').textContent = '额度刷新已加入同一请求；请稍候。';
+  }
+  catch (error) { $('codex-status').textContent = error.message; }
+};
 let sentinelPending = false, sentinelLoaded = false, sentinelProjectPage = 1, sentinelProjectTotal = 0, sentinelSelectedTaskId = '';
 function sentinelSpecificVisibility() {
   $('sentinel-specific').hidden = $('sentinel-mode').value !== 'specific';
@@ -704,6 +804,50 @@ $('sentinel-mode').onchange = () => { sentinelSpecificVisibility(); if ($('senti
 $('sentinel-target').onchange = sentinelSpecificVisibility;
 $('sentinel-enable').onchange = applySentinel;
 $('sentinel-apply').onclick = applySentinel;
+let voiceLibraryBusy = false;
+function paintVoiceLibrary(data) {
+  $('voice-library-status').textContent = `${data.voice_label} · ${data.model} · 已缓存 ${data.ready}/${data.total} 条`;
+  const holder = $('voice-library-items'); holder.replaceChildren();
+  for (const item of data.items) {
+    const row = document.createElement('div'); row.className = 'voice-library-row';
+    const label = document.createElement('span'); label.textContent = `${item.group} · ${item.text}`;
+    const state = document.createElement('small'); state.textContent = item.ready ? '已缓存' : '待生成';
+    const preview = document.createElement('button'); preview.type = 'button'; preview.textContent = '试听'; preview.disabled = !item.ready;
+    preview.onclick = async () => {
+      stopPreview(); const serial = previewSerial;
+      try {
+        const audio = await api(`/character/voice-library/${item.id}/preview`, 'GET', undefined, {audio:true});
+        if (serial !== previewSerial) return;
+        await previewPlayer.play(audio, () => message('语音库试听完成。'));
+        message(`正在电脑试听：${item.text}`);
+      } catch (error) { message(error.message, true); }
+    };
+    const update = document.createElement('button'); update.type = 'button'; update.textContent = item.ready ? '更新' : '生成';
+    update.disabled = voiceLibraryBusy;
+    update.onclick = () => generateVoiceLibrary(item.id, true);
+    row.append(label, state, preview, update); holder.append(row);
+  }
+  $('voice-library-generate').disabled = voiceLibraryBusy || data.ready === data.total;
+}
+async function refreshVoiceLibrary() {
+  try { paintVoiceLibrary(await api('/character/voice-library')); }
+  catch (error) { $('voice-library-status').textContent = `语音库读取失败：${error.message}`; }
+}
+async function generateVoiceLibrary(itemId = '', force = false) {
+  if (voiceLibraryBusy) return;
+  let failure = '';
+  voiceLibraryBusy = true; $('voice-library-generate').disabled = true;
+  $('voice-library-status').textContent = '正在用芊悦生成并保存短句，请稍候…';
+  try {
+    if (!connected) throw new Error('请先在设置页连接语音会话。');
+    if (!workspace) throw new Error('请先取得工作台控制权。');
+    const result = await api('/character/voice-library/generate', 'POST', {item_id:itemId, force});
+    paintVoiceLibrary(result.library);
+    message(`已保存 ${result.generated.length} 条芊悦播报语音。`);
+  } catch (error) { failure = error.message; message(error.message, true); }
+  finally { voiceLibraryBusy = false; await refreshVoiceLibrary(); if (failure) $('voice-library-status').textContent += ` · 生成中断：${failure}`; }
+}
+$('voice-library-generate').onclick = () => generateVoiceLibrary();
 async function costOperation(run) {
   if (costBusy) return;
   costBusy = true;
@@ -928,6 +1072,9 @@ if(window.GorkAppearance) createAppearancePicker(document,{library:window.GorkAp
 characterOptions(); fillVoices(); navigate(); render(); refresh(); setInterval(heartbeat, 1000); setInterval(workspaceHeartbeat, 1000);
 setInterval(refresh, 5000);
 refreshSentinel(); setInterval(() => { if (sentinelEnabled) refreshSentinel(); }, 2500);
+refreshCodex();
+setInterval(() => { if (codexEnabled || location.hash === '#codex') refreshCodex(); }, 2500);
+refreshVoiceLibrary();
 
 $('quick-connect').onclick = () => connect();
 for (const id of ['auto-read','expression-follow']) $(id).onchange = () => {

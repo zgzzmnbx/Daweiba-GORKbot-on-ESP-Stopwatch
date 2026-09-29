@@ -831,6 +831,17 @@ main {
 .appearance-colors button {margin-left:auto;font-size:11px;padding:8px}
 #appearance-feedback {margin-top:10px;font-size:11px;color:var(--muted);line-height:1.6}
 #appearance-grid .expression-tile[aria-pressed=true] {background:var(--soft);border-color:var(--accent)}
+.voice-library-items {display:grid;gap:8px;max-height:330px;overflow:auto;margin:12px 0;padding-right:4px}
+.codex-list{display:grid;gap:6px;max-height:220px;overflow:auto;padding:4px 0;overflow-wrap:anywhere}
+.codex-list p{margin:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.codex-quota{display:grid;gap:8px;margin:12px 0;overflow-wrap:anywhere}
+.codex-quota p{margin:0;padding:10px;border:1px solid var(--line);border-radius:8px}
+#page-codex select,#page-codex input[type=number]{max-width:100%;min-width:0}
+.voice-library-row {display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.voice-library-row span {min-width:0;overflow-wrap:anywhere}
+.voice-library-row small {color:var(--muted);white-space:nowrap}
+.voice-library-row button {padding:6px 9px;white-space:nowrap}
+@media(max-width:680px){.voice-library-row{grid-template-columns:minmax(0,1fr) auto auto}.voice-library-row small{grid-column:1;grid-row:2}}
 @media(max-width:680px){
  #page-character #appearance-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
  #page-character .appearance-menu summary small{display:block}

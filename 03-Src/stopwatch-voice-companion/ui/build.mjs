@@ -15,7 +15,7 @@ const tree=parse(source),html=tree.childNodes.find(n=>n.tagName==='html'),body=h
 const attrs=n=>Object.fromEntries((n.attrs||[]).map(a=>[a.name,a.value]));
 const children=n=>(n.childNodes||[]).filter(c=>c.nodeName!=='#comment').map((node,index)=>{const child=convert(node);return React.isValidElement(child)?React.cloneElement(child,{key:index}):child;});
 const theme=createTheme({primaryColor:'gork',primaryShade:7,colors:{gork:['#eef9f5','#d9efe5','#b0decc','#82cbb0','#59b897','#3ba985','#289d79','#16876a','#0d7058','#045b47']},defaultRadius:'md',fontFamily:'"Segoe UI", "Microsoft YaHei UI", sans-serif',headings:{fontFamily:'"Segoe UI", "Microsoft YaHei UI", sans-serif'},fontSizes:{xs:'12px',sm:'13px',md:'14px',lg:'16px',xl:'20px'},components:{Button:Button.extend({defaultProps:{size:'sm',radius:'md'}}),NativeSelect:NativeSelect.extend({defaultProps:{size:'sm',radius:'md'}}),Textarea:Textarea.extend({defaultProps:{size:'sm',radius:'md'}})}});
-const iconPaths={dialogue:'M4 4h16v12H9l-5 4V4Z',cost:'M5 3h14v18H5zM8 7h8M8 11h2m4 0h2M8 15h2m4 0h2',character:'M8 4h8l4 5v9l-4 3H8l-4-3V9zM8 11v3m8-3v3',watch:'M8 2h8v4H8zM8 18h8v4H8zM6 6h12v12H6zM12 9v3l2 1',settings:'M5 4v16M12 4v16M19 4v16M2 8h6m1 8h6m1-6h6',logs:'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5'};
+const iconPaths={dialogue:'M4 4h16v12H9l-5 4V4Z',cost:'M5 3h14v18H5zM8 7h8M8 11h2m4 0h2M8 15h2m4 0h2',codex:'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18Zm-4 9h8m-4-4v8',character:'M8 4h8l4 5v9l-4 3H8l-4-3V9zM8 11v3m8-3v3',watch:'M8 2h8v4H8zM8 18h8v4H8zM6 6h12v12H6zM12 9v3l2 1',settings:'M5 4v16M12 4v16M19 4v16M2 8h6m1 8h6m1-6h6',logs:'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5'};
 function icon(name){return h('svg',{className:'nav-icon',viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.6,'aria-hidden':true},h('path',{d:iconPaths[name]||iconPaths.settings,strokeLinecap:'round',strokeLinejoin:'round'}));}
 function props(n){const a=attrs(n),p={};for(const [key,value] of Object.entries(a)) {
   const k=({class:'className',for:'htmlFor',tabindex:'tabIndex',maxlength:'maxLength',spellcheck:'spellCheck',viewbox:'viewBox','stroke-width':'strokeWidth'})[key]||key;
@@ -26,7 +26,7 @@ function convert(n){
   if(n.nodeName==='#text')return n.value;
   if(!n.tagName||n.tagName==='script')return null;
   const a=attrs(n),p=props(n),tag=n.tagName;
-  if(tag==='input'){if(a.type==='range'||a.type==='color')return h(Input,{...p,defaultValue:a.value,value:undefined,className:'native-'+a.type});return h('input',{...p,defaultChecked:'checked'in a});}
+  if(tag==='input'){if(a.type==='range'||a.type==='color')return h(Input,{...p,defaultValue:a.value,value:undefined,className:'native-'+a.type});return h('input',{...p,value:undefined,defaultValue:a.value,defaultChecked:'checked'in a});}
   if(tag==='label'&&['switch-row','consent'].includes(a.class)){
     const input=n.childNodes.find(c=>c.tagName==='input'),label=n.childNodes.find(c=>c.tagName==='span'),ip=props(input);
     const labelText=label.childNodes.filter(c=>c.nodeName==='#text').map(c=>c.value).join('').trim();

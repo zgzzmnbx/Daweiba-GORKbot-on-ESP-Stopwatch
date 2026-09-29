@@ -26,21 +26,21 @@ function bubblePlacement(avatar, area, text = '', preferred = 'above') {
 }
 
 function createBubbleWindow({BrowserWindow, screen, avatar, preferences, getPosition = () => 'above'}) {
-  let win, ready = false, current = '', dismissed = false, revision = -1, disposed = false;
+  let win, ready = false, current = '', dismissOnClick = false, dismissed = false, revision = -1, disposed = false;
   function sync() {
     if (!win || win.isDestroyed() || !ready) return;
     if (!current || dismissed || avatar.isDestroyed() || !avatar.isVisible()) { win.hide(); return; }
     const place = bubblePlacement(avatar.getBounds(), screen.getDisplayMatching(avatar.getBounds()).workArea, current, getPosition());
     win.setBounds(place.bounds);
     win.setAlwaysOnTop(avatar.isAlwaysOnTop());
-    win.webContents.send('gork:bubble', {text:current, side:place.side, anchor:place.anchor});
+    win.webContents.send('gork:bubble', {text:current, side:place.side, anchor:place.anchor, dismissOnClick});
     if (!win.isVisible()) win.showInactive();
   }
   function update(character = {}) {
     if (disposed) return;
     const next = typeof character.bubble === 'string' ? character.bubble.slice(0, 2000) : '';
     if (next !== current || character.revision !== revision) dismissed = false;
-    current = next; revision = character.revision;
+    current = next; revision = character.revision; dismissOnClick = character.dismissOnClick === true;
     if (current && !dismissed && !win) {
       win = new BrowserWindow({width:328,height:224,frame:false,transparent:true,
         resizable:false,show:false,skipTaskbar:true,alwaysOnTop:avatar.isAlwaysOnTop(),

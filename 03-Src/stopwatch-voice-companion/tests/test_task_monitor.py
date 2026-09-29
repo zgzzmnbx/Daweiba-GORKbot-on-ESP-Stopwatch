@@ -10,7 +10,7 @@ from companion.control import Controller
 from companion.cost import CostClient, monitor_snapshot
 from companion.robot import Robot
 import companion.task_monitor as task_monitor_module
-from companion.task_monitor import TaskMonitor, _event, _stage_event, _fixed_wav
+from companion.task_monitor import TaskMonitor, _event, _stage_event, _fixed_wav, _start_superseded
 from companion.voice import VoiceError
 from test_companion import FakeRobot, FakeVoice
 
@@ -326,6 +326,105 @@ def test_stage_text_expressions_and_fixed_speech():
                                      'review_rows': 2})[1]
     assert _stage_event({'stage': 'warning_result', 'status': 'failed'})[2] == 'confused'
     assert _stage_event({'stage': 'review_sent', 'status': 'sent', 'platform': 'feishu'})[1].startswith('飞书复核已发送')
+
+
+def test_start_cue_is_discarded_when_its_result_is_already_visible():
+    task_id = 'tsk_' + 'a' * 24
+    def milestone(stage, second, attempt=''):
+        return {'event_id': str(second).zfill(32), 'task_id': task_id, 'task_name': '任务',
+                'stage': stage, 'status': 'running' if stage.endswith('start') else 'completed',
+                'attempt': attempt, 'occurred_at': f'2026-09-29T01:00:{second:02d}+08:00'}
+    conversion = milestone('conversion_start', 10)
+    match = milestone('match_start', 12, 'current')
+    result = milestone('match_result', 14, 'current')
+    old_result = milestone('match_result', 9, 'previous')
+    warning = milestone('warning_start', 16)
+    warning_result = milestone('warning_result', 18)
+    assert _start_superseded(conversion, [match, result])
+    assert _start_superseded(match, [result])
+    assert _start_superseded(warning, [warning_result])
+    assert not _start_superseded(match, [old_result])
+    assert not _start_superseded(milestone('match_start', 19, 'next'), [result])
+
+
+def test_idle_and_running_poll_interval_is_one_second(monkeypatch):
+    async def exercise(active):
+        times = []
+        class Cost:
+            async def monitor_feed(self):
+                return {'task': snapshot('running') if active else None, 'recent': [], 'events': []}
+        class Control:
+            def auto_available(self): return True
+        monitor = TaskMonitor(Cost(), Control())
+        monitor.enabled = True
+        async def pause(seconds):
+            times.append(seconds)
+            monitor.enabled = False
+        monkeypatch.setattr(task_monitor_module.asyncio, 'sleep', pause)
+        await monitor._run(monitor.epoch)
+        return times
+    assert asyncio.run(exercise(False)) == [1]
+    assert asyncio.run(exercise(True)) == [1]
+
+
+def test_pc_cue_starts_while_watch_notification_is_in_flight(monkeypatch, tmp_path):
+    from threading import Event
+    import wave
+    started = Event()
+    cached = tmp_path / 'cue.wav'
+    with wave.open(str(cached), 'wb') as sound:
+        sound.setnchannels(1); sound.setsampwidth(2); sound.setframerate(16000)
+        sound.writeframes(b'\0\0' * 160)
+    monkeypatch.setattr(task_monitor_module, '_fixed_wav', lambda _: cached)
+    monkeypatch.setattr(task_monitor_module, '_pc_speech', lambda _path, _guard: (started.set(), 'played_by_os')[1])
+    class Robot:
+        async def auto_notify(self, _expression, _message, _guard):
+            assert await asyncio.to_thread(started.wait, 0.5)
+            return 'accepted'
+    class Control:
+        robot = Robot()
+        def auto_available(self): return True
+    async def run():
+        monitor = TaskMonitor(None, Control())
+        monitor.enabled = True
+        monitor.target, monitor.sound, monitor.sound_target = 'both', True, 'pc'
+        event = _stage_event({'stage': 'conversion_start', 'status': 'running'})
+        assert await monitor._notify(monitor.epoch, snapshot('running'), event)
+        assert monitor.history[0]['delivery']['watch'] == 'accepted'
+        assert monitor.history[0]['delivery']['sound'] == 'played_by_os'
+    asyncio.run(run())
+
+
+def test_waiting_start_cue_is_removed_after_result_arrives(monkeypatch):
+    original_sleep = asyncio.sleep
+    monkeypatch.setattr(task_monitor_module.asyncio, 'sleep', lambda _: original_sleep(0.001))
+    task_id = 'tsk_' + 'a' * 24
+    start = {'event_id': '1' * 32, 'task_id': task_id, 'task_name': '任务',
+             'stage': 'match_start', 'status': 'running', 'attempt': 'a',
+             'occurred_at': '2026-09-29T01:00:00+08:00'}
+    result = {**start, 'event_id': '2' * 32, 'stage': 'match_result',
+              'status': 'completed', 'occurred_at': '2026-09-29T01:00:01+08:00'}
+    class Cost:
+        calls = 0
+        async def monitor_feed(self):
+            self.calls += 1
+            return {'task': None, 'recent': [],
+                    'events': [] if self.calls == 1 else [start] if self.calls == 2 else [result, start]}
+    class Control:
+        def __init__(self, cost): self.cost = cost
+        def auto_available(self): return self.cost.calls >= 3
+    async def run():
+        cost = Cost()
+        monitor = TaskMonitor(cost, Control(cost))
+        await monitor.configure(enabled=True)
+        for _ in range(50):
+            if monitor.history: break
+            await original_sleep(0.005)
+        assert [item['kind'] for item in monitor.history] == ['match_result']
+        assert monitor.history[0]['source_at'] == result['occurred_at']
+        assert monitor.history[0]['detected_at']
+        await monitor.stop()
+    asyncio.run(run())
 
 
 def test_stage_feed_baselines_old_events_and_delivers_new_once(monkeypatch):

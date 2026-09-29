@@ -18,6 +18,9 @@ from .control import Controller
 from .answer import AnswerClient
 from .cost import CostClient, MONITOR_TASK_ID
 from .task_monitor import TaskMonitor
+from .codex_monitor import CodexMonitor
+from .codex_source import JsonlSource, HookSpool, QuotaRPC
+from . import sentinel_voice_library as voice_library
 from .robot import Robot, BleConsoleError
 from .voice import VoiceClient, VoiceError
 
@@ -85,6 +88,23 @@ class MonitorSettings(Payload):
     sound_target: Literal['pc', 'watch'] = 'pc'
 
 
+class CodexSettings(Payload):
+    enabled: bool = False
+    mode: Literal['auto', 'specific'] = 'auto'
+    thread_id: str = Field(default='', max_length=100, pattern=r'^[A-Za-z0-9_-]*$')
+    target: Literal['desktop', 'watch', 'both'] = 'desktop'
+    sound: bool = False
+    sound_target: Literal['pc', 'watch'] = 'pc'
+    threshold: int = Field(default=20, ge=1, le=99)
+    bucket_id: str = Field(default='', max_length=80)
+    ring_mode: Literal['hidden', 'visible', 'hover'] = 'hidden'
+
+
+class VoiceLibraryGenerate(Payload):
+    item_id: str = Field(default='', max_length=40)
+    force: bool = False
+
+
 class State(Generation):
     state: Literal["idle", "listening", "speaking", "error"]
 
@@ -142,6 +162,20 @@ def _save_sentinel_preferences(path, value):
     temporary.replace(path)
 
 
+def _codex_preferences(path):
+    try:
+        saved = json.loads(path.read_text(encoding='utf-8'))
+        if isinstance(saved, dict):
+            # The old checkbox defaulted to on, so it cannot represent a user's
+            # explicit choice under the new three-way, default-hidden setting.
+            saved.pop('show_ring', None)
+        values = CodexSettings.model_validate(saved).model_dump()
+    except (FileNotFoundError, OSError, ValueError):
+        values = CodexSettings().model_dump()
+    values['enabled'] = False  # startup always requires a fresh, explicit opt-in
+    return values
+
+
 def owner(request):
     value = request.headers.get("x-companion-client", "")
     try:
@@ -181,9 +215,17 @@ def create_app(config=None, controller=None, cost_client=None):
             config.get("answer_api_key_env", "GORK_ANSWER_API_KEY"), config.get("request_timeout", 60)),
         config.get("answer_history_turns", 4))
     monitor = TaskMonitor(cost, control)
+    codex = CodexMonitor(control,
+        jsonl=JsonlSource(config.get('codex_jsonl_root')),
+        hooks=HookSpool(config.get('codex_hook_queue', control.codex_spool)),
+        rpc=QuotaRPC(config.get('codex_executable', 'codex')))
+    voice_library_lock = asyncio.Lock()
     control.task_monitor = monitor
+    control.codex_monitor = codex
     sentinel_path = Path(config.get('sentinel_state_path', ROOT / 'sentinel.local.json'))
     sentinel_initial = _sentinel_preferences(sentinel_path)
+    codex_path = Path(config.get('codex_state_path', ROOT / 'codex-sentinel.local.json'))
+    codex_initial = _codex_preferences(codex_path)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -192,10 +234,12 @@ def create_app(config=None, controller=None, cost_client=None):
             control.robot.start_auto_connect(config.get("device_address", ""))
         start_service()
         await monitor.configure(**sentinel_initial)
+        await codex.configure(codex_initial)
         try:
             yield
         finally:
             await monitor.stop()
+            await codex.stop()
             await control.close()
             await cost.close()
             if manager:
@@ -207,6 +251,7 @@ def create_app(config=None, controller=None, cost_client=None):
     app.state.control = control
     app.state.cost = cost
     app.state.task_monitor = monitor
+    app.state.codex_monitor = codex
     allowed = {f"127.0.0.1:{port}", f"localhost:{port}"}
 
     @app.middleware("http")
@@ -294,6 +339,86 @@ def create_app(config=None, controller=None, cost_client=None):
     @app.get('/api/cost/sentinel')
     async def sentinel_state():
         return monitor.state()
+
+    @app.get('/api/codex/sentinel')
+    async def codex_sentinel_state():
+        return codex.state()
+
+    @app.put('/api/codex/sentinel')
+    async def codex_sentinel_settings(payload: CodexSettings, request: Request):
+        control.renew_workspace(owner(request))
+        if payload.mode == 'specific' and payload.enabled and not payload.thread_id:
+            raise VoiceError(422, 'CODEX_THREAD_REQUIRED', '请指定 Codex 任务')
+        values = payload.model_dump()
+        try:
+            await asyncio.to_thread(_save_sentinel_preferences, codex_path, values)
+        except OSError as exc:
+            raise VoiceError(503, 'CODEX_PREFERENCES', 'Codex 哨兵设置无法保存') from exc
+        return await codex.configure(values)
+
+    @app.post('/api/codex/quota/refresh')
+    async def codex_quota_refresh(request: Request):
+        control.renew_workspace(owner(request))
+        return await codex.refresh_quota()
+
+    @app.get('/api/character/voice-library')
+    async def sentinel_voice_library():
+        return await asyncio.to_thread(voice_library.catalogue)
+
+    @app.get('/api/character/voice-library/{item_id}/preview')
+    async def sentinel_voice_preview(item_id: str):
+        item = voice_library.BY_ID.get(item_id)
+        if not item:
+            raise VoiceError(404, 'VOICE_LIBRARY_ITEM', '播报短句不存在')
+        try:
+            path = await asyncio.to_thread(voice_library.cached_path, item[2])
+        except (FileNotFoundError, ValueError) as exc:
+            raise VoiceError(404, 'VOICE_LIBRARY_MISSING', '该短句尚无可用的本地语音，请先生成') from exc
+        return FileResponse(path, media_type='audio/wav')
+
+    @app.post('/api/character/voice-library/generate')
+    async def sentinel_voice_generate(payload: VoiceLibraryGenerate, request: Request):
+        who = owner(request)
+        control.require_voice(who)
+        if control.routing.get('tts') != 'cloud' or not control.routing.get('allow_text_upload'):
+            raise VoiceError(403, 'VOICE_LIBRARY_CLOUD', '请先在设置页启用云端 TTS 并允许发送文字')
+        if not control.turn or control.pending or control.phase in ('listening', 'processing', 'speaking'):
+            raise VoiceError(409, 'VOICE_LIBRARY_BUSY', '请等待当前语音任务结束后再生成')
+        if voice_library_lock.locked():
+            raise VoiceError(409, 'VOICE_LIBRARY_BUSY', '语音库正在生成，请稍候')
+        if payload.item_id and payload.item_id not in voice_library.BY_ID:
+            raise VoiceError(404, 'VOICE_LIBRARY_ITEM', '播报短句不存在')
+        async with voice_library_lock:
+            original_session, original_turn, original_generation = control.voice.session, control.turn, control.generation
+            entries = ([voice_library.BY_ID[payload.item_id]] if payload.item_id else voice_library.PHRASES)
+            generated = []
+            for item_id, _, phrase in entries:
+                if not payload.force:
+                    try:
+                        await asyncio.to_thread(voice_library.cached_path, phrase)
+                        continue
+                    except (FileNotFoundError, ValueError):
+                        pass
+                control.require_voice(who)
+                if (control.voice.session != original_session or control.turn != original_turn
+                        or control.generation != original_generation or control.routing.get('tts') != 'cloud'
+                        or not control.routing.get('allow_text_upload')):
+                    raise VoiceError(409, 'VOICE_LIBRARY_CHANGED', '语音会话或上传许可已变化，已停止生成')
+                request_id = control.voice.request_id('tts')
+                control.pending[request_id] = (original_turn, original_session, original_generation)
+                try:
+                    data = await control.voice.synthesize(phrase, original_turn, request_id,
+                                                           {'cloud_voice': voice_library.VOICE, 'request_voice': True})
+                finally:
+                    control.pending.pop(request_id, None)
+                if control.generation != original_generation or control.voice.session != original_session:
+                    raise VoiceError(409, 'VOICE_LIBRARY_CHANGED', '语音操作已停止，未保存迟到结果')
+                try:
+                    await asyncio.to_thread(voice_library.save, phrase, data)
+                except (OSError, ValueError) as exc:
+                    raise VoiceError(502, 'VOICE_LIBRARY_AUDIO', f'短句音频无法保存或不适合 Watch：{phrase}') from exc
+                generated.append(item_id)
+            return {'generated': generated, 'library': await asyncio.to_thread(voice_library.catalogue)}
 
     @app.put('/api/cost/sentinel')
     async def sentinel_settings(payload: MonitorSettings, request: Request):

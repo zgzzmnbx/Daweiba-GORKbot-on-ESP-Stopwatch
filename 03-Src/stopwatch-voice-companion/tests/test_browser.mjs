@@ -83,6 +83,14 @@ function workbench(saved = {}, uiOptions = {}) {
         if (options.method === 'PUT') sentinel = {...sentinel,...JSON.parse(options.body)};
         return {ok:true,json:async()=>sentinel};
       }
+      if (url === '/api/character/voice-library' && uiOptions.voiceLibrary)
+        return {ok:true,json:async()=>uiOptions.voiceLibrary};
+      if (url === '/api/character/voice-library/generate' && uiOptions.voiceLibrary) {
+        uiOptions.voiceLibrary = {...uiOptions.voiceLibrary,ready:1,items:uiOptions.voiceLibrary.items.map(item=>({...item,ready:true}))};
+        return {ok:true,json:async()=>({generated:['conversion_start'],library:uiOptions.voiceLibrary})};
+      }
+      if (url === '/api/character/voice-library/conversion_start/preview')
+        return {ok:true,arrayBuffer:async()=>new ArrayBuffer(44)};
       if (url === '/api/device/audio/speech' && uiOptions.oldBackend)
         return {ok:false,status:404,json:async()=>({})};
       if(url==='/api/tts') return await new Promise(resolve=>waiting.push(()=>resolve({ok:true,arrayBuffer:async()=>new ArrayBuffer(44)})));
@@ -99,6 +107,19 @@ function workbench(saved = {}, uiOptions = {}) {
   return {element,waiting,played,requests,pages,tabs,location,events,avatarStates,saved,previewMounts,context};
 }
 const settle = () => new Promise(resolve=>setImmediate(resolve));
+
+test('character voice library lists cached phrases and previews locally', async () => {
+  const voiceLibrary={voice:'Cherry',voice_label:'芊悦 · Cherry',model:'qwen3-tts-flash',ready:1,total:1,
+    items:[{id:'conversion_start',group:'转换',text:'开始转换',ready:true}]};
+  const ui=workbench({}, {hash:'#character',voiceLibrary}); await settle();
+  assert.match(ui.element('voice-library-status').textContent,/已缓存 1\/1 条/);
+  const row=ui.element('voice-library-items').children[0];
+  assert.match(row.children[0].textContent,/开始转换/);
+  await row.children[2].onclick();
+  assert.equal(ui.requests.filter(r=>r.url.includes('/voice-library/')).at(-1).url,
+    '/api/character/voice-library/conversion_start/preview');
+  assert.equal(ui.requests.some(r=>r.url==='/api/tts'),false);
+});
 
 test('settings shows the running console version from health', async () => {
   const ui=workbench({}, {hash:'#settings'}); await settle();

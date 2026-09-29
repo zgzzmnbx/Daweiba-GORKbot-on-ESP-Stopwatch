@@ -26,6 +26,8 @@ test('bubble lifecycle follows avatar visibility, dismiss, new message, clear an
   assert.equal(win.visible,true);assert.equal(win.top,false);assert.equal(win.payload.text,'你好');assert.equal(c.owns(win.webContents),true);assert.equal(c.owns({}),false);
   c.dismiss();c.update({bubble:'你好',revision:1});assert.equal(win.visible,false);
   c.update({bubble:'新消息',revision:2});assert.equal(win.visible,true);
+  c.update({bubble:'本轮已结束',revision:3,dismissOnClick:true});
+  assert.equal(win.payload.dismissOnClick,true);
   visible=false;c.sync();assert.equal(win.visible,false);
   visible=true;top=true;c.sync();assert.equal(win.top,true);assert.equal(win.visible,true);
   c.update({bubble:'',revision:3});assert.equal(win.visible,false);c.destroy();
@@ -33,19 +35,57 @@ test('bubble lifecycle follows avatar visibility, dismiss, new message, clear an
 });
 test('avatar renders scene state without referencing an out-of-scope manual variable',()=>{
   let render;
-  const nodes=new Map();const get=id=>{if(!nodes.has(id))nodes.set(id,{addEventListener(){}});return nodes.get(id);};
+  const nodes=new Map();const get=id=>{if(!nodes.has(id))nodes.set(id,{dataset:{},addEventListener(){}});return nodes.get(id);};
   const context={document:{getElementById:get},window:{GorkAvatar:{mount:()=>({set(){}})},gorkDesktop:{getState:()=>Promise.resolve({mode:'idle',scene:{revision:1,expression:'idle'}}),onState:f=>{render=f;}}}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../avatar.js'),'utf8'),context);
   assert.doesNotThrow(()=>render({mode:'happy',scene:{revision:2,expression:'happy'},character:{bubble:'hi'}}));
   assert.equal(get('status').textContent,'就绪');
 });
+test('avatar quota ring handles one, two and stale windows with keyboard details',()=>{
+  let render;
+  const nodes=new Map();
+  const get=id=>{
+    if(!nodes.has(id))nodes.set(id,{hidden:false,dataset:{},style:{values:{},setProperty(key,value){this.values[key]=value;}},setAttribute(key,value){this[key]=value;},addEventListener(){}});
+    return nodes.get(id);
+  };
+  const context={document:{getElementById:get},window:{GorkAvatar:{mount:()=>({set(){}})},gorkDesktop:{getState:()=>Promise.resolve({mode:'idle'}),onState:f=>{render=f;}}}};
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../avatar.js'),'utf8'),context);
+  const window1={name:'5 小时',remaining_percent:75,resets_at:2000000000};
+  const window2={name:'7 天',remaining_percent:18,resets_at:2000000000};
+  render({mode:'idle',codex:{enabled:false,ring_mode:'hidden',status:'available',bucket:{windows:[window1]}}});
+  assert.equal(get('quota-ring-outer').hidden,true);
+  assert.equal(get('quota-detail').hidden,true);
+  render({mode:'idle',codex:{enabled:true,status:'available',stale:false,bucket:{windows:[window1]}}});
+  assert.equal(get('quota-ring-outer').hidden,false);
+  assert.equal(get('quota-ring-inner').hidden,true);
+  assert.equal(get('quota-ring-outer').style.values['--ring-fill'],'75%');
+  render({mode:'idle',codex:{enabled:true,status:'available',stale:false,bucket:{windows:[window1,window2]}}});
+  assert.equal(get('quota-ring-inner').hidden,false);
+  assert.equal(get('quota-ring-inner').style.values['--ring-fill'],'18%');
+  assert.match(get('quota-detail')['aria-label'],/当前监测账号额度/);
+  render({mode:'idle',codex:{enabled:true,ring_mode:'hover',status:'available',stale:false,bucket:{windows:[window1,window2]}}});
+  assert.equal(get('quota-ring-outer').dataset.display,'hover');
+  assert.equal(get('quota-ring-inner').dataset.display,'hover');
+  assert.equal(get('quota-detail').dataset.display,'hover');
+  assert.equal(get('quota-ring-outer').hidden,false);
+  render({mode:'idle',codex:{enabled:true,status:'unavailable',stale:true,bucket:{windows:[window1,window2]}}});
+  assert.equal(get('quota-ring-outer').style.values['--ring-fill'],'0%');
+  assert.match(get('quota-detail')['aria-label'],/数据过期或不可用/);
+  render({mode:'idle',codex:{enabled:false}});
+  assert.equal(get('quota-detail').hidden,true);
+});
 test('bubble uses literal text and preserves scroll position across state polls',()=>{
-  let render;const speech={textContent:'',scrollTop:0};
-  const context={document:{getElementById:id=>id==='speech'?speech:{},body:{dataset:{},style:{setProperty(){}}},addEventListener(){}},window:{gorkDesktop:{onBubble:f=>{render=f;}}}};
+  let render, click, dismissed=0;const speech={textContent:'',scrollTop:0};
+  const card={addEventListener:(_event, handler)=>{click=handler;}};
+  const context={document:{getElementById:id=>id==='speech'?speech:{},querySelector:()=>card,body:{dataset:{},style:{setProperty(){}}},addEventListener(){}},window:{gorkDesktop:{onBubble:f=>{render=f;},dismissBubble:()=>{dismissed++;}}}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../bubble.js'),'utf8'),context);
   render({text:'<img src=x onerror=alert(1)>'});assert.equal(speech.innerHTML,undefined);
   speech.scrollTop=50;render({text:speech.textContent});assert.equal(speech.scrollTop,50);
   render({text:'新消息'});assert.equal(speech.scrollTop,0);
+  click({target:{closest:()=>null}});assert.equal(dismissed,0);
+  render({text:'本轮已结束',dismissOnClick:true});
+  click({target:{closest:()=>null}});assert.equal(dismissed,1);
+  click({target:{closest:()=>({})}});assert.equal(dismissed,1);
 });
 
 test('default is above, all four preferred sides work, and top-edge fallback preserves tail alignment',()=>{

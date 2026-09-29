@@ -7,6 +7,7 @@ body {padding:14px;}
 .speech-card {position:relative;height:100%;display:flex;flex-direction:column;background:#fffef9;
   border:1px solid #dddcd1;border-radius:20px;box-shadow:0 5px 12px #18211818;padding:14px 16px 10px;
   animation:appear .18s ease-out;}
+body[data-click-dismiss=true] .speech-card {cursor:pointer;}
 .speech-card::before {content:"";position:absolute;width:14px;height:14px;left:-8px;top:calc(var(--anchor,112px) - 22px);
   background:#fffef9;border-left:1px solid #dddcd1;border-bottom:1px solid #dddcd1;transform:rotate(45deg);border-bottom-left-radius:3px;}
 body[data-side=left] .speech-card::before {left:auto;right:-8px;transform:rotate(225deg);}
