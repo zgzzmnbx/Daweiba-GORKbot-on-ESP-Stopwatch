@@ -28,6 +28,22 @@ test('terminal deduplicates each channel and bounds memory/DOM to 120 rows',()=>
   assert.match(nodes.get('debug-log').children.at(-1).textContent,/status 199/);
   nodes.get('debug-clear').onclick();assert.equal(nodes.get('debug-log').children.length,0);
 });
+test('independent connection and operation states share a channel without alternating duplicates',()=>{
+  const {terminal,nodes}=setup();
+  for(let i=0;i<100;i++){
+    terminal.push('DEVICE','已连接',false,'connection');
+    terminal.push('DEVICE','操作失败',true,'operation');
+  }
+  assert.equal(nodes.get('debug-log').children.length,3);
+  terminal.push('DEVICE','已连接',true,'connection');
+  assert.equal(nodes.get('debug-log').children.length,4,'severity changes remain visible');
+  terminal.push('DEVICE','已连接',false,'connection');
+  terminal.push('DEVICE','操作成功',false,'operation');
+  assert.equal(nodes.get('debug-log').children.length,6);
+  nodes.get('debug-clear').onclick();
+  terminal.push('DEVICE','已连接',false,'connection');
+  assert.equal(nodes.get('debug-log').children.length,1);
+});
 test('terminal uses literal text and does not drag reader away from history',()=>{
   const {terminal,nodes}=setup();const log=nodes.get('debug-log');
   log.scrollHeight=500;log.clientHeight=100;log.scrollTop=20;

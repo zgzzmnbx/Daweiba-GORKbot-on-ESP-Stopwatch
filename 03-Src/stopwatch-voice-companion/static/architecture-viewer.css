@@ -1,0 +1,16 @@
+.architecture-trigger{order:6;flex:none;height:34px;padding:0 11px;border:1px solid var(--header-control-border,#dce2e8);border-radius:7px;background:var(--header-control-bg,#fff);color:var(--header-ink,#344254);font:500 12px/1.4 'Segoe UI','Microsoft YaHei UI',sans-serif;white-space:nowrap;cursor:pointer}
+.architecture-trigger:hover{border-color:var(--accent,#16876a);color:var(--accent-strong,#0d7058)}
+.architecture-trigger:focus-visible{outline:2px solid var(--accent,#16876a);outline-offset:2px}
+.architecture-dialog{width:min(96vw,150vh,1600px);max-width:none;max-height:calc(100dvh - 24px);padding:0;border:1px solid #395265;border-radius:12px;background:#101821;color:#eaf3f2;box-shadow:0 24px 80px #07141fd9;overflow:hidden}
+.architecture-dialog::backdrop{background:#07131bd9}
+.architecture-surface{min-width:0}
+.architecture-head{min-height:56px;padding:9px 14px 9px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#1a2833}
+.architecture-head h2{margin:0;color:#eaf3f2;font:600 15px/1.4 'Segoe UI','Microsoft YaHei UI',sans-serif}
+.architecture-head-actions{display:flex;align-items:center;gap:8px;flex:none}
+.architecture-head button{flex:none;min-width:62px;height:34px;padding:0 10px;border:1px solid #66818f;border-radius:7px;background:#263e4d;color:#eaf3f2;font:500 12px 'Segoe UI','Microsoft YaHei UI',sans-serif;cursor:pointer}
+.architecture-head button:hover{background:#345368}
+.architecture-head button:focus-visible{outline:2px solid #58d4d7;outline-offset:2px}
+.architecture-video{display:block;width:100%;height:auto;max-height:calc(100dvh - 125px);aspect-ratio:16/9;object-fit:contain;background:#101821}
+.architecture-note,.architecture-error{margin:0;padding:10px 20px;color:#b6c8d0;font:12px/1.4 'Segoe UI','Microsoft YaHei UI',sans-serif}
+.architecture-error{color:#ffd1c5}
+@media(max-width:700px){.architecture-trigger{height:30px;padding:0 7px;font-size:11px}.architecture-head{min-height:46px;padding:6px 8px 6px 12px}.architecture-head h2{font-size:12px}.architecture-head button{height:30px}.architecture-note,.architecture-error{padding:7px 12px;font-size:10px}}

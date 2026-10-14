@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "mode": "auto",
+  "task_id": "",
+  "target": "both",
+  "sound": true,
+  "sound_kind": "speech",
+  "sound_target": "pc",
+  "current": null,
+  "last_result": null,
+  "last_success_at": "",
+  "connection_error": "",
+  "history": [],
+  "deferred": null,
+  "presentation": null,
+  "source": "legacy"
+}

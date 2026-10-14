@@ -1,0 +1,9 @@
+PASS: all scenes enter/loop/complete; 1,000 rapid switches; cancel cleanup; invalid input; reduced motion.
+PASS config roundtrip, reject malformed/oversize/unknown/version/range/type, atomic import, undo/reset, persistence, shared config consumer and rapid switches.
+PASS rendered loops with system motion on/off, explicit play/replay, honest pause/static labels, OS changes, reload, paused/running hide/show and BFCache, single RAF/disposal. Native Canvas + DOM event harness; not browser/Windows QA.
+PASS actual editor event handlers: controls/live config, persist/reload, undo/reset, import/export, pause/replay/complete/cancel and rapid switching. DOM harness, not browser layout QA.
+PASS pen style selector, live preview config and saved reload
+PASS failed shared read requires explicit import before recovery save
+{"result":"PASS actual renderer default/min/max/mixed control ranges, enter/loop/exit, monochrome and circle containment","checkedFrames":208,"maxForegroundRadius":213.00821580399193,"clipDisabled":true}
+{"result":"PASS v1 migration/roundtrip, 4 pen styles default/min/max, exact nib/path alignment, monochrome/circle bounds, enter/exit and rapid switches","frames":172,"clipDisabled":true}
+{"result":"PASS user config, initial idle, 1000 new/legacy switches, once return, 100 remounts, single RAF/listener cleanup, real user Canvas pixels all four pens","frames":208,"maxForegroundRadius":184.07742936058182,"clipDisabled":true}

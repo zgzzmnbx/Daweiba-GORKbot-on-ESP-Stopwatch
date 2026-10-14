@@ -45,10 +45,16 @@ void SoundControl::setInitialVolume(uint8_t value) { volume_=std::min<uint8_t>(1
 void SoundControl::setLocalVolume(uint8_t value) { volume_=std::min<uint8_t>(100,value); if(volume_)lastNonZeroVolume_=volume_; volumeChanged_=true; }
 void SoundControl::toggleMute(){setLocalVolume(volume_?0:lastNonZeroVolume_);}
 bool SoundControl::preview(uint8_t soundId) {
+  if(announcement_)stopNow();
   if(playing_ || volume_==0)return false;
   size_t samples=0; const int16_t* pcm=sound(soundId,&samples); if(!pcm)return false;
   if(!startPlayback(pcm,samples))return false;
-  activeRequest_=0;activeSound_=soundId;playing_=true;link_=control_.linkEpoch();return true;
+  activeRequest_=0;activeSound_=soundId;announcement_=false;playing_=true;link_=control_.linkEpoch();return true;
+}
+bool SoundControl::announce(const int16_t* pcm,size_t samples) {
+  if(playing_ || volume_==0 || !startPlayback(pcm,samples,true))return false;
+  activeRequest_=0;activeSound_=0;announcement_=true;playing_=true;
+  drainedAt_=0;link_=control_.linkEpoch();return true;
 }
 bool SoundControl::takeVolumeChanged(uint8_t* value) { if (!volumeChanged_) return false; volumeChanged_=false; if(value)*value=volume_; return true; }
 bool SoundControl::takeButtonBConsumed() { const bool value=buttonBConsumed_; buttonBConsumed_=false; return value; }
@@ -67,12 +73,12 @@ bool SoundControl::replayTerminal(uint16_t id) {
   }
   return false;
 }
-void SoundControl::stopNow(){ stopStopWatchSpeaker(); playing_=false; drainedAt_=0; activeSound_=0; }
+void SoundControl::stopNow(bool cancelAnnouncements){ stopStopWatchSpeaker(); playing_=false; announcement_=false; drainedAt_=0; activeSound_=0; if(cancelAnnouncements)++stopEpoch_; }
 
-bool SoundControl::startPlayback(const int16_t* pcm,size_t samples) {
+bool SoundControl::startPlayback(const int16_t* pcm,size_t samples,bool speech) {
   if(!pcm || !samples)return false;
   const auto result=startStopWatchSpeaker(
-      (volume_*255+50)/100, SpeakerGainProfile::BuiltInLoud);
+      (volume_*255+50)/100, speech?SpeakerGainProfile::Unity:SpeakerGainProfile::BuiltInLoud);
   hardwareStatus_=speakerStartResultText(result);
   if(result!=SpeakerStartResult::Ok)return false;
   if(!M5.Speaker.playRaw(pcm,samples,16000,false,1,0,true)){
@@ -88,6 +94,7 @@ void SoundControl::process(const Frame& frame,uint32_t) {
   const auto* p=frame.bytes; const uint8_t op=p[1],arg=p[8]; const uint16_t id=get16(p+2); const uint32_t value=get32(p+4);
   if(frame.link!=control_.linkEpoch())return;
   if(replayTerminal(id))return;
+  if(op==Play && announcement_)stopNow();
   if(playing_ && id==activeRequest_){ reply(Started,id,volume_,activeSound_); return; }
   if(op==Caps){ reply(Status,id,0x0f,6,true); return; }
   if(op==Catalog){ reply(Status,id,6,1,true); return; }
@@ -99,14 +106,15 @@ void SoundControl::process(const Frame& frame,uint32_t) {
   reply(Accepted,id,volume_,arg);
   if(volume_==0){ reply(Completed,id,0,arg,true); return; }
   if(!startPlayback(pcm,samples)){ fail(id,Speaker); return; }
-  activeRequest_=id; activeSound_=arg; playing_=true; link_=control_.linkEpoch(); reply(Started,id,volume_,arg);
+  activeRequest_=id; activeSound_=arg; announcement_=false; playing_=true; link_=control_.linkEpoch(); reply(Started,id,volume_,arg);
 }
 
 void SoundControl::update(uint32_t now,bool blocked) {
   if(playing_ && M5.BtnB.wasPressed()){ buttonBConsumed_=true; stopRequestId_.store(activeRequest_); stopRequested_.store(true); }
-  if(stopRequested_.exchange(false)){ const auto id=stopRequestId_.exchange(0); if(!replayTerminal(id)){const auto soundId=activeSound_; stopNow(); reply(Stopped,id,0,soundId,true);} }
+  if(stopRequested_.exchange(false)){ const auto id=stopRequestId_.exchange(0); if(!replayTerminal(id)){const auto soundId=activeSound_; stopNow(); if(id)reply(Stopped,id,0,soundId,true);} }
+  if(announcement_ && (blocked || volume_==0))stopNow();
   if(playing_ && activeRequest_ && (blocked || link_!=control_.linkEpoch() || !control_.audioPeerAllowed(control_.connectionId()))) stopNow();
   Frame frame; bool have=false; portENTER_CRITICAL(&mux_); if(count_){frame=queue_[head_];head_=(head_+1)%8;--count_;have=true;} portEXIT_CRITICAL(&mux_);
   if(have){ const uint16_t id=get16(frame.bytes+2); if(blocked)fail(id,Blocked); else process(frame,now); }
-  if(playing_ && !M5.Speaker.isPlaying()){ if(!drainedAt_)drainedAt_=now; if(now-drainedAt_>=100){const auto id=activeRequest_;const auto soundId=activeSound_;stopNow();hardwareStatus_="completed";reply(Completed,id,0,soundId,true);} }
+  if(playing_ && !M5.Speaker.isPlaying()){ if(!drainedAt_)drainedAt_=now; if(now-drainedAt_>=100){const auto id=activeRequest_;const auto soundId=activeSound_;stopNow(false);hardwareStatus_="completed";if(id)reply(Completed,id,0,soundId,true);} }
 }

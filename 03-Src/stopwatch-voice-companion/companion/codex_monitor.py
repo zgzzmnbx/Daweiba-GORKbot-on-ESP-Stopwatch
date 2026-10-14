@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import math
 import time
 
-from .codex_source import HookSpool, JsonlSource, QuotaRPC
+from .codex_source import HookSpool, JsonlSource, QuotaRPC, ThreadTitleRPC
 
 
 MESSAGES = {
@@ -15,6 +15,8 @@ MESSAGES = {
     'interrupted': ('本轮已中断，请查看 Codex。', 'idle', 2),
     'quota_low': ('Codex 额度较低，请查看详情。', 'curious', 1),
 }
+
+MAX_SAMPLE_GAP = 300
 
 
 def _event_epoch(value, fallback=0.0):
@@ -63,12 +65,47 @@ def quota_snapshot(result):
     return {'status': 'available' if buckets else 'no_windows', 'buckets': buckets}
 
 
+def quota_step_drops(baselines, snapshot, sampled_at, bucket_id, step):
+    """Advance fresh, per-window baselines and return threshold crossings."""
+    if snapshot.get('status') != 'available':
+        baselines.clear()
+        return []
+    buckets = snapshot['buckets']
+    selected = bucket_id if bucket_id in buckets else next(iter(buckets), '')
+    windows = buckets.get(selected, {}).get('windows', [])
+    current_keys = set()
+    drops = []
+    for index, window in enumerate(windows):
+        reset, remaining = window['resets_at'], window['remaining_percent']
+        if not reset or reset <= sampled_at or remaining is None:
+            continue
+        key = (selected, index, reset)
+        current_keys.add(key)
+        old = baselines.get(key)
+        if (not old or old['duration_minutes'] != window['duration_minutes']
+                or remaining > old['remaining']):
+            baselines[key] = {'remaining': remaining, 'duration_minutes': window['duration_minutes']}
+            continue
+        points = round(old['remaining'] - remaining, 1)
+        if points >= step:
+            drops.append({'bucket_id': selected, 'window_index': index,
+                          'window_name': window['name'], 'reset': reset,
+                          'before': old['remaining'], 'remaining': remaining,
+                          'drop_points': points})
+            baselines[key] = {'remaining': remaining, 'duration_minutes': window['duration_minutes']}
+    for key in tuple(baselines):
+        if key not in current_keys:
+            del baselines[key]
+    return drops
+
+
 class CodexMonitor:
-    def __init__(self, control, *, jsonl=None, hooks=None, rpc=None):
+    def __init__(self, control, *, jsonl=None, hooks=None, rpc=None, titles=None):
         self.control = control
         self.jsonl = jsonl or JsonlSource()
         self.hooks = hooks or HookSpool(control.codex_spool)
         self.rpc = rpc or QuotaRPC()
+        self.titles = titles or ThreadTitleRPC()
         self.enabled = False
         self.epoch = 0
         self.worker = None
@@ -81,6 +118,8 @@ class CodexMonitor:
         self.threshold = 20
         self.bucket_id = ''
         self.ring_mode = 'hidden'
+        self.drop_step = 2
+        self.drop_animation = True
         self.threads = {}
         self.focus = ''
         self.history = []
@@ -93,6 +132,8 @@ class CodexMonitor:
         self.quota_next = 0.0
         self.quota_failures = 0
         self.low_armed = {}
+        self.drop_baselines = {}
+        self.quota_drop = None
         self.revision = 0
         self.alerts = set()
         self.refresh_event = asyncio.Event()
@@ -102,16 +143,20 @@ class CodexMonitor:
         self.accept_after = 0.0
 
     def configure_values(self, values):
-        for key in ('mode', 'thread_id', 'target', 'sound', 'sound_target', 'threshold', 'bucket_id', 'ring_mode'):
-            setattr(self, key, values[key])
+        for key in ('mode', 'thread_id', 'target', 'sound', 'sound_target', 'threshold', 'bucket_id', 'ring_mode', 'drop_step', 'drop_animation'):
+            setattr(self, key, values.get(key, getattr(self, key)))
 
     async def configure(self, values):
         if (self.enabled and values['enabled'] and values['mode'] == self.mode
                 and values['thread_id'] == self.thread_id):
             previous_limit = (self.threshold, self.bucket_id)
+            previous_drop = (self.drop_step, self.bucket_id)
             self.configure_values(values)
             if previous_limit != (self.threshold, self.bucket_id):
                 self.low_armed.clear()
+            if previous_drop != (self.drop_step, self.bucket_id):
+                self.drop_baselines.clear()
+                self.quota_drop = None
             return self.state()
         self.epoch += 1
         self.enabled = False
@@ -135,6 +180,7 @@ class CodexMonitor:
         self.control.notifications.clear('codex')
         self.configure_values(values)
         self.threads.clear(); self.focus = ''; self.seen.clear(); self.low_armed.clear()
+        self.drop_baselines.clear(); self.quota_drop = None
         self.watch_started_for = None
         self.task_status = self.quota_status = 'disabled'
         self.quota = {'status': 'unknown', 'buckets': {}}
@@ -157,7 +203,8 @@ class CodexMonitor:
         await self.configure({'enabled': False, 'mode': self.mode, 'thread_id': self.thread_id,
                               'target': self.target, 'sound': self.sound,
                               'sound_target': self.sound_target, 'threshold': self.threshold,
-                              'bucket_id': self.bucket_id, 'ring_mode': self.ring_mode})
+                              'bucket_id': self.bucket_id, 'ring_mode': self.ring_mode,
+                              'drop_step': self.drop_step, 'drop_animation': self.drop_animation})
 
     def state(self):
         now = time.time()
@@ -172,6 +219,7 @@ class CodexMonitor:
         return {'enabled': self.enabled, 'mode': self.mode, 'thread_id': self.thread_id,
                 'target': self.target, 'sound': self.sound, 'sound_target': self.sound_target,
                 'threshold': self.threshold, 'bucket_id': self.bucket_id, 'ring_mode': self.ring_mode,
+                'drop_step': self.drop_step, 'drop_animation': self.drop_animation,
                 'task_status': self.task_status, 'quota_status': self.quota_status,
                 'quota_error': self.quota_error, 'quota': quota,
                 'task_capabilities': {'jsonl': ['running', 'turn_completed'],
@@ -187,6 +235,10 @@ class CodexMonitor:
         return {'enabled': self.enabled and self.ring_mode != 'hidden', 'ring_mode': self.ring_mode,
                 'status': self.quota_status,
                 'stale': state['quota']['stale'], 'bucket': bucket if self.enabled else None,
+                'trend': (self.quota_drop if self.enabled and self.drop_animation
+                          and self.target in ('desktop', 'both')
+                          and self.quota_status == 'available' and not state['quota']['stale']
+                          and self.quota_drop and self.quota_drop['until'] > time.monotonic() else None),
                 'scope': '当前监测账号额度'}
 
     async def _task_loop(self, epoch):
@@ -273,6 +325,13 @@ class CodexMonitor:
 
     async def _notify(self, kind, thread, turn, item, epoch, observed_at=''):
         message, expression, priority = MESSAGES[kind]
+        if kind == 'turn_completed':
+            try:
+                title = await self.titles.read(thread)
+            except Exception:
+                title = ''
+            title = ' '.join(title.split())[:48] if isinstance(title, str) else ''
+            message = f'{title or "Codex 会话 " + thread[:8]}：本轮已结束，请查看结果。'
         def valid():
             return (self.enabled and self.epoch == epoch and self.threads.get(thread, {}).get('turn_id') == turn
                     and self.threads[thread]['status'] == kind)
@@ -324,13 +383,16 @@ class CodexMonitor:
                 self.quota_last_request = time.monotonic()
                 raw = await self.rpc.read()
                 if epoch != self.epoch: return
+                previous_at = self.quota_at
+                sampled_at = time.time()
                 self.quota = quota_snapshot(raw)
-                self.quota_at = time.time()
+                self.quota_at = sampled_at
                 self.quota_status = self.quota['status']
                 self.quota_error = ''
                 self.quota_failures = 0
                 self.quota_next = time.monotonic() + 120
-                await self._check_low(epoch)
+                drop_keys = self._check_quota_steps(previous_at, sampled_at, epoch)
+                await self._check_low(epoch, skip=drop_keys)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -343,6 +405,7 @@ class CodexMonitor:
                                 'rpc_error_401': ('auth_failed', 'Codex 认证失败'),
                                 'rpc_error_403': ('auth_failed', 'Codex 认证失败')}
                 self.quota_status, self.quota_error = explanations.get(code, ('unavailable', '额度读取暂不可用'))
+                self.drop_baselines.clear()
                 self.quota_failures += 1
                 self.quota_next = time.monotonic() + min(900, 15 * 2 ** min(self.quota_failures, 6))
             finally:
@@ -356,7 +419,58 @@ class CodexMonitor:
             self.refresh_event.set()
         return self.state()
 
-    async def _check_low(self, epoch):
+    def _check_quota_steps(self, previous_at, sampled_at, epoch):
+        if not previous_at or sampled_at - previous_at > MAX_SAMPLE_GAP:
+            self.drop_baselines.clear()
+        drops = quota_step_drops(self.drop_baselines, self.quota, sampled_at,
+                                 self.bucket_id, self.drop_step)
+        for drop in drops:
+            self.quota_drop = {**drop, 'until': time.monotonic() + 45}
+            task = asyncio.create_task(self._drop_alert(drop, epoch, sampled_at))
+            self.alerts.add(task)
+            task.add_done_callback(self.alerts.discard)
+        return {(drop['bucket_id'], drop['window_index'], drop['reset']) for drop in drops}
+
+    async def _drop_alert(self, drop, epoch, sampled_at):
+        message = (f"Codex {drop['window_name']}额度下降 {drop['drop_points']:g} 个百分点，"
+                   f"现剩余 {drop['remaining']:g}%。")
+        valid = lambda: self.enabled and self.epoch == epoch and self.quota_at == sampled_at
+        async def action():
+            delivery = {'desktop': 'not_requested', 'watch': 'not_requested', 'sound': 'off'}
+            if self.target in ('desktop', 'both'):
+                self.revision += 1
+                self.control.notifications.show('codex', 'curious' if self.drop_animation else None, message, self.revision,
+                                                seconds=20, priority=1)
+                delivery['desktop'] = 'displayed_to_client'
+            if self.target in ('watch', 'both'):
+                try: delivery['watch'] = await self.control.robot.auto_notify(
+                    'curious' if self.drop_animation else 'idle', message, valid)
+                except Exception: delivery['watch'] = 'failed'
+            if self.sound and valid():
+                if self.sound_target == 'watch':
+                    try: delivery['sound'] = await self.control.robot.auto_sound(2, valid)
+                    except Exception: delivery['sound'] = 'failed'
+                else: delivery['sound'] = await self.control.play_auto_tone(valid)
+            if valid():
+                self.history.insert(0, {'at': datetime.now().astimezone().isoformat(timespec='seconds'),
+                                        'kind': 'quota_drop', 'message': message,
+                                        'drop_points': drop['drop_points'],
+                                        'remaining_percent': drop['remaining'],
+                                        'delivery': delivery})
+                del self.history[50:]
+        delivered = await self.control.notifications.dispatch(
+            source='codex', priority=1, valid=valid, action=action)
+        if not delivered:
+            key = (drop['bucket_id'], drop['window_index'], drop['reset'])
+            baseline = self.drop_baselines.get(key)
+            if baseline and baseline['remaining'] == drop['remaining']:
+                baseline['remaining'] = drop['before']
+        if not delivered and self.enabled and self.epoch == epoch and drop['remaining'] <= self.threshold:
+            key = (drop['bucket_id'], drop['window_index'], drop['reset'])
+            self.low_armed.pop(key, None)
+            await self._check_low(epoch)
+
+    async def _check_low(self, epoch, skip=()):
         if self.state()['quota']['stale']: return
         buckets = self.quota['buckets']
         selected = self.bucket_id if self.bucket_id in buckets else next(iter(buckets), '')
@@ -368,6 +482,8 @@ class CodexMonitor:
                 self.low_armed[key] = True
             elif remaining <= self.threshold and self.low_armed.get(key, True):
                 self.low_armed[key] = False
+                if key in skip:
+                    continue
                 task = asyncio.create_task(self._quota_alert(key, epoch))
                 self.alerts.add(task)
                 task.add_done_callback(self.alerts.discard)

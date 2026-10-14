@@ -1,0 +1,110 @@
+--- 03-Src/stopwatch-grok-avatar/src/main.cpp (before v0.11.8)
++++ 03-Src/stopwatch-grok-avatar/src/main.cpp
+@@ -17,7 +17,7 @@
+ namespace {
+ 
+ constexpr uint8_t kDefaultBrightness = 150;
+-constexpr char kFirmwareVersion[] = "v0.11.7-dev";
++constexpr char kFirmwareVersion[] = "v0.11.8-dev";
+ constexpr uint8_t kMinimumBrightness = 30;
+ constexpr uint8_t kBrightnessStep = 15;
+ constexpr uint32_t kDiagnosticRefreshIntervalMs = 100;
+@@ -618,6 +618,15 @@
+   snprintf(status, statusCapacity, "ERR:TEXT_SEQ");
+ }
+ 
++void formatBleExpressionReceipt(const AvatarEngine& avatar, char* status,
++                                size_t capacity) {
++  if (!capacity) return;
++  snprintf(status, capacity, "OK:%s", avatar.activeProtocolName());
++  for (char* cursor = status; *cursor; ++cursor) {
++    if (*cursor >= 'a' && *cursor <= 'z') *cursor -= 'a' - 'A';
++  }
++}
++
+ void processBleCommands(uint32_t nowMs) {
+   char command[BLEControl::kMaxCommandLength + 1] = {};
+   uint16_t connectionId = 0;
+@@ -644,7 +653,7 @@
+         dispatchExpressionCommand(String(command), nowMs, "BLE");
+     if (accepted) {
+       char status[BLEControl::kMaxStatusLength + 1] = {};
+-      snprintf(status, sizeof(status), "OK:%s", avatar.activeName());
++      formatBleExpressionReceipt(avatar, status, sizeof(status));
+       bleControl.publishResult(connectionId, status);
+     } else {
+       bleControl.publishResult(connectionId, "ERR:BAD_CMD");
+--- 03-Src/stopwatch-grok-avatar/src/avatar_engine.cpp (before v0.11.8)
++++ 03-Src/stopwatch-grok-avatar/src/avatar_engine.cpp
+@@ -583,6 +583,16 @@
+ 
+ const char* AvatarEngine::activeName() const {
+   return motion_.enabled()?(customMotionName_?customMotionName_:motion_.name()):spec(targetExpression_).name;
++}
++
++const char* AvatarEngine::activeProtocolName() const {
++  // The display name may contain Chinese; the BLE receipt identifies the exact
++  // exported command, keeping it ASCII and within the existing 20-byte limit.
++  if (motion_.enabled() && customMotionName_ && customBrowseIndex_ >= 0 &&
++      static_cast<size_t>(customBrowseIndex_) < gork_custom_motion::kCount) {
++    return gork_custom_motion::entries[customBrowseIndex_].token;
++  }
++  return activeName();
+ }
+ 
+ float AvatarEngine::ease(Easing easingMode, float progress) {
+--- 03-Src/stopwatch-grok-avatar/src/avatar_engine.h (before v0.11.8)
++++ 03-Src/stopwatch-grok-avatar/src/avatar_engine.h
+@@ -137,6 +137,7 @@
+   ExpressionId activeExpression() const { return targetExpression_; }
+   ExpressionId baseExpression() const { return baseExpression_; }
+   const char* activeName() const;
++  const char* activeProtocolName() const;
+   bool ready() const { return ready_; }
+ 
+  private:
+--- tools/test_watch_firmware.py (before v0.11.8)
++++ tools/test_watch_firmware.py
+@@ -40,6 +40,7 @@
+ #include "avatar_engine.h"
+ #undef private
+ #include "custom_expressions.h"
++RECEIPT_FUNCTION
+ int main(){
+  AvatarEngine boot,reference;assert(boot.begin());assert(reference.begin());
+  assert(!boot.customIdleEnabled_&&!boot.motion_.enabled());
+@@ -50,10 +51,16 @@
+  for(size_t i=0;i<gork_custom_motion::kCount;i++){
+   auto&e=gork_custom_motion::entries[i];unsigned start=10000+i*20000;
+   assert(boot.showFromCommand(e.token,start));assert(boot.motion_.scene()==e.scene);assert(!strcmp(boot.activeName(),e.name));
++  assert(!strcmp(boot.activeProtocolName(),e.token));
++  char receipt[21];formatBleExpressionReceipt(boot,receipt,sizeof(receipt));
++  std::string expected=std::string("OK:")+e.token;for(auto&c:expected)if(c>='a'&&c<='z')c-='a'-'A';
++  assert(receipt==expected);assert(expected.size()<=20);
++  for(auto c:expected)assert(static_cast<unsigned char>(c)<128);
+   assert(!memcmp(boot.motion_.params_,e.scenes,sizeof(e.scenes)));
+   for(unsigned now=start;now<start+12000;now+=33){clockNow=now;boot.update(now);}
+   assert(!boot.motion_.enabled()&&boot.activeExpression()==ExpressionId::Idle&&!boot.customIdleEnabled_);
+   assert(boot.showFromCommand(String("loop ")+e.token,start+13000));
++  formatBleExpressionReceipt(boot,receipt,sizeof(receipt));assert(receipt==expected);
+   clockNow=start+70000;boot.update(clockNow);assert(boot.motion_.enabled()&&boot.motion_.scene()==e.scene);
+   assert(boot.showFromCommand("motion cancel",clockNow));clockNow+=1000;boot.update(clockNow);assert(!boot.motion_.enabled());
+  }
+@@ -63,6 +70,7 @@
+  boot.commitSwipe(-1,100005);assert(boot.customBrowseIndex_==2);boot.previous(100006);assert(boot.customBrowseIndex_==1);
+  boot.previous(100007);assert(boot.customBrowseIndex_==0);boot.previous(100008);assert(boot.customBrowseIndex_==-1&&boot.activeExpression()==ExpressionId::HappyWork);
+  assert(!boot.showFromCommand("cxaaaaaaaaaaaa",110000));assert(!boot.showFromCommand(String("pingpong ")+gork_custom_motion::entries[0].token,110001));
++ assert(boot.showFromCommand("idle",110002));char idleReceipt[21];formatBleExpressionReceipt(boot,idleReceipt,sizeof(idleReceipt));assert(!strcmp(idleReceipt,"OK:IDLE"));
+  AvatarEngine restarted;assert(restarted.begin());assert(!restarted.motion_.enabled());
+  std::cout<<"PASS production AvatarEngine: original idle raster parity, three independent snapshots, once/loop/cancel, swipe and button browsing, unknown token, original restart\n";
+ }
+@@ -163,7 +171,8 @@
+     methods=[]
+     for name,signature in (('stop','void AudioProbe::stop()'),('resetQueue','void AudioProbe::resetQueue()'),('allocate','bool AudioProbe::allocate()'),('enter','void AudioProbe::enter(bool testPage)'),('leave','void AudioProbe::leave()'),('ack','void AudioProbe::ack(uint8_t request,uint32_t value)'),('fail','void AudioProbe::fail(uint32_t code)'),('process','void AudioProbe::process(const Packet& packet,uint32_t now)'),('queueRecordBlock','bool AudioProbe::queueRecordBlock()'),('startRecording','void AudioProbe::startRecording()'),('finishRecording','void AudioProbe::finishRecording(bool limited)'),('update','void AudioProbe::update(uint32_t now)')):
+         methods.append(signature+function(source,'AudioProbe::'+name+'('))
+-    (OUT/'avatar_test.cpp').write_text(AVATAR,encoding='utf-8')
++    receipt='void formatBleExpressionReceipt(const AvatarEngine& avatar, char* status, size_t capacity)'+function((FW/'main.cpp').read_text(encoding='utf-8'),'formatBleExpressionReceipt(')
++    (OUT/'avatar_test.cpp').write_text(AVATAR.replace('RECEIPT_FUNCTION',receipt),encoding='utf-8')
+     (OUT/'audio_test.cpp').write_text(AUDIO.replace('METHODS','\n'.join(methods)),encoding='utf-8')
+     mount=['docker','run','--rm','--network','none','-v',f'{OUT}:/work','-w','/work','--entrypoint']
+     logs=[]

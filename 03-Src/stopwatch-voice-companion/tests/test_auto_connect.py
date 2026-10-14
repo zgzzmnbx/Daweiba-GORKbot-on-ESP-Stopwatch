@@ -35,6 +35,77 @@ def target(address):
     return SimpleNamespace(address=address, name="GorkBot-SW")
 
 
+def test_ble_failure_does_not_overwrite_wifi_operation_errors_and_recovery(monkeypatch):
+    async def fake_scan(**kwargs):
+        return [target("A")]
+
+    monkeypatch.setattr(robot_module, "scan_targets", fake_scan)
+
+    class FailingBle(FakeBle):
+        async def connect(self, value):
+            raise robot_module.BleConsoleError("BLE GATT discovery failed")
+
+    class Wifi:
+        connected = True
+        address = "10.33.72.225"
+        healthy_since = 0
+        successes = 5
+
+        async def send_command(self, command):
+            return "OK:APPLIED"
+
+        async def clear_text(self):
+            return "OK:CLEARED"
+
+    async def run():
+        robot = Robot(client=FailingBle(), sound=FakeSound())
+        robot.network.wifi = Wifi()
+        robot.network.router.policy = "auto_wifi_first"
+        robot.error = "Wi-Fi command timed out"
+        await robot._auto_connect("A", robot.operation_epoch)
+        failed = robot.snapshot()
+        assert failed["connected"] and failed["network"]["route"] == "wifi"
+        assert failed["operation_error"] == failed["error"] == "Wi-Fi command timed out"
+        assert failed["ble_error"] == "BLE GATT discovery failed"
+        await robot.flush()
+        ready = robot.snapshot()
+        assert ready["error"] == ready["operation_error"] == ""
+        assert ready["ble_error"] and ready["receipt"] == "OK:APPLIED"
+        robot.network.wifi.connected = False
+        assert robot.snapshot()["error"] == "BLE GATT discovery failed"
+        robot.client = FakeBle()
+        robot.error = "Device operation failed"
+        await robot._connect_locked(target("A"))
+        assert robot.snapshot()["ble_error"] == ""
+        assert robot.snapshot()["operation_error"] == "Device operation failed"
+
+    asyncio.run(run())
+
+
+def test_ble_supervisor_retries_without_erasing_primary_operation_failure(monkeypatch):
+    monkeypatch.setattr(robot_module, "RECONNECT_INITIAL_DELAY", .001)
+    attempted = asyncio.Event()
+
+    async def fake_scan(**kwargs):
+        attempted.set()
+        raise robot_module.BleConsoleError("BLE scan unavailable")
+
+    monkeypatch.setattr(robot_module, "scan_targets", fake_scan)
+
+    async def run():
+        robot = Robot(client=FakeBle(), sound=FakeSound())
+        robot.error = "Wi-Fi command failed"
+        task = asyncio.create_task(robot._maintain_connection("A", 0, None))
+        await asyncio.wait_for(attempted.wait(), 1)
+        assert robot.error == "Wi-Fi command failed"
+        assert robot.ble_error == "BLE scan unavailable"
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize("addresses,preferred,selected,error", [
     (["A"], "", "A", ""),
     (["A", "B"], "b", "B", ""),

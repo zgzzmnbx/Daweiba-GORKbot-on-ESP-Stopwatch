@@ -24,8 +24,14 @@ button:hover { background: #daddbd; }
 .avatar:not(:hover):not(:focus-within) .quota-detail[data-display="hover"]{opacity:0;pointer-events:none}
 .quota-tooltip{position:absolute;z-index:5;bottom:48px;left:4px;right:4px;padding:7px 9px;background:#f3f2ee;color:#222;border:1px solid #747d51;border-radius:8px;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
 .quota-detail:hover + .quota-tooltip,.quota-detail:focus-visible + .quota-tooltip{display:block}
+.quota-trend{position:absolute;z-index:4;top:2%;right:0;pointer-events:none;border:1px solid #a24e2d;border-radius:999px;background:#fff3e2;color:#8e3923;padding:3px 6px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 9px #8e392355}
+.quota-trend[hidden]{display:none}
+.avatar[data-quota-drop=true] .face-wrap{animation:quota-drop-pulse .8s ease-in-out 3}
+@keyframes quota-drop-pulse{50%{filter:drop-shadow(0 0 10px #df7e42)}}
+@media(prefers-reduced-motion:reduce){.avatar[data-quota-drop=true] .face-wrap{animation:none}}
 .drag-zone { height:32px; }
 p { padding:2px 9px;border-radius:12px;background:rgba(243,242,238,.9);font-size:11px; }
+#status { -webkit-app-region: drag; user-select: none; cursor: move; }
 .actions { opacity:0;transition:opacity .15s; }
 .avatar:hover .actions,.avatar:focus-within .actions { opacity:1; }
 button { padding:4px 10px;font-size:11px;background:#f3f2ee; }
@@ -35,6 +41,7 @@ button { padding:4px 10px;font-size:11px;background:#f3f2ee; }
 @media(max-height:180px){
   .avatar{gap:0}
   .face-wrap{width:min(90vw,90vh)}
+  .quota-trend{top:auto;bottom:0;right:0;padding:1px 4px;font-size:9px}
   #status,.actions{display:none}
   .drag-zone{height:12px;z-index:1}
 }

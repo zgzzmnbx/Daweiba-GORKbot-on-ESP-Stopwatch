@@ -1,0 +1,16 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#eef1f5"><title>Gork · 动作编辑器</title><meta name="description" content="调整 Gork 眼睛、道具与动作节奏，实时预览并导出配置。">
+<link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="stylesheet" href="style.css"></head><body>
+<header class="topbar"><h1>Gork <span>动作编辑器</span></h1><div class="file-actions"><button id="save" class="primary">保存自定义表情</button><button id="save-as-new">另存为新表情</button><button id="load-saved">重新读取表情库</button><button id="watch-export">导出 Watch 参数</button><button id="import">导入</button><button id="export" class="primary">导出配置</button><input type="file" id="file-input" accept=".json,application/json" hidden></div></header>
+<div class="expression-library"><label for="custom-expression">编辑对象</label><select id="custom-expression"><option value="">新建自定义表情</option></select><label for="expression-name">表情名称</label><input id="expression-name" maxlength="48" placeholder="例如：专注书写"><span id="library-count">可保存最多 64 个自定义表情；默认表情和当前播放不变。</span></div>
+<main class="studio">
+<section class="preview-panel" aria-label="动画实时预览"><div class="stage"><div class="stage-heading"><span id="scene-label">待机</span><span id="phase-label">循环中</span></div><canvas id="avatar" width="900" height="680" role="img" aria-label="Gork 动画实时预览"></canvas><div class="stage-foot">黑白 · 圆内安全边界 · 模拟预览</div></div>
+<div class="scene-controls" role="group" aria-label="选择编辑场景"><button data-scene="idle" aria-pressed="true">待机</button><button data-scene="loading" aria-pressed="false">加载</button><button data-scene="writing" aria-pressed="false">书写</button><button data-scene="question" aria-pressed="false">疑惑</button></div>
+<div class="playback"><button id="pause" class="primary">暂停循环</button><button id="replay">重播入场</button><button id="complete">完成退场</button><button id="cancel">取消</button></div>
+<div class="motion-preference"><p id="motion-note" role="status" hidden></p><button id="follow-system" hidden>跟随系统设置</button></div>
+<p class="hint">先选场景，再调右侧参数。导出的配置与这里的预览使用同一个渲染器。</p>
+<div class="save-status" id="save-status" role="status">正在重新读取表情库…</div><p id="draft-note" role="status"></p><button id="restore-draft" hidden>恢复本机草稿</button>
+</section>
+<aside class="inspector" aria-label="场景参数"><div class="inspector-top"><div><span class="eyebrow">正在编辑</span><h2 id="editing-title">待机</h2></div><div class="edit-actions"><button id="undo" disabled>撤销</button><button id="reset">重置此场景</button></div></div><div id="fields"></div><p class="boundary-note">位置与大小受安全边界约束，接近圆边时会自动内收，导出后规则相同。</p></aside>
+</main><footer><span>草稿只在编辑器预览；自定义表情独立保存</span><div><a href="INTEGRATION.md" download>接入说明</a><a href="source.zip" download>完整对应源码</a><a href="LICENSE.upstream">AGPL-3.0-only</a><a href="https://avatars.bible-strong.app/" target="_blank" rel="noreferrer">参考原站</a></div></footer>
+<div id="toast" class="toast" role="alert" hidden></div>
+<script src="../avatar-engine.js"></script><script src="../avatar-presets.js"></script><script src="gork-config.js"></script><script src="gork-pens.js"></script><script src="scene-controller.js"></script><script src="gork-renderer.js"></script><script src="gork-player.js"></script><script src="editor.js"></script></body></html>

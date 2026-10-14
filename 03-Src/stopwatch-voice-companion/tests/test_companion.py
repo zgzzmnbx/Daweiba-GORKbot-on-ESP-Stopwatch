@@ -97,7 +97,7 @@ class FakeRobot:
     def __init__(self):
         self.events, self.generation = [], 0
     def start(self): pass
-    def show(self, *args): self.events.append(args)
+    def show(self, *args, **kwargs): self.events.append(args if not kwargs else (*args,kwargs))
     def snapshot(self): return {'connected': False, 'enabled': False, 'receipt': '', 'error': ''}
     async def close(self): pass
     async def play_sound(self, sound_id): self.events.append(('sound', sound_id)); return {'event':'completed','sound_id':sound_id}
@@ -109,6 +109,7 @@ class FakeRobot:
         self.events.append(('audio-play',len(data),speech,speech_text))
         return self.audio_snapshot()
     async def cancel_audio(self): self.events.append(('audio-cancel',)); return self.audio_snapshot()
+    async def close_prepared_audio(self): self.events.append(('audio-prewarm-close',))
     def take_audio_result(self, job_id): self.events.append(('audio-result',job_id)); return wav_bytes()
 
 
@@ -144,6 +145,131 @@ class FakeVoice:
     async def close(self): await self.release()
     async def health(self): return {'ready': True}
     async def capabilities(self): return {'protocol_version': 1}
+
+
+@pytest.mark.parametrize('ending', ['complete', 'cancel', 'failure', 'missing'])
+def test_answer_uses_named_writing_on_both_visuals_and_restores_idle(tmp_path, ending):
+    import json
+    from companion.motion import ASSETS, MotionLibrary, watch_token
+
+    async def run():
+        events = []
+        class Device:
+            connected = True
+            async def send_command(self, command): events.append(command); return 'OK'
+            async def clear_text(self): return 'OK'
+            async def send_text(self, text): events.append(('text', text)); return 'OK'
+        class Answer:
+            def __init__(self): self.started=asyncio.Event(); self.gate=asyncio.Event()
+            def capability(self): return {'enabled':True}
+            async def complete(self, *args):
+                self.started.set(); await self.gate.wait()
+                if ending=='failure': raise VoiceError(503,'ANSWER_FAILED','模拟失败')
+                return '这是回答'
+        library=MotionLibrary(tmp_path/'expressions.json')
+        config=json.loads((ASSETS/'initial-config.gork.json').read_text(encoding='utf-8'))
+        library.save_expression('其他书写' if ending=='missing' else '我的书写','writing',config,1)
+        entry=library.read()['entries'][0]
+        answer=Answer(); robot=Robot(client=Device());robot.enabled=True;robot.target=object()
+        control=Controller(FakeVoice(),robot,answer)
+        control.owner=control.voice_owner='owner';control.voice.session='fixture'
+        control.answer_upload=True;control.motion_library=library
+        task=asyncio.create_task(control.ask('owner',0,'问题',defer_watch_text=True))
+        await asyncio.wait_for(answer.started.wait(),2)
+        during=control.desktop_state()['character']
+        if ending=='missing':
+            assert control.answer_motion is None and 'custom_motion' not in during
+        else:
+            assert during['custom_motion']==entry and during['mode']=='loop'
+            assert library.read()['entries'][0]==entry
+        await robot.flush()
+        assert events[0]==('loop thinking' if ending=='missing' else 'loop '+watch_token(entry))
+        if ending=='cancel':
+            control.invalidate(1)
+        else: answer.gate.set()
+        if ending in ('cancel','failure'):
+            with pytest.raises(VoiceError): await task
+        else: assert await task=='这是回答'
+        await robot.flush()
+        assert events[-1]=='idle' and control.answer_motion is None
+        assert 'custom_motion' not in control.desktop_state()['character']
+        assert not any(isinstance(e,tuple) and e[0]=='text' for e in events)
+        if ending in ('complete','missing'):
+            assert control.desktop_state()['character']['bubble']=='这是回答'
+        else: assert control.desktop_state()['character']['bubble']==''
+        if ending=='complete':
+            await control.state('owner',0,'speaking')
+            assert control.desktop_state()['character']['custom_motion']==entry
+            assert robot.expression=='loop '+watch_token(entry)
+            await control.state('owner',0,'idle')
+            assert control.interaction_motion() is None
+            assert control.answer_read_motion is None
+    asyncio.run(run())
+
+
+def test_answer_continues_one_writing_activation_through_ready_tts_and_speaking(tmp_path):
+    import json
+    from companion.motion import ASSETS,MotionLibrary,watch_token
+    async def run():
+        class Device:
+            connected=True
+            def __init__(self):self.commands=[];self.client=object();self.session=1
+            async def send_command(self,command):self.commands.append(command);return 'OK'
+            async def clear_text(self):return 'OK'
+            async def send_text(self,text):return 'OK'
+        class Answer:
+            def capability(self):return {'enabled':True}
+            async def complete(self,*args):
+                during=c.desktop_state()['character']['revision']
+                assert c.interaction_motion()==entry
+                revisions.append(during);await robot.flush();return '这是回答'
+        config=json.loads((ASSETS/'initial-config.gork.json').read_text(encoding='utf-8'))
+        library=MotionLibrary(tmp_path/'expressions.json')
+        entry=library.save_expression('我的书写','writing',config,1)['entry']
+        device=Device();robot=Robot(client=device);robot.enabled=True;robot.target=object()
+        c=Controller(FakeVoice(),robot,Answer());c.motion_library=library
+        c.owner=c.voice_owner='owner';c.voice.session='fixture';c.answer_upload=True;c.turn=1
+        # An enabled delegate must not capture an unrelated composer answer.
+        c.watch_dialogue.owner='owner'
+        revisions=[]
+        await c.ask('owner',0,'问题',speech_pending=True)
+        assert c.watch_dialogue.motion is None
+        assert c.interaction_motion()==entry
+        revisions.append(c.desktop_state()['character']['revision']);await robot.flush()
+        await c.perform('owner',0,'tts','这是回答')
+        revisions.append(c.desktop_state()['character']['revision']);await robot.flush()
+        await c.state('owner',0,'speaking')
+        revisions.append(c.desktop_state()['character']['revision']);await robot.flush()
+        assert len(set(revisions))==1
+        assert device.commands.count('loop '+watch_token(entry))==1
+        await c.state('owner',0,'idle');await robot.flush()
+        assert c.interaction_motion() is None and device.commands[-1]=='idle'
+        assert library.read()['entries']==[entry]
+    asyncio.run(run())
+
+
+def test_custom_loop_dedup_never_suppresses_manual_restart_reconnect_or_failed_write():
+    async def run():
+        class Device:
+            connected=True
+            def __init__(self):self.commands=[];self.client=object();self.session=1;self.fail=False
+            async def send_command(self,command):
+                self.commands.append(command)
+                if self.fail:raise ConnectionError('fixture')
+                return 'OK'
+        device=Device();robot=Robot(client=device);loop='loop cxabcdefghijkl'
+        async with robot.lock:
+            await robot.send_expression(loop);await robot.send_expression(loop)
+            assert device.commands==[loop]
+            await robot.send_expression(loop,restart=True);assert len(device.commands)==2
+            device.client=object();await robot.send_expression(loop);assert len(device.commands)==3
+            device.session+=1;await robot.send_expression(loop);assert len(device.commands)==4
+            robot.generation+=1;await robot.send_expression(loop);assert len(device.commands)==5
+            await robot.send_expression('idle');await robot.send_expression(loop);assert len(device.commands)==7
+            device.fail=True
+            with pytest.raises(ConnectionError):await robot.send_expression(loop,restart=True)
+            device.fail=False;await robot.send_expression(loop);assert len(device.commands)==9
+    asyncio.run(run())
 
 
 def test_wav_validation_and_no_relabel():
@@ -249,6 +375,25 @@ def test_new_turn_does_not_wait_for_old_request_and_takeover_invalidates():
         with pytest.raises(VoiceError): await control.heartbeat('new')
         voice.invalid = False
         await control.connect('reopened')
+        await control.close()
+    asyncio.run(run())
+
+
+def test_transient_voice_heartbeat_resumes_own_session_without_reset_or_takeover():
+    async def run():
+        voice,robot=FakeVoice(),FakeRobot();control=Controller(voice,robot)
+        await control.connect('tab')
+        control.generation=7;control.speech={'cloud_voice':'Cherry','speed':1};control.answer_upload=True
+        original=voice.alive
+        async def offline():raise VoiceError(503,'VOICE_OFFLINE','离线')
+        voice.alive=offline
+        with pytest.raises(VoiceError):await control.heartbeat('tab')
+        assert control.voice_owner=='tab','temporary service failure must not discard owned session'
+        voice.alive=original
+        result=await control.connect('tab')
+        assert result['resumed'] and result['generation']==7
+        assert voice.replaces==[False] and control.speech['cloud_voice']=='Cherry' and control.answer_upload
+        with pytest.raises(VoiceError):await control.connect('other')
         await control.close()
     asyncio.run(run())
 

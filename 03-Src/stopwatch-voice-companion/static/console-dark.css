@@ -1,0 +1,44 @@
+/* Mantine dark appearance. Classic keeps its original light stylesheet. */
+.color-scheme-toggle{order:5;flex:none;height:34px;padding:0 10px;border:1px solid var(--header-control-border,#dce2e8);border-radius:7px;background:var(--header-control-bg,#fff);color:var(--header-ink,#344254);font:500 12px/1.4 'Segoe UI','Microsoft YaHei UI',sans-serif;white-space:nowrap;cursor:pointer}
+.color-scheme-toggle:hover{border-color:var(--accent,#16876a);color:var(--accent-strong,#0d7058)}
+.color-scheme-toggle:focus-visible{outline:2px solid var(--accent,#16876a);outline-offset:2px}
+@media(max-width:700px){.color-scheme-toggle{height:30px;padding:0 7px;font-size:11px}}
+
+:root[data-console-theme=mantine][data-console-scheme=dark][data-console-color=gork]{
+  --tone-0:#eef9f5;--tone-1:#d9efe5;--tone-2:#b0decc;--tone-3:#82cbb0;--tone-4:#59b897;--tone-5:#3ba985;--tone-6:#289d79;--tone-7:#16876a;--tone-8:#0d7058;--tone-9:#045b47;--theme-fill:var(--tone-8);--theme-fill-hover:var(--tone-9)
+}
+:root[data-console-theme=mantine][data-console-scheme=dark][data-console-color]{
+  color-scheme:dark;
+  --bg:#111a24;--paper:#1b2733;--ink:#e9f0f5;--muted:#a9bac9;--line:#344454;
+  --accent:var(--tone-4);--accent-strong:var(--tone-3);--accent-muted:var(--tone-3);--accent-edge:var(--tone-6);
+  --soft:color-mix(in srgb,#243442 82%,var(--tone-7));
+  --header-bg:color-mix(in srgb,#14212d 84%,var(--tone-8));--header-border:color-mix(in srgb,#435665 60%,var(--tone-6));
+  --header-ink:var(--tone-3);--header-muted:#aebdca;--header-control-bg:#22313f;--header-control-border:#465d6c;
+  --header-ready-bg:color-mix(in srgb,#22313f 75%,var(--tone-7));--header-ready-border:var(--tone-6);--header-ready-ink:var(--tone-2);--header-ready-dot:var(--tone-4);
+  --danger:#ff9b8c;--focus-ring:0 0 0 3px color-mix(in srgb,var(--tone-4) 35%,transparent);
+  --mantine-color-gork-filled:var(--theme-fill);--mantine-color-gork-filled-hover:var(--theme-fill-hover);
+  --mantine-color-gork-light:color-mix(in srgb,#243442 72%,var(--tone-8));--mantine-color-gork-light-hover:color-mix(in srgb,#243442 55%,var(--tone-8));
+  --mantine-color-gork-light-color:var(--tone-2);--mantine-color-gork-outline:var(--tone-4);--mantine-color-gork-outline-hover:color-mix(in srgb,var(--tone-4) 12%,transparent)
+}
+:root[data-console-theme=mantine][data-console-scheme=dark] body{background:var(--bg);color:var(--ink)}
+:root[data-console-theme=mantine][data-console-scheme=dark] :is(.page[data-page=dialogue],.panel,.card,.companion-tools){background:var(--paper);color:var(--ink)}
+:root[data-console-theme=mantine][data-console-scheme=dark] :is(.composer,.expression-menu,.logs-toolbar,.logs-full){background:#202e3a;color:var(--ink)}
+:root[data-console-theme=mantine][data-console-scheme=dark] :is(.primary-nav a,.companion-portrait p,.companion-stage>.eyebrow,.empty-chat p,.panel>label,.card>label,.routing-grid label,.consent .mantine-Checkbox-label,.switch-row .mantine-Switch-label,.avatar-size-control label,.bubble-position-control>label,.appearance-colors label,.expression-controls label,.logs-toolbar label){color:var(--muted)}
+:root[data-console-theme=mantine][data-console-scheme=dark] .primary-nav a:is(:hover,.active){color:var(--accent-strong)}
+:root[data-console-theme=mantine][data-console-scheme=dark] :is(.chat-toolbar,.expression-menu-body){border-color:var(--line)}
+:root[data-console-theme=mantine][data-console-scheme=dark] .badge{color:#bdccd8;background:#2a3a48}
+:root[data-console-theme=mantine][data-console-scheme=dark] :is(#transcript::placeholder,.expression-menu>summary small,.expression-chevron,.switch-row small,.avatar-size-control output,#count,#record-hint){color:#93a9b8}
+:root[data-console-theme=mantine][data-console-scheme=dark] .chat-message.user{background:var(--soft)}
+:root[data-console-theme=mantine][data-console-scheme=dark] :is(.editor-footer button:not(.primary),.chat-message button){color:var(--muted)}
+:root[data-console-theme=mantine][data-console-scheme=dark] :is(button.mantine-Button-root:disabled,.mantine-Input-input:disabled){background:#293743;color:#91a3af;border-color:#3a4a58}
+:root[data-console-theme=mantine][data-console-scheme=dark][data-console-color] button.primary.mantine-Button-root:disabled{background:color-mix(in srgb,#293743 75%,var(--tone-8));color:#bdccd8}
+:root[data-console-theme=mantine][data-console-scheme=dark] :is(.codex-list p,.codex-quota p){border-color:var(--line)}
+:root[data-console-theme=mantine][data-console-scheme=dark] .motion-editor-frame{background:#202e3a}
+:root[data-console-theme=mantine][data-console-scheme=dark] .theme-color-menu{color:var(--ink)}
+:root[data-console-theme=mantine][data-console-scheme=dark] .theme-color-panel{background:#22313f;border-color:var(--line);color:var(--ink);box-shadow:0 12px 30px #050a10a8}
+:root[data-console-theme=mantine][data-console-scheme=dark] .theme-color-panel label:is(:hover,:focus-within){background:#304252}
+:root[data-console-theme=mantine][data-console-scheme=dark] .theme-color-panel p{color:var(--muted)}
+:root[data-console-theme=mantine][data-console-scheme=dark] .network-feedback{background:var(--soft);color:var(--ink)}
+:root[data-console-theme=mantine][data-console-scheme=dark] .debug-console:not([data-theme=dark]){--terminal-bg:#22313c;--terminal-ink:#c0d2ca;--terminal-line:#3a514f;--terminal-muted:#a2bcb0}
+:root[data-console-theme=mantine][data-console-scheme=dark] .logs-page:not([data-theme=dark]) .logs-full{background:#202e3a;color:var(--ink)}
+:root[data-console-theme=mantine][data-console-scheme=dark] .theme-preferences #theme-toggle{color:var(--ink)}

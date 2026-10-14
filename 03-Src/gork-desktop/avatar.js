@@ -1,14 +1,32 @@
 const avatar = document.getElementById('avatar');
 const status = document.getElementById('status');
-const face = window.GorkAvatar.mount(document.getElementById('gork-face'));
+if(window.gorkDesktop?.setTokenHover)window.GorkTokenHover?.attach(avatar,window.gorkDesktop);
+const face = window.GorkDesktopSceneAdapter.mount(document.getElementById('gork-face'));
+let pointerFollow = true;
+const pointerLook = window.GorkDesktopPointer?.attach(document.getElementById('gork-face'), () => {
+  const scene = face.getState();
+  return pointerFollow && scene.kind === 'legacy' && ['idle', 'listening'].includes(scene.name)
+    && ['idle', 'listening'].some(mode => avatar.classList.contains(mode));
+});
 let characterRevision = -1;
 let sceneRevision = -1;
+let appliedMotionRequestId = null;
 const quotaOuter = document.getElementById('quota-ring-outer');
 const quotaInner = document.getElementById('quota-ring-inner');
 const quotaDetail = document.getElementById('quota-detail');
 const quotaTooltip = document.getElementById('quota-tooltip');
+const quotaTrend = document.getElementById('quota-trend');
 
 function renderQuota(codex = {}) {
+  const trend = codex.trend;
+  quotaTrend.hidden = !trend;
+  avatar.dataset.quotaDrop = trend ? 'true' : 'false';
+  if (trend) {
+    quotaTrend.textContent = `↓${trend.drop_points}点`;
+    const detail = `${trend.window_name}额度下降 ${trend.drop_points} 个百分点，剩余 ${trend.remaining}%`;
+    quotaTrend.title = detail;
+    quotaTrend.setAttribute?.('aria-label', detail);
+  }
   const windows = codex.enabled ? (codex.bucket?.windows || []) : [];
   const stale = codex.stale || codex.status !== 'available';
   const display = codex.ring_mode === 'hover' ? 'hover' : 'visible';
@@ -33,6 +51,8 @@ function renderQuota(codex = {}) {
 }
 
 function render(state) {
+  const follow = state.pointerFollow !== false;
+  if (follow !== pointerFollow) {pointerFollow=follow;pointerLook?.reset();}
   renderQuota(state.codex);
   face.setAppearance?.(state.appearance);
   const next = ['idle', 'listening', 'thinking', 'happy', 'confused'].includes(state.mode) ? state.mode : 'idle';
@@ -41,13 +61,17 @@ function render(state) {
   if (scene && Number.isInteger(scene.revision)) {
     if (scene.revision !== sceneRevision) {
       sceneRevision = scene.revision;
-      face.set(scene.expression, {mode:scene.mode,startedAt:scene.startedAt,force:true});
+      if(scene.custom){
+        if(!Number.isInteger(scene.requestId)||scene.requestId!==appliedMotionRequestId){face.playCustom(scene.custom,{mode:scene.mode,startedAt:scene.startedAt});appliedMotionRequestId=scene.requestId;}
+      }
+      else face.set(scene.expression, {mode:scene.mode,startedAt:scene.startedAt,force:true});
     }
   } else {
   const manual = state.character || {};
   if (Number.isInteger(manual.revision) && manual.revision !== characterRevision && manual.manual) {
     characterRevision = manual.revision;
-    face.set(manual.expression || 'idle', {mode:manual.mode,force:true});
+    if(manual.custom_motion)face.playCustom(manual.custom_motion,{mode:manual.mode});
+    else face.set(manual.expression || 'idle', {mode:manual.mode,force:true});
   } else if (!manual.manual || characterRevision < 0) face.set(next);
   }
   status.textContent = state.label || '就绪';
@@ -55,8 +79,9 @@ function render(state) {
 
 document.getElementById('console').addEventListener('click', () => window.gorkDesktop.openConsole());
 document.getElementById('hide').addEventListener('click', () => window.gorkDesktop.hideAvatar());
-avatar.addEventListener('click', (event) => { if (!event.target.closest('button') && !event.target.closest('.drag-zone')) window.gorkDesktop.openConsole(); });
+avatar.addEventListener('click', (event) => { if (!event.target.closest('button') && !event.target.closest('.drag-zone, #status')) window.gorkDesktop.openConsole(); });
 if (window.gorkDesktop) {
+  window.gorkDesktop.onMotionConfig?.(({record,scene,requestId})=>{try {face.playCustom(record,scene);appliedMotionRequestId=requestId;window.gorkDesktop.motionApplied({requestId,revision:record.revision,ok:true});}catch(error){window.gorkDesktop.motionApplied({requestId,ok:false,error:error.message});}});
   window.gorkDesktop.getState().then(render).catch(() => render({ mode: 'confused', label: '后端未就绪' }));
   window.gorkDesktop.onState(render);
 } else {

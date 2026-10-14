@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 #include "avatar_engine.h"
+#include "motion_config.h"
+#include "custom_expressions.h"
 
 #include <algorithm>
 #include <cmath>
@@ -552,6 +554,11 @@ bool AvatarEngine::begin() {
   fromPose_ = currentPose_;
   targetPose_ = currentPose_;
   const uint32_t nowMs = millis();
+  // Keep exported custom scenes available, but start in the original idle.
+  motion_.configure(gork_motion_config::scenes,1,2,gork_motion_config::kRevision);
+  customIdleEnabled_=false;
+  customMotionName_=nullptr;customBrowseIndex_=-1;
+  motion_.disable();
   expressionStartedMs_ = nowMs;
   scheduleNextBlink(nowMs, true);
   metricsStartedMs_ = nowMs;
@@ -575,7 +582,17 @@ const AvatarEngine::ExpressionSpec& AvatarEngine::spec(ExpressionId expression) 
 }
 
 const char* AvatarEngine::activeName() const {
-  return spec(targetExpression_).name;
+  return motion_.enabled()?(customMotionName_?customMotionName_:motion_.name()):spec(targetExpression_).name;
+}
+
+const char* AvatarEngine::activeProtocolName() const {
+  // The display name may contain Chinese; the BLE receipt identifies the exact
+  // exported command, keeping it ASCII and within the existing 20-byte limit.
+  if (motion_.enabled() && customMotionName_ && customBrowseIndex_ >= 0 &&
+      static_cast<size_t>(customBrowseIndex_) < gork_custom_motion::kCount) {
+    return gork_custom_motion::entries[customBrowseIndex_].token;
+  }
+  return activeName();
 }
 
 float AvatarEngine::ease(Easing easingMode, float progress) {
@@ -627,6 +644,7 @@ void AvatarEngine::show(ExpressionId expression, uint32_t nowMs,
   if (!ready_) return;
 
   browseExpression_ = expression;
+  customBrowseIndex_=-1;
   const ExpressionSpec& expressionSpec = spec(expression);
   if (expressionSpec.persistent) {
     baseExpression_ = expression;
@@ -645,6 +663,9 @@ void AvatarEngine::play(ExpressionId expression, uint32_t nowMs,
                         uint16_t firstTransitionMs) {
   if (!ready_) return;
 
+  customMotionName_=nullptr;
+  if (expression==ExpressionId::Idle && customIdleEnabled_) motion_.set(0,nowMs);
+  else motion_.disable();
   targetExpression_ = expression;
   returnToBase_ = returnToBase && !spec(expression).persistent;
   activePlaybackMode_ = returnToBase_ ? PlaybackMode::Once : mode;
@@ -726,17 +747,31 @@ ExpressionId AvatarEngine::adjacentExpression(int8_t direction) const {
 }
 
 void AvatarEngine::next(uint32_t nowMs, uint16_t firstTransitionMs) {
-  show(adjacentExpression(1), nowMs, true, firstTransitionMs);
+  browse(1,nowMs,firstTransitionMs);
 }
 
 void AvatarEngine::previous(uint32_t nowMs, uint16_t firstTransitionMs) {
-  show(adjacentExpression(-1), nowMs, true, firstTransitionMs);
+  browse(-1,nowMs,firstTransitionMs);
+}
+
+void AvatarEngine::browse(int8_t direction,uint32_t nowMs,uint16_t firstTransitionMs){
+  int next=customBrowseIndex_;
+  if(next>=0)next+=direction;
+  else if(direction>0&&static_cast<int>(browseExpression_)==static_cast<int>(ExpressionId::Count)-1)next=0;
+  else if(direction<0&&static_cast<int>(browseExpression_)==1)next=static_cast<int>(gork_custom_motion::kCount)-1;
+  else {show(adjacentExpression(direction),nowMs,true,firstTransitionMs);return;}
+  if(next<0){show(static_cast<ExpressionId>(static_cast<int>(ExpressionId::Count)-1),nowMs,true,firstTransitionMs);return;}
+  if(next>=static_cast<int>(gork_custom_motion::kCount)){show(static_cast<ExpressionId>(1),nowMs,true,firstTransitionMs);return;}
+  showFromCommand(String(gork_custom_motion::entries[next].token),nowMs);
 }
 
 bool AvatarEngine::showFromCommand(const String& rawCommand, uint32_t nowMs) {
   String command = rawCommand;
   command.trim();
   command.toLowerCase();
+  if(command=="motion complete"||command=="motion cancel"){motion_.complete(nowMs,command=="motion cancel");forceRender_=true;return true;}
+  if(command=="legacy idle"){customIdleEnabled_=false;play(ExpressionId::Idle,nowMs,PlaybackMode::Loop,false);requiresFullClear_=true;return true;}
+  if(command=="motion idle"){customMotionName_=nullptr;customIdleEnabled_=true;motion_.configure(gork_motion_config::scenes,1,2,gork_motion_config::kRevision);motion_.set(0,nowMs);forceRender_=true;requiresFullClear_=true;return true;}
 
   PlaybackMode requestedMode = PlaybackMode::Once;
   bool hasPlaybackOverride = false;
@@ -757,6 +792,24 @@ bool AvatarEngine::showFromCommand(const String& rawCommand, uint32_t nowMs) {
     command.trim();
   }
 
+  for(size_t i=0;i<gork_custom_motion::kCount;i++){
+    const auto& entry=gork_custom_motion::entries[i];
+    if(command!=entry.token)continue;
+    if(hasPlaybackOverride&&requestedMode==PlaybackMode::PingPong)return false;
+    play(ExpressionId::Idle,nowMs,PlaybackMode::Loop,false);
+    motion_.disable();
+    if(!motion_.configure(entry.scenes,1,2,gork_motion_config::kRevision)||!motion_.set(entry.scene,nowMs,!hasPlaybackOverride||requestedMode==PlaybackMode::Once))return false;
+    customMotionName_=entry.name;customBrowseIndex_=static_cast<int16_t>(i);
+    forceRender_=true;requiresFullClear_=true;return true;
+  }
+  if(command=="loading"||command=="writing"||command=="question"){
+    if(hasPlaybackOverride&&requestedMode==PlaybackMode::PingPong)return false;
+    const uint8_t scene=command=="loading"?1:command=="writing"?2:3;
+    customMotionName_=nullptr;motion_.disable();
+    motion_.configure(gork_motion_config::scenes,1,2,gork_motion_config::kRevision);
+    motion_.set(scene,nowMs,!hasPlaybackOverride||requestedMode==PlaybackMode::Once);
+    targetExpression_=ExpressionId::Idle;forceRender_=true;requiresFullClear_=true;return true;
+  }
   ExpressionId expression = ExpressionId::Idle;
   if (command == "idle" || command == "neutral") {
     expression = ExpressionId::Idle;
@@ -838,6 +891,10 @@ void AvatarEngine::releaseTouch() {
 
 void AvatarEngine::setSwipeOffset(float screenDeltaX, float screenDeltaY,
                                   int8_t previewDirection) {
+  // Custom geometry has its own transition; do not preview another built-in.
+  if(customBrowseIndex_>=0 ||
+     (previewDirection>0&&static_cast<int>(browseExpression_)==static_cast<int>(ExpressionId::Count)-1) ||
+     (previewDirection<0&&static_cast<int>(browseExpression_)==1))previewDirection=0;
   swipeActive_ = true;
   swipeTargetX_ = std::max(-130.0f, std::min(130.0f, screenDeltaX * 0.96f));
   swipeTargetY_ = std::max(-115.0f, std::min(115.0f, screenDeltaY * 0.90f));
@@ -871,7 +928,7 @@ void AvatarEngine::commitSwipe(int8_t direction, uint32_t nowMs,
   swipePreviewAmount_ = 0.0f;
   swipePreviewTarget_ = 0.0f;
   swipePreviewDirection_ = 0;
-  show(target, nowMs, true, firstTransitionMs);
+  browse(direction, nowMs, firstTransitionMs);
 }
 
 void AvatarEngine::setTiltTarget(float normalizedX, float normalizedY,
@@ -1411,6 +1468,31 @@ void AvatarEngine::drawBubble() const {
 void AvatarEngine::render(uint32_t nowMs) {
   const uint32_t renderStartedUs = micros();
   updateInteraction(nowMs);
+  if(motion_.enabled()){
+    // Legacy eyes/props can lie outside the motion renderer's dirty bounds.
+    // Reset the page once when returning from legacy expressions to motion.
+    if(previousGrokBounds_.valid){
+      requiresFullClear_=true;
+      previousGrokBounds_={};
+      previousLeftBounds_={};
+      previousRightBounds_={};
+      previousHappyWorkBounds_={};
+    }
+    const MotionPose pose=motion_.sample(nowMs);
+    const auto measured=motionDraw_.bounds(pose);
+    DirtyRect current{measured.x,measured.y,measured.width,measured.height,measured.valid};
+    const int width=M5.Display.width(),height=M5.Display.height();
+    DirtyRect bubble=bubbleActive_?DirtyRect{static_cast<int16_t>(width*54/466),static_cast<int16_t>(height*57/466),static_cast<int16_t>(width*358/466),static_cast<int16_t>(height*88/466),true}:DirtyRect{};
+    M5.Display.startWrite();
+    if(requiresFullClear_){M5.Display.fillScreen(kBackground);grokRenderer_.drawBody();requiresFullClear_=false;}
+    else {clearDirtyRect(mergeRects(previousMotionBounds_,current));clearDirtyRect(mergeRects(previousBubbleBounds_,bubble));}
+    motionDraw_.draw(pose);if(bubbleActive_)drawBubble();
+    if(debugLabelEnabled_){M5.Display.fillRect(width/2-80,35,160,14,TFT_BLACK);M5.Display.setFont(&fonts::Font0);M5.Display.setTextSize(1);M5.Display.setTextColor(TFT_WHITE,TFT_BLACK);M5.Display.setTextDatum(middle_center);M5.Display.drawString(activeName(),width/2,42);}
+    M5.Display.endWrite();previousMotionBounds_=current;previousBubbleBounds_=bubble;
+    recordRenderMetrics(nowMs,renderStartedUs,micros(),mergeRects(current,bubble),0,false);
+    return;
+  }
+  if(previousMotionBounds_.valid){requiresFullClear_=true;previousMotionBounds_.valid=false;}
   const int width = M5.Display.width();
   const int height = M5.Display.height();
   const float designScale = std::min(width, height) / kDesignSize;
@@ -1643,8 +1725,18 @@ void AvatarEngine::recordRenderMetrics(uint32_t nowMs,
   grokFullScreenFallback_ = false;
 }
 
+void AvatarEngine::updateMotionReturn(uint32_t nowMs){
+  if(!motion_.enabled()||(customIdleEnabled_&&!customMotionName_))return;
+  motion_.sample(nowMs);
+  if(motion_.returnedToIdle(nowMs)){
+    customIdleEnabled_=false;
+    play(ExpressionId::Idle,nowMs,PlaybackMode::Loop,false);
+  }
+}
+
 void AvatarEngine::update(uint32_t nowMs) {
   if (!ready_) return;
+  updateMotionReturn(nowMs);
 
   if (bubbleActive_ &&
       static_cast<int32_t>(nowMs - bubbleExpiresAtMs_) >= 0) {
@@ -1660,7 +1752,7 @@ void AvatarEngine::update(uint32_t nowMs) {
     currentPose_ = targetPose_;
   }
 
-  advanceTimeline(nowMs);
+  if (!motion_.enabled()) advanceTimeline(nowMs);
 
   const uint32_t nowUs = micros();
   const bool frameDue =

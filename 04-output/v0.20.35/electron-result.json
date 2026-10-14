@@ -1,0 +1,31 @@
+{
+  "result": "PASS",
+  "version": "0.20.35-dev",
+  "checks": [
+    "real production modules auto-connect at startup",
+    "real periodic heartbeat detects loss",
+    "automatic non-takeover recovery",
+    "tone and revoked consent retained",
+    "manual release stays disconnected",
+    "busy owner remains paused",
+    "no synthesis/recognition/device playback"
+  ],
+  "sessionPosts": 3,
+  "settings": {
+    "generation": 1,
+    "routing": {
+      "asr": "local",
+      "tts": "cloud",
+      "allow_audio_upload": false,
+      "allow_text_upload": true
+    },
+    "allow_answer_upload": false,
+    "sound_target": "pc",
+    "speech": {
+      "speaker_id": 58,
+      "cloud_voice": "Ethan",
+      "speed": 1
+    }
+  },
+  "errors": []
+}

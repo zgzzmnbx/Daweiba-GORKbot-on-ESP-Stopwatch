@@ -2,8 +2,8 @@
 // exclusively owns its DOM at runtime: no hydration, duplicate session or polling.
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {MantineProvider, createTheme, Button, NativeSelect, Textarea, Switch, Checkbox, Paper, Title, Badge, Input} from '@mantine/core';
-import {parse, parseFragment, serialize} from 'parse5';
+import {MantineProvider, createTheme, Button, NativeSelect, Textarea, TextInput, Switch, Checkbox, Paper, Title, Badge, Input} from '@mantine/core';
+import {parse, parseFragment, serialize, serializeOuter} from 'parse5';
 import {readFile, writeFile, mkdir} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import path from 'node:path';
@@ -12,21 +12,22 @@ const require=createRequire(import.meta.url),h=React.createElement;
 const root=new URL('../',import.meta.url),read=p=>readFile(new URL(p,root),'utf8');
 const source=await read('ui/console.html');
 const tree=parse(source),html=tree.childNodes.find(n=>n.tagName==='html'),body=html.childNodes.find(n=>n.tagName==='body');
+const scripts=body.childNodes.filter(n=>n.tagName==='script').map(serializeOuter).join('');
 const attrs=n=>Object.fromEntries((n.attrs||[]).map(a=>[a.name,a.value]));
 const children=n=>(n.childNodes||[]).filter(c=>c.nodeName!=='#comment').map((node,index)=>{const child=convert(node);return React.isValidElement(child)?React.cloneElement(child,{key:index}):child;});
 const theme=createTheme({primaryColor:'gork',primaryShade:7,colors:{gork:['#eef9f5','#d9efe5','#b0decc','#82cbb0','#59b897','#3ba985','#289d79','#16876a','#0d7058','#045b47']},defaultRadius:'md',fontFamily:'"Segoe UI", "Microsoft YaHei UI", sans-serif',headings:{fontFamily:'"Segoe UI", "Microsoft YaHei UI", sans-serif'},fontSizes:{xs:'12px',sm:'13px',md:'14px',lg:'16px',xl:'20px'},components:{Button:Button.extend({defaultProps:{size:'sm',radius:'md'}}),NativeSelect:NativeSelect.extend({defaultProps:{size:'sm',radius:'md'}}),Textarea:Textarea.extend({defaultProps:{size:'sm',radius:'md'}})}});
 const iconPaths={dialogue:'M4 4h16v12H9l-5 4V4Z',cost:'M5 3h14v18H5zM8 7h8M8 11h2m4 0h2M8 15h2m4 0h2',codex:'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18Zm-4 9h8m-4-4v8',character:'M8 4h8l4 5v9l-4 3H8l-4-3V9zM8 11v3m8-3v3',watch:'M8 2h8v4H8zM8 18h8v4H8zM6 6h12v12H6zM12 9v3l2 1',settings:'M5 4v16M12 4v16M19 4v16M2 8h6m1 8h6m1-6h6',logs:'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5'};
 function icon(name){return h('svg',{className:'nav-icon',viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.6,'aria-hidden':true},h('path',{d:iconPaths[name]||iconPaths.settings,strokeLinecap:'round',strokeLinejoin:'round'}));}
 function props(n){const a=attrs(n),p={};for(const [key,value] of Object.entries(a)) {
-  const k=({class:'className',for:'htmlFor',tabindex:'tabIndex',maxlength:'maxLength',spellcheck:'spellCheck',viewbox:'viewBox','stroke-width':'strokeWidth'})[key]||key;
+  const k=({class:'className',for:'htmlFor',tabindex:'tabIndex',maxlength:'maxLength',autocomplete:'autoComplete',spellcheck:'spellCheck',readonly:'readOnly',playsinline:'playsInline',viewbox:'viewBox','stroke-width':'strokeWidth'})[key]||key;
   if(['checked','selected'].includes(key))continue;
-  p[k]=['hidden','disabled','multiple','open','required'].includes(key)?true:value;
+  p[k]=['hidden','disabled','multiple','open','required','readonly','controls','loop','muted','playsinline'].includes(key)?true:value;
 }return p;}
 function convert(n){
   if(n.nodeName==='#text')return n.value;
   if(!n.tagName||n.tagName==='script')return null;
   const a=attrs(n),p=props(n),tag=n.tagName;
-  if(tag==='input'){if(a.type==='range'||a.type==='color')return h(Input,{...p,defaultValue:a.value,value:undefined,className:'native-'+a.type});return h('input',{...p,value:undefined,defaultValue:a.value,defaultChecked:'checked'in a});}
+  if(tag==='input'){if(a.type==='range'||a.type==='color')return h(Input,{...p,defaultValue:a.value,value:undefined,className:'native-'+a.type});if((a.id?.startsWith('external-')&&!['checkbox','radio'].includes(a.type))||a.id?.startsWith('network-')||a.id?.startsWith('answer-setup-'))return h(TextInput,{...p,type:a.type||'text',defaultValue:a.value,value:undefined,size:'sm',radius:'md'});return h('input',{...p,value:undefined,defaultValue:a.value,defaultChecked:'checked'in a});}
   if(tag==='label'&&['switch-row','consent'].includes(a.class)){
     const input=n.childNodes.find(c=>c.tagName==='input'),label=n.childNodes.find(c=>c.tagName==='span'),ip=props(input);
     const labelText=label.childNodes.filter(c=>c.nodeName==='#text').map(c=>c.value).join('').trim();
@@ -42,7 +43,6 @@ function convert(n){
   if(/^h[123]$/.test(tag))return h(Title,{...p,order:Number(tag.slice(1))},...ch);
   if(tag==='span'&&a.class==='badge')return h(Badge,{...p,variant:'light',color:'gray',radius:'sm'},...ch);
   if(tag==='section'&&a.class?.match(/^(panel|card)/))return h(Paper,{...p,component:'section',withBorder:true,radius:'lg'},...ch);
-  if(a.class==='app-header')ch.splice(ch.length-1,0,h(Button,{id:'theme-toggle',variant:'default',title:'切换为经典主题；保留输入与连接','aria-label':'切换为经典主题'},'经典主题'));
   if(a['data-page-link'])ch.unshift(icon(a['data-page-link']));
   if(a.class==='empty-chat')ch.unshift(h('div',{className:'empty-orbit modern-only','aria-hidden':true},icon('dialogue')));
   return h(tag,p,...ch);
@@ -70,8 +70,13 @@ const output=`<!doctype html>
 <link id="mantine-style" rel="stylesheet" href="/static/mantine/vendor.css">
 <link id="mantine-components" rel="stylesheet" href="/static/mantine/components.css">
 <link id="modern-style" rel="stylesheet" href="/static/modern.css">
+<link rel="stylesheet" href="/static/network-ui.css">
+<link rel="stylesheet" href="/static/external-ui.css">
+<link rel="stylesheet" href="/static/console-colors.css">
+<link rel="stylesheet" href="/static/architecture-viewer.css">
+<link rel="stylesheet" href="/static/console-dark.css">
 <script src="/static/console-theme.js"></script></head><body>${markup}
-<script src="/static/gork-catalog.js"></script><script src="/static/avatar-engine.js"></script><script src="/static/avatar-presets.js"></script><script src="/static/gork-appearance.js"></script><script src="/static/gork-avatar.js"></script><script type="module" src="/static/app.js"></script></body></html>\n`;
+${scripts}</body></html>\n`;
 const vendorPath=require.resolve('@mantine/core/styles.css');
 const vendor=await readFile(vendorPath,'utf8');
 await mkdir(new URL('static/mantine/',root),{recursive:true});

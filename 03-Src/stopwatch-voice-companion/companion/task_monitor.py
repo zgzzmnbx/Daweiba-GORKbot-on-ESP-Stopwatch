@@ -8,6 +8,7 @@ import wave
 
 from .voice import VoiceError
 from .sentinel_voice_library import cached_path
+from .cost import monitor_amount
 
 
 def _now():
@@ -39,6 +40,17 @@ def _pc_speech(path, guard):
     import winsound
     winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
     return 'started_by_os'
+
+
+def _pc_dynamic_speech(audio, guard):
+    """Synchronous Windows memory playback runs off the event loop; no file cache."""
+    if not guard():
+        return 'suppressed'
+    if sys.platform != 'win32':
+        return 'unavailable'
+    import winsound
+    winsound.PlaySound(audio, winsound.SND_MEMORY | winsound.SND_NODEFAULT)
+    return 'completed_by_os' if guard() else 'suppressed'
 
 
 def _attention(snapshot):
@@ -92,6 +104,18 @@ def _stage_event(item):
     if stage == 'match_result':
         if status == 'failed':
             return ('match_failed', '匹配未完成，请查看错误。', 'confused', 5, '匹配未完成')
+        amount = monitor_amount(item.get('amount_summary'), item.get('attempt')) if status == 'completed' else None
+        if amount is not None:
+            number = amount['value'].rstrip('0').rstrip('.') if '.' in amount['value'] else amount['value']
+            basis = '含税总额' if amount['basis'] == 'tax_included' else '不含税金额'
+            unconfirmed = amount['calculation_status'] == 'unconfirmed'
+            label = f'{"表内" if unconfirmed else ""}{basis}{number}元'
+            caveat = '公式重算未确认。' if unconfirmed else ''
+            review = reviews is not None and reviews > 0
+            message = f'匹配完成，{label}。' + caveat + (f'{reviews}项待复核。' if review else '')
+            speech = f'匹配完成，{label}。' + caveat + ('请复核。' if review else '')
+            return ('match_result', message, 'curious' if review else 'happy', 2,
+                    speech, 'dynamic_amount', label)
         if reviews is not None and reviews > 0:
             return ('match_result', f'匹配完成，{reviews} 项待复核。', 'curious', 2, '匹配完成，请复核结果')
         return ('match_result', '匹配完成，请查看结果。', 'happy', 2, '匹配完成，请查看结果')
@@ -337,6 +361,8 @@ class TaskMonitor:
     async def _notify_locked(self, epoch, snapshot, event, detected_at=''):
         kind, message, expression, sound_id = event[:4]
         speech = event[4] if len(event) > 4 else message
+        dynamic_amount = len(event) > 5 and event[5] == 'dynamic_amount'
+        watch_message = event[6] if dynamic_amount else message
         valid = lambda: self.enabled and epoch == self.epoch and self.control.auto_available()
         if not valid():
             return False
@@ -353,12 +379,12 @@ class TaskMonitor:
         async def pc_alert():
             try:
                 if self.sound_kind == 'speech':
-                    wav = await asyncio.to_thread(_fixed_wav, speech)
+                    audio = (await self.control.fixed_speech(speech, valid)
+                             if getattr(self.control,'routing',{}).get('tts')=='cloud'
+                             else await self.control.synthesize_auto_speech(speech, valid))
                     if not valid():
                         return 'suppressed'
-                    with wave.open(str(wav), 'rb') as sound:
-                        duration = min(15, sound.getnframes() / sound.getframerate())
-                    result = _pc_speech(wav, valid)
+                    return await asyncio.to_thread(_pc_dynamic_speech, audio, valid)
                 else:
                     duration = 0.5
                     result = _pc_beep(valid)
@@ -369,6 +395,8 @@ class TaskMonitor:
                 raise
             except FileNotFoundError:
                 return 'cache_missing'
+            except VoiceError as exc:
+                return exc.code.lower()
             except Exception:
                 return 'failed'
         # PC audio can start while Watch receives its independent expression/text channel.
@@ -377,8 +405,8 @@ class TaskMonitor:
         try:
             if self.target in ('watch', 'both'):
                 try:
-                    watch_message = message if len(message) <= 24 else message[:23] + '…'
-                    delivery['watch'] = await self.control.robot.auto_notify(expression, watch_message, valid)
+                    watch_text = watch_message if len(watch_message) <= 24 else watch_message[:23] + '…'
+                    delivery['watch'] = await self.control.robot.auto_notify(expression, watch_text, valid)
                 except Exception:
                     delivery['watch'] = 'failed'
             if pc_task:
@@ -386,18 +414,22 @@ class TaskMonitor:
             elif self.sound and valid():
                 try:
                     if self.sound_kind == 'speech':
-                        wav = await asyncio.to_thread(_fixed_wav, speech)
+                        audio = (await self.control.fixed_speech(speech, valid)
+                                 if getattr(self.control,'routing',{}).get('tts')=='cloud'
+                                 else await self.control.synthesize_auto_speech(speech, valid))
                         if not valid():
                             delivery['sound'] = 'suppressed'
                         else:
-                            watch_text = message if self.target in ('watch', 'both') else ''
+                            watch_text = watch_message if self.target in ('watch', 'both') else ''
                             delivery['sound'] = await self.control.robot.auto_speech(
-                                wav.read_bytes(), watch_text, valid,
+                                audio, watch_text, valid,
                                 expression if watch_text else None)
                     else:
                         delivery['sound'] = await self.control.robot.auto_sound(sound_id, valid)
                 except FileNotFoundError:
                     delivery['sound'] = 'cache_missing'
+                except VoiceError as exc:
+                    delivery['sound'] = exc.code.lower()
                 except Exception:
                     delivery['sound'] = 'failed'
         finally:
@@ -413,4 +445,7 @@ class TaskMonitor:
                                 'task_name': snapshot['task_name'], 'kind': kind,
                                 'message': message, 'delivery': delivery})
         del self.history[20:]
+        if dynamic_amount:
+            self.history[0]['amount_summary'] = snapshot.get('amount_summary')
+            self.history[0]['speech'] = speech
         return True

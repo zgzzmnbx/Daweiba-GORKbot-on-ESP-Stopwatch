@@ -5,6 +5,8 @@
 #include <M5Unified.h>
 
 #include "grok_renderer.h"
+#include "motion_scene.h"
+#include "motion_draw.h"
 
 enum class ExpressionId : uint8_t {
   Idle = 0,
@@ -135,6 +137,7 @@ class AvatarEngine {
   ExpressionId activeExpression() const { return targetExpression_; }
   ExpressionId baseExpression() const { return baseExpression_; }
   const char* activeName() const;
+  const char* activeProtocolName() const;
   bool ready() const { return ready_; }
 
  private:
@@ -164,12 +167,14 @@ class AvatarEngine {
   static DirtyRect mergeRects(const DirtyRect& first, const DirtyRect& second);
 
   ExpressionId adjacentExpression(int8_t direction) const;
+  void browse(int8_t direction,uint32_t nowMs,uint16_t firstTransitionMs);
   void startKeyframe(uint8_t index, uint32_t nowMs,
                      uint16_t transitionOverrideMs = 0);
   void advanceTimeline(uint32_t nowMs);
   void completePlayback(uint32_t nowMs);
   void scheduleNextBlink(uint32_t nowMs, bool useInitialDelay);
   void updateInteraction(uint32_t nowMs);
+  void updateMotionReturn(uint32_t nowMs);
   void render(uint32_t nowMs);
   void drawHappyWorkOverlay(uint32_t nowMs);
   void drawBubble() const;
@@ -263,6 +268,12 @@ class AvatarEngine {
   uint32_t maximumGrokDirtyArea_ = 0;
   bool grokFullScreenFallback_ = false;
   GrokRenderer grokRenderer_{};
+  MotionScene motion_{};
+  MotionDraw motionDraw_{};
+  bool customIdleEnabled_=false;
+  const char* customMotionName_=nullptr;
+  int16_t customBrowseIndex_=-1;
+  DirtyRect previousMotionBounds_{};
   DirtyRect previousGrokBounds_{};
   DirtyRect previousHappyWorkBounds_{};
   DirtyRect previousBubbleBounds_{};

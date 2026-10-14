@@ -1,0 +1,95 @@
+Processing m5stack-stopwatch (platform: espressif32 @ 6.12.0; board: esp32s3box; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32s3box.html
+PLATFORM: Espressif 32 (6.12.0) > Espressif ESP32-S3-Box
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 16MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5 
+ - toolchain-xtensa-esp32s3 @ 8.4.0+2021r2-patch5
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 38 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- M5Unified @ 0.2.20+sha.774d920
+|-- M5GFX @ 0.2.27+sha.93b480b
+|-- M5PM1 @ 1.0.7+sha.be9a545
+|-- M5IOE1 @ 1.0.9+sha.846eec7
+|-- libopus @ 1.6.1+sha.c02de63
+|-- ESP32 BLE Arduino @ 2.0.0
+|-- Preferences @ 2.0.0
+|-- ESPmDNS @ 2.0.0
+|-- WiFi @ 2.0.0
+Building in release mode
+Compiling .pio\build\m5stack-stopwatch\src\avatar_engine.cpp.o
+Compiling .pio\build\m5stack-stopwatch\src\main.cpp.o
+Building .pio\build\m5stack-stopwatch\bootloader.bin
+Generating partitions .pio\build\m5stack-stopwatch\partitions.bin
+Compiling .pio\build\m5stack-stopwatch\libd8e\SPI\SPI.cpp.o
+esptool.py v4.9.0
+Creating esp32s3 image...
+Merged 1 ELF section
+Successfully created esp32s3 image.
+Compiling .pio\build\m5stack-stopwatch\lib164\Wire\Wire.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLE2902.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLE2904.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEAddress.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEAdvertisedDevice.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEAdvertising.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEBeacon.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLECharacteristic.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLECharacteristicMap.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEClient.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEDescriptor.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEDescriptorMap.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEDevice.cpp.o
+Archiving .pio\build\m5stack-stopwatch\libd8e\libSPI.a
+Archiving .pio\build\m5stack-stopwatch\lib164\libWire.a
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEEddystoneTLM.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEEddystoneURL.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEExceptions.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEHIDDevice.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLERemoteCharacteristic.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLERemoteDescriptor.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLERemoteService.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEScan.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLESecurity.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEServer.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEService.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEServiceMap.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEUUID.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEUtils.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\BLEValue.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\FreeRTOS.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib28d\BLE\GeneralUtils.cpp.o
+Compiling .pio\build\m5stack-stopwatch\lib74a\Preferences\Preferences.cpp.o
+Compiling .pio\build\m5stack-stopwatch\libc10\WiFi\WiFi.cpp.o
+Compiling .pio\build\m5stack-stopwatch\libc10\WiFi\WiFiAP.cpp.o
+Compiling .pio\build\m5stack-stopwatch\libc10\WiFi\WiFiClient.cpp.o
+Compiling .pio\build\m5stack-stopwatch\libc10\WiFi\WiFiGeneric.cpp.o
+Compiling .pio\build\m5stack-stopwatch\libc10\WiFi\WiFiMulti.cpp.o
+Compiling .pio\build\m5stack-stopwatch\libc10\WiFi\WiFiSTA.cpp.o
+Compiling .pio\build\m5stack-stopwatch\libc10\WiFi\WiFiScan.cpp.o
+Compiling .pio\build\m5stack-stopwatch\libc10\WiFi\WiFiServer.cpp.o
+Compiling .pio\build\m5stack-stopwatch\libc10\WiFi\WiFiUdp.cpp.o
+Compiling .pio\build\m5stack-stopwatch\libbfb\ESPmDNS\ESPmDNS.cpp.o
+Archiving .pio\build\m5stack-stopwatch\libc10\libWiFi.a
+Archiving .pio\build\m5stack-stopwatch\libbfb\libESPmDNS.a
+Archiving .pio\build\m5stack-stopwatch\lib28d\libBLE.a
+Archiving .pio\build\m5stack-stopwatch\lib74a\libPreferences.a
+Linking .pio\build\m5stack-stopwatch\firmware.elf
+Retrieving maximum program size .pio\build\m5stack-stopwatch\firmware.elf
+Checking size .pio\build\m5stack-stopwatch\firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [====      ]  36.2% (used 118520 bytes from 327680 bytes)
+Flash: [===       ]  34.1% (used 2233709 bytes from 6553600 bytes)
+Building .pio\build\m5stack-stopwatch\firmware.bin
+esptool.py v4.9.0
+Creating esp32s3 image...
+Merged 2 ELF sections
+Successfully created esp32s3 image.
+========================= [SUCCESS] Took 37.91 seconds =========================

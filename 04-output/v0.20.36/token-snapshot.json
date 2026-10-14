@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-14",
+  "timezone": "Asia/Hong_Kong",
+  "source": "ccswitch",
+  "scope": "local_codex",
+  "status": "available",
+  "stale": false,
+  "sampled_at": "2026-10-14T09:01:25.02325+08:00",
+  "total_tokens": 48390142,
+  "input_tokens": 48212936,
+  "fresh_input_tokens": 1675592,
+  "output_tokens": 177206,
+  "cache_tokens": 46537344,
+  "request_count": 257,
+  "last_event_at": 1791939642
+}

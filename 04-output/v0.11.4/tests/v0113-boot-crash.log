@@ -1,0 +1,64 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x2b (SPI_FAST_FLASH_BOOT)
+Saved PC:0x400490d9
+E (584) I2S: i2s_driver_uninstall(2048): I2S port 0 has not installed
+Expression device started
+v0.11.3-dev
+E (2168) wifi:Error! Should enable WiFi modem sleep when both WiFi and Bluetooth are enabled!!!!!!
+abort() was called at PC 0x42118a57 on core 0
+Backtrace: 0x40377b7a:0x3fccdee0 0x40380489:0x3fccdf00 0x40387569:0x3fccdf20 0x42118a57:0x3fccdfa0 0x421075c8:0x3fccdfc0 0x4210525a:0x3fccdfe0 0x4214943d:0x3fcce000
+ELF file SHA256: 7d0cd1f525cd0b88
+Rebooting...
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0x2b (SPI_FAST_FLASH_BOOT)
+Saved PC:0x403777b0
+E (584) I2S: i2s_driver_uninstall(2048): I2S port 0 has not installed
+Expression device started
+v0.11.3-dev
+E (2170) wifi:Error! Should enable WiFi modem sleep when both WiFi and Bluetooth are enabled!!!!!!
+abort() was called at PC 0x42118a57 on core 0
+Backtrace: 0x40377b7a:0x3fccdeb0 0x40380489:0x3fccded0 0x40387569:0x3fccdef0 0x42118a57:0x3fccdf70 0x421075c8:0x3fccdf90 0x4210525a:0x3fccdfb0 0x4214943d:0x3fccdfd0
+ELF file SHA256: 7d0cd1f525cd0b88
+Rebooting...
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0x2b (SPI_FAST_FLASH_BOOT)
+Saved PC:0x403777b0
+E (582) I2S: i2s_driver_uninstall(2048): I2S port 0 has not installed
+Expression device started
+v0.11.3-dev
+E (2164) wifi:Error! Should enable WiFi modem sleep when both WiFi and Bluetooth are enabled!!!!!!
+abort() was called at PC 0x42118a57 on core 0
+Backtrace: 0x40377b7a:0x3fccdeb0 0x40380489:0x3fccded0 0x40387569:0x3fccdef0 0x42118a57:0x3fccdf70 0x421075c8:0x3fccdf90 0x4210525a:0x3fccdfb0 0x4214943d:0x3fccdfd0
+ELF file SHA256: 7d0cd1f525cd0b88
+Rebooting...
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0x2b (SPI_FAST_FLASH_BOOT)
+Saved PC:0x403777b0
+E (582) I2S: i2s_driver_uninstall(2048): I2S port 0 has not installed
+Expression device started
+v0.11.3-dev
+E (2166) wifi:Error! Should enable WiFi modem sleep when both WiFi and Bluetooth are enabled!!!!!!
+abort() was called at PC 0x42118a57 on core 0
+Backtrace: 0x40377b7a:0x3fccdeb0 0x40380489:0x3fccded0 0x40387569:0x3fccdef0 0x42118a57:0x3fccdf70 0x421075c8:0x3fccdf90 0x4210525a:0x3fccdfb0 0x4214943d:0x3fccdfd0
+ELF file SHA256: 7d0cd1f525cd0b88
+Rebooting...
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0x2b (SPI_FAST_FLASH_BOOT)
+Saved PC:0x403777b0
+E (584) I2S: i2s_driver_uninstall(2048): I2S port 0 has not installed
+Expression device started
+v0.11.3-dev
+E (2168) wifi:Error! Should enable WiFi modem sleep when both WiFi and Bluetooth are enabled!!!!!!
+abort() was called at PC 0x42118a57 on core 0
+Backtrace: 0x40377b7a:0x3fccdeb0 0x40380489:0x3fccded0 0x40387569:0x3fccdef0 0x42118a57:0x3fccdf70 0x421075c8:0x3fccdf90 0x4210525a:0x3fccdfb0 0x4214943d:0x3fccdfd0
+ELF file SHA256: 7d0cd1f525cd0b88
+Rebooting...
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0x2b (SPI_FAST_FLASH_BOOT)
+Saved PC:0x403777b0

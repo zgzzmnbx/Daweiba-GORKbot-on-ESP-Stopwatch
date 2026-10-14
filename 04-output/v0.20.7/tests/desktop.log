@@ -1,0 +1,47 @@
+
+> gork-robot-console@0.20.7-dev test
+> node --test tests/*.test.js
+
+✔ appearance restricts ids and colors while keeping all ten source presets (1.4155ms)
+✔ all ten source geometries render finite paths without starting static animation loops (843.0324ms)
+✔ avatar visibility IPC accepts only the console sender and boolean state (10.6918ms)
+✔ preload exposes the visibility bridge (0.8123ms)
+✔ avatar restores disabled always-on-top from the saved window state (2.0282ms)
+✔ web and desktop share identical renderer/catalog and pinned Watch poses (4.7833ms)
+✔ all catalog poses project to finite capsule geometry within the body (2.3837ms)
+✔ a late desktop listener draws the same animation position from a shared start time (7.1178ms)
+✔ still thumbnails render distinct real poses without scheduling animation frames (5.33ms)
+✔ backend identity requires app, instance and pid (0.4868ms)
+✔ only owned backend is stopped (0.1337ms)
+✔ owned Windows launcher stops the verified server pid (0.4326ms)
+✔ existing backend is reused only at the expected version; stale external server is never killed or replaced (0.5906ms)
+✔ readable bubble stays on screen at avatar scales 25 to 150 and negative display coordinates (1.306ms)
+✔ bubble lifecycle follows avatar visibility, dismiss, new message, clear and topmost (1.0179ms)
+✔ avatar renders scene state without referencing an out-of-scope manual variable (3.1315ms)
+✔ avatar quota ring handles one, two and stale windows with keyboard details (20.1288ms)
+✔ bubble uses literal text and preserves scroll position across state polls (4.0617ms)
+✔ default is above, all four preferred sides work, and top-edge fallback preserves tail alignment (0.7955ms)
+✔ idle look pauses, turns in both directions, holds and smoothly returns within bounds (7.1598ms)
+✔ live idle Gork turns without mutating source poses; explicit states take over smoothly (1.0364ms)
+✔ still thumbnails, Watch previews, other characters and reduced-motion skip idle turns (1.5243ms)
+✔ late listeners share the same idle look from their scene start timestamp (1.1617ms)
+✔ one-shot expression returns to idle and resumes occasional turns after the resting pause (0.8223ms)
+✔ custom ACK echo preserves playback; a new command or renderer reload plays once (3.1529ms)
+✔ saved motion delivery validates sender, revision, renderer ACK and failures (42.8056ms)
+✔ Electron quit waits for task cancellation and owned server stop, even after repeated quit requests (3.5685ms)
+✔ shutdown failures still stop owned backend once and finish quitting without exposing exception details (0.9745ms)
+✔ tray bitmap has a transparent exterior, visible rim and contrasting eyes (4.8183ms)
+✔ tray uses bitmap input and PNG representations for Windows display scales (3.8248ms)
+✔ keeps visible saved bounds (0.865ms)
+✔ rejects off-screen saved bounds (0.1093ms)
+✔ restores a small avatar without expanding it back to default (0.0873ms)
+✔ old oversized bounds are constrained to supported avatar dimensions (0.0797ms)
+✔ 25 percent avatar remains a valid visible saved window (0.0803ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 920.3504

@@ -1,0 +1,199 @@
+{
+  "$defs": {
+    "ExternalSpeech": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "target": {
+          "default": "current",
+          "enum": [
+            "current",
+            "pc",
+            "watch"
+          ],
+          "title": "Target",
+          "type": "string"
+        },
+        "mode": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "tts",
+            "cached"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "ExternalSpeech",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "protocol_version": {
+      "const": "1.0",
+      "title": "Protocol Version",
+      "type": "string"
+    },
+    "source": {
+      "pattern": "^[a-z][a-z0-9_-]{0,39}$",
+      "title": "Source",
+      "type": "string"
+    },
+    "event_id": {
+      "pattern": "^[A-Za-z0-9_.:-]{1,100}$",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "task_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Task Id",
+      "type": "string"
+    },
+    "attempt": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Attempt",
+      "type": "string"
+    },
+    "stage": {
+      "pattern": "^[A-Za-z0-9_-]{1,60}$",
+      "title": "Stage",
+      "type": "string"
+    },
+    "sequence": {
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "kind": {
+      "default": "notice",
+      "enum": [
+        "state",
+        "notice"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "occurred_at": {
+      "maxLength": 40,
+      "minLength": 10,
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "expression": {
+      "default": "idle",
+      "pattern": "^[a-z0-9-]{2,60}$",
+      "title": "Expression",
+      "type": "string"
+    },
+    "expression_mode": {
+      "default": "once",
+      "enum": [
+        "once",
+        "loop"
+      ],
+      "title": "Expression Mode",
+      "type": "string"
+    },
+    "text": {
+      "default": "",
+      "maxLength": 300,
+      "title": "Text",
+      "type": "string"
+    },
+    "duration_ms": {
+      "default": 8000,
+      "maximum": 60000,
+      "minimum": 500,
+      "title": "Duration Ms",
+      "type": "integer"
+    },
+    "display_target": {
+      "default": "both",
+      "enum": [
+        "desktop",
+        "watch",
+        "both",
+        "none"
+      ],
+      "title": "Display Target",
+      "type": "string"
+    },
+    "speech": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExternalSpeech"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "priority": {
+      "default": 2,
+      "maximum": 5,
+      "minimum": 0,
+      "title": "Priority",
+      "type": "integer"
+    },
+    "ttl_ms": {
+      "default": 30000,
+      "maximum": 90000,
+      "minimum": 1000,
+      "title": "Ttl Ms",
+      "type": "integer"
+    },
+    "lease_ms": {
+      "default": 30000,
+      "maximum": 90000,
+      "minimum": 1000,
+      "title": "Lease Ms",
+      "type": "integer"
+    },
+    "supersedes": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Supersedes",
+      "type": "array"
+    },
+    "amount_summary": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Amount Summary"
+    }
+  },
+  "required": [
+    "protocol_version",
+    "source",
+    "event_id",
+    "task_id",
+    "attempt",
+    "stage",
+    "sequence",
+    "occurred_at"
+  ],
+  "title": "Notification",
+  "type": "object"
+}

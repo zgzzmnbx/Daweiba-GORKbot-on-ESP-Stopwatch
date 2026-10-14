@@ -1,0 +1,95 @@
+{
+  "service": "isolated-8782",
+  "business_data": "synthetic",
+  "official_8766_untouched": true,
+  "publisher": "sentinel_events.publish + committed amount adapter",
+  "checks": [
+    "state active",
+    "heartbeat",
+    "terminal sequence",
+    "attempt amount",
+    "exact duplicate",
+    "cancel late tombstone"
+  ],
+  "receipt": {
+    "protocol_version": "1.0",
+    "source": "astra",
+    "event_id": "77557a54d92040028ac7a50dfbcea60e",
+    "task_id": "58b11ec3a57c491baaac465c02c08333",
+    "attempt": "790d609222d34e6ea4db319290351399",
+    "stage": "match_completed",
+    "status": "completed",
+    "duplicate": false,
+    "accepted_at": "2026-10-08T02:41:06.261484+00:00",
+    "receipt_url": "/api/external/notifications/77557a54d92040028ac7a50dfbcea60e",
+    "delivery": {
+      "desktop": "displayed",
+      "watch": "accepted",
+      "speech": "completed_by_os"
+    },
+    "request": {
+      "protocol_version": "1.0",
+      "source": "astra",
+      "event_id": "77557a54d92040028ac7a50dfbcea60e",
+      "task_id": "58b11ec3a57c491baaac465c02c08333",
+      "attempt": "790d609222d34e6ea4db319290351399",
+      "stage": "match_completed",
+      "sequence": 2,
+      "kind": "notice",
+      "occurred_at": "2026-10-08T10:41:06.212261+08:00",
+      "expression": "happy",
+      "expression_mode": "once",
+      "text": "匹配完成，表内含税总额9447173元。公式重算未确认。1项待复核。",
+      "duration_ms": 500,
+      "display_target": "both",
+      "speech": {
+        "text": "匹配完成，表内含税总额9447173元。公式重算未确认。1项待复核。",
+        "target": "current",
+        "mode": "auto"
+      },
+      "priority": 2,
+      "ttl_ms": 90000,
+      "lease_ms": 6000,
+      "supersedes": [],
+      "amount_summary": {
+        "value": "9447173.00",
+        "currency": "CNY",
+        "unit": "yuan",
+        "basis": "tax_included",
+        "attempt": "790d609222d34e6ea4db319290351399",
+        "calculation_status": "unconfirmed"
+      }
+    },
+    "visual_started": true
+  },
+  "fixture_output": {
+    "fixture": true,
+    "hardware": false,
+    "cloud": false,
+    "speaker": false,
+    "outputs": [
+      {
+        "expression": "loop working",
+        "text": "规则匹配已开始。",
+        "fixture": true
+      },
+      {
+        "expression": "happy",
+        "text": "匹配完成，表内含税总额9447173元。公式重…",
+        "fixture": true
+      },
+      {
+        "expression": "idle",
+        "text": "",
+        "fixture": true
+      }
+    ],
+    "character": {
+      "expression": "idle",
+      "mode": "loop",
+      "bubble": "",
+      "manual": false,
+      "revision": 0
+    }
+  }
+}

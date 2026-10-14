@@ -25,7 +25,10 @@ class NotificationCoordinator:
                     if not valid() or time.monotonic() >= token[3]:
                         return False
                     current = self.blocking_current()
-                    presentation_blocks = current and current['priority'] >= priority
+                    external = getattr(self.control, 'external_notifications', None)
+                    notice = external.blocking_notice(source) if external else None
+                    presentation_blocks = ((current and current['priority'] >= priority)
+                                           or (notice and notice['priority'] >= priority))
                     if not self.active and self.queue[0] == token and self.control.auto_available() and not presentation_blocks:
                         heapq.heappop(self.queue)
                         queued = False
@@ -49,10 +52,11 @@ class NotificationCoordinator:
                 self.condition.notify_all()
 
     def show(self, source, expression, bubble, revision, seconds=12, priority=2,
-             block_seconds=None, dismiss_on_click=False):
+             block_seconds=None, dismiss_on_click=False, mode='once', custom_motion=None):
         now = time.monotonic()
         self.presentation = {'source': source, 'expression': expression, 'bubble': bubble,
                              'revision': revision, 'priority': priority,
+                             'mode': mode, 'custom_motion': custom_motion,
                              'until': now + seconds,
                              'blocks_until': now + (seconds if block_seconds is None else block_seconds),
                              'dismiss_on_click': dismiss_on_click}

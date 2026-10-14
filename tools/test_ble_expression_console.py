@@ -81,6 +81,33 @@ class FakeClient:
 
 
 class BleConsoleTests(unittest.TestCase):
+    def test_custom_receipts_match_ascii_tokens_and_do_not_accept_other_tokens(self):
+        import json
+        manifest = MODULE_PATH.parent.parent / "03-Src/stopwatch-grok-avatar/src/custom_expressions.watch.json"
+        exported = json.loads(manifest.read_text(encoding="utf-8"))
+        entries = exported["entries"]
+
+        class ReceiptClient(FakeClient):
+            async def write_gatt_char(self, characteristic, payload, response):
+                token = bytes(payload).decode("ascii").split()[-1]
+                self.notify_callback(MODULE.STATUS_UUID, b"OK:CXAAAAAAAAAAAA")
+                self.notify_callback(MODULE.STATUS_UUID, ("OK:" + token.upper()).encode("ascii"))
+
+        async def run():
+            for entry in entries:
+                token = entry["token"]
+                for prefix in ("", "once ", "loop "):
+                    client = MODULE.BleExpressionClient(client_factory=ReceiptClient, status_timeout=0.05)
+                    try:
+                        await client.connect(MODULE.Target(FakeDevice(), MODULE.DEVICE_NAME, FakeDevice.address))
+                        self.assertEqual(await client.send_command(prefix + token), "OK:" + token.upper())
+                        self.assertTrue(client.connected)
+                    finally:
+                        await client.disconnect()
+            with self.assertRaises(MODULE.BleConsoleError):
+                MODULE.parse_status("OK:我的书写".encode("utf-8"))
+        asyncio.run(run())
+
     def test_normalize_command_and_protocol_limit(self):
         self.assertEqual(MODULE.normalize_command(" Happy "), "happy")
         self.assertEqual(MODULE.normalize_command("PINGPONG happy"), "pingpong happy")

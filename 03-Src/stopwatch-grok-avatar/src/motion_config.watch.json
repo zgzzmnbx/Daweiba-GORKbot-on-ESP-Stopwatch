@@ -1,0 +1,134 @@
+{
+  "schema": "gork-watch-motion",
+  "version": 1,
+  "sourceVersion": 2,
+  "revision": 1,
+  "geometry": {
+    "bodyInset": 17,
+    "sphereRadius": 120.0,
+    "cameraDistance": 620.0,
+    "eyeGeometryScale": 1.8846153846153846,
+    "desktopHeadRadius": 230.51267235400408,
+    "screenSize": 466,
+    "center": [
+      233.0,
+      233.0
+    ],
+    "bodyRadius": 216.0,
+    "desktopToWatchScale": 0.9370417591111146
+  },
+  "scenes": [
+    {
+      "name": "idle",
+      "eyes": [
+        0,
+        -7,
+        35,
+        20,
+        50,
+        20,
+        50,
+        0,
+        0,
+        0
+      ],
+      "motion": [
+        1,
+        750,
+        900
+      ],
+      "props": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "loading",
+      "eyes": [
+        0,
+        -7,
+        35,
+        20,
+        50,
+        20,
+        50,
+        0,
+        0,
+        0
+      ],
+      "motion": [
+        1,
+        750,
+        900
+      ],
+      "props": [
+        0,
+        4,
+        2,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "writing",
+      "eyes": [
+        0,
+        -29,
+        35,
+        20,
+        40,
+        20,
+        40,
+        -4,
+        5,
+        -7
+      ],
+      "motion": [
+        1,
+        1250,
+        900
+      ],
+      "props": [
+        34,
+        140,
+        1.15,
+        1.25,
+        5,
+        0
+      ]
+    },
+    {
+      "name": "question",
+      "eyes": [
+        0,
+        -7,
+        35,
+        21,
+        54,
+        33,
+        15,
+        -3,
+        -13,
+        15
+      ],
+      "motion": [
+        1.85,
+        800,
+        900
+      ],
+      "props": [
+        115,
+        -81,
+        1.5,
+        8,
+        0,
+        0
+      ]
+    }
+  ]
+}

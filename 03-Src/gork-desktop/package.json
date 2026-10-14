@@ -1,6 +1,6 @@
 {
   "name": "gork-robot-console",
-  "version": "0.18.2-dev",
+  "version": "0.20.38-dev",
   "private": true,
   "description": "Windows desktop shell for the Gork robot console",
   "main": "main.js",

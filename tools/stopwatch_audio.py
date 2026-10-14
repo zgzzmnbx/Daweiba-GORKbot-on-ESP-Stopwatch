@@ -37,6 +37,7 @@ ERROR_DETAILS = {
 HEADER = struct.Struct("<BBHII")
 MAX_BYTES = 480_000
 MAX_PACKET = 244
+NETWORK_PACKET = 4096
 OPUS_HELLO_ID = 0xF00D
 
 
@@ -54,7 +55,7 @@ def audio_connection(device, client_factory=None):
 
 
 class Op(IntEnum):
-    HELLO=1; ARM=2; PING=3; BEGIN=4; DATA=5; COMMIT=6; PLAY=7; CANCEL=8; PULL=9; BEGIN_OPUS=10
+    HELLO=1; ARM=2; PING=3; BEGIN=4; DATA=5; COMMIT=6; PLAY=7; CANCEL=8; PULL=9; BEGIN_OPUS=10; PRODUCT_ARM=11
     CAPS=128; ACK=129; RECORDING=130; RECORDED=131; AUDIO=132
     PLAYING=133; PLAYED=134; ERROR=255
 
@@ -67,14 +68,14 @@ class Packet:
     value: int = 0
     data: bytes = b""
 
-    def encode(self) -> bytes:
-        if not 0 < self.transfer <= 65535 or len(self.data) > MAX_PACKET-HEADER.size:
+    def encode(self, maximum=MAX_PACKET) -> bytes:
+        if not 0 < self.transfer <= 65535 or len(self.data) > maximum-HEADER.size:
             raise ValueError("invalid transfer or oversized packet")
         return HEADER.pack(1, self.op, self.transfer, self.epoch, self.value) + self.data
 
     @classmethod
-    def decode(cls, raw: bytes) -> Packet:
-        if not HEADER.size <= len(raw) <= MAX_PACKET:
+    def decode(cls, raw: bytes, maximum=MAX_PACKET) -> Packet:
+        if not HEADER.size <= len(raw) <= maximum:
             raise ValueError("invalid packet size")
         version, op, transfer, epoch, value = HEADER.unpack_from(raw)
         if version != 1 or not transfer:
@@ -109,7 +110,7 @@ def make_wav(pcm: bytes, rate: int) -> bytes:
 
 class AudioClient:
     def __init__(self, client, packet_bytes=244, timeout=4.0):
-        if not 20 <= packet_bytes <= MAX_PACKET:
+        if not 20 <= packet_bytes <= NETWORK_PACKET:
             raise ValueError("packet bytes must be 20..244")
         self.client=client
         self.packet_bytes=packet_bytes
@@ -117,10 +118,14 @@ class AudioClient:
         self.epoch=0
         self.transfer=OPUS_HELLO_ID
         self.opus_supported=False
+        self.product_supported=False
         self.codec="pcm16"
         self.source_bytes=0
         self.lock=asyncio.Lock()
         self.waiter=None
+        self.pull_waiters={}
+        self.capture_window=min(3,max(1,getattr(client,'capture_window',1)))
+        self.playback_timings={}
         self.events=asyncio.Queue(maxsize=8)
         self.data_acks=asyncio.Queue(maxsize=8)
         self.data_event=asyncio.Event()
@@ -134,7 +139,7 @@ class AudioClient:
         try:
             if len(raw)>self.packet_bytes:
                 raise ValueError("notification exceeds negotiated packet size")
-            p=Packet.decode(bytes(raw))
+            p=Packet.decode(bytes(raw),self.packet_bytes)
         except (ValueError, struct.error):
             self.abort(RuntimeError("malformed audio notification")); return
         if self.closed or p.transfer!=self.transfer:
@@ -144,6 +149,10 @@ class AudioClient:
         if p.op==Op.ERROR or (p.op==Op.ACK and p.data==bytes([Op.CANCEL])):
             detail = ERROR_DETAILS.get(p.value, "device error") if p.op==Op.ERROR else "cancelled"
             self.abort(RuntimeError(f"device stopped audio (code {p.value}): {detail}")); return
+        if p.op==Op.AUDIO and self.pull_waiters:
+            future=self.pull_waiters.get(p.value)
+            if future and not future.done():future.set_result(p)
+            return
         if self.data_active and p.op==Op.ACK and p.data==bytes([Op.DATA]):
             if self.data_acks.full():
                 self.abort(RuntimeError("audio DATA acknowledgement overflow"))
@@ -166,6 +175,8 @@ class AudioClient:
         self.data_event.set()
         if self.waiter and not self.waiter[1].done():
             self.waiter[1].set_exception(error)
+        for future in self.pull_waiters.values():
+            if not future.done():future.set_exception(error)
 
     def check(self):
         if self.failure:
@@ -187,7 +198,7 @@ class AudioClient:
                 return expected!=Op.AUDIO or p.value==value
             self.waiter=(matches,future)
             try:
-                raw=Packet(op,self.transfer,self.epoch,value,data).encode()
+                raw=Packet(op,self.transfer,self.epoch,value,data).encode(self.packet_bytes)
                 if len(raw)>self.packet_bytes:
                     raise ValueError("packet exceeds negotiated limit")
                 async with asyncio.timeout(self.timeout):
@@ -225,6 +236,7 @@ class AudioClient:
             raise RuntimeError("invalid negotiated audio limits")
         self.packet_bytes=packet_bytes
         self.opus_supported=len(p.data)==5 and bool(p.data[4]&1)
+        self.product_supported=len(p.data)==5 and bool(p.data[4]&2)
         self.epoch=p.epoch
         self.heartbeat=asyncio.create_task(self.keepalive())
 
@@ -265,14 +277,17 @@ class AudioClient:
                "rate":done/elapsed if done and elapsed else 0.0,
                "packet_bytes":self.packet_bytes,"window":self.data_window,
                "codec":self.codec,"source_bytes":self.source_bytes}
+        value.update(self.playback_timings)
         result=callback(value)
         if inspect.isawaitable(result):
             await result
 
-    async def record(self, progress=None):
-        await self.request(Op.ARM,new_transfer=True)
+    async def record(self, progress=None, *, product=False):
+        if product and not self.product_supported:
+            raise RuntimeError('Watch 固件不支持普通页按键对话；请使用新候选固件')
+        await self.request(Op.PRODUCT_ARM if product else Op.ARM,new_transfer=True)
         await self.progress(progress,"armed")
-        print("已就绪：在设备 Audio test 页面按住 A 说话，松开结束；B 停止。")
+        if not product: print("已就绪：在设备 Audio test 页面按住 A 说话，松开结束；B 停止。")
         async with asyncio.timeout(45):
             while True:
                 self.check()
@@ -289,18 +304,60 @@ class AudioClient:
         started=time.monotonic()
         await self.progress(progress,"receiving",0,p.value,started)
         async with asyncio.timeout(180):
-            while len(pcm)<p.value:
-                block=await self.request(Op.PULL,len(pcm),expected=Op.AUDIO)
-                if not block.data or len(block.data)%2 or len(pcm)+len(block.data)>p.value:
-                    raise RuntimeError("invalid captured audio block")
-                pcm.extend(block.data)
-                await self.progress(progress,"receiving",len(pcm),p.value,started)
+            if self.capture_window>1:
+                pcm=await self.pull_capture(p.value,progress,started)
+            else:
+                while len(pcm)<p.value:
+                    block=await self.request(Op.PULL,len(pcm),expected=Op.AUDIO)
+                    if not block.data or len(block.data)%2 or len(pcm)+len(block.data)>p.value:
+                        raise RuntimeError("invalid captured audio block")
+                    pcm.extend(block.data)
+                    await self.progress(progress,"receiving",len(pcm),p.value,started)
         print(f"设备→电脑：{len(pcm)} bytes，{len(pcm)/(time.monotonic()-started):.0f} B/s")
         await self.progress(progress,"received",len(pcm),p.value,started)
         return bytes(pcm),16000
 
+    async def pull_capture(self,total,progress,started):
+        chunk=(self.packet_bytes-HEADER.size)&~1
+        pcm=bytearray(total);pending=set();offset=received=0
+        async def pull(at,size):
+            self.check()
+            future=asyncio.get_running_loop().create_future()
+            self.pull_waiters[at]=future
+            try:
+                async with asyncio.timeout(self.timeout):
+                    await self.client.write_gatt_char(INPUT_UUID,
+                        Packet(Op.PULL,self.transfer,self.epoch,at).encode(self.packet_bytes),response=True)
+                    block=await future
+                if len(block.data)!=size:raise RuntimeError('invalid captured audio block')
+                return at,block.data
+            finally:
+                self.pull_waiters.pop(at,None)
+                if future.done() and not future.cancelled():future.exception()
+                else:future.cancel()
+        try:
+            while received<total:
+                self.check()
+                while offset<total and len(pending)<self.capture_window:
+                    size=min(chunk,total-offset)
+                    pending.add(asyncio.create_task(pull(offset,size)));offset+=size
+                done,pending=await asyncio.wait(pending,return_when=asyncio.FIRST_COMPLETED)
+                # Retrieve every completed task, including simultaneous errors.
+                results=await asyncio.gather(*done,return_exceptions=True)
+                for result in results:
+                    if isinstance(result,BaseException):raise result
+                    at,data=result;pcm[at:at+len(data)]=data;received+=len(data)
+                await self.progress(progress,'receiving',received,total,started)
+            return pcm
+        except BaseException as exc:
+            self.abort(exc);raise
+        finally:
+            for task in pending:task.cancel()
+            await asyncio.gather(*pending,return_exceptions=True)
+
     async def play(self, pcm, rate, progress=None, *, codec="auto", before_play=None):
         job_started=time.monotonic()
+        self.playback_timings={}
         # Reuse the WAV validator so direct API callers cannot bypass limits.
         make_wav(pcm,rate)
         if codec not in ("auto", "pcm16", "opus"):
@@ -320,6 +377,7 @@ class AudioClient:
             begin=Op.BEGIN
             metadata=struct.pack("<I",len(payload))
             self.codec="pcm16"
+        self.playback_timings['encode']=time.monotonic()-job_started
         await self.request(begin,rate,metadata,new_transfer=True)
         chunk=self.packet_bytes-HEADER.size
         if begin==Op.BEGIN:
@@ -330,13 +388,17 @@ class AudioClient:
         await self.request(Op.COMMIT,len(payload))
         await self.progress(progress,"ready",len(payload),len(payload),started)
         send_elapsed=time.monotonic()-started
+        self.playback_timings['send']=send_elapsed
         print(f"电脑→设备 {self.codec}：{len(payload)} bytes，发送 {send_elapsed:.2f} s，{len(payload)/send_elapsed:.0f} B/s")
         if before_play is not None:
             await before_play()
         await self.request(Op.PLAY,expected=Op.PLAYING)
+        play_started=time.monotonic()
+        self.playback_timings['first_play_at']=play_started
         await self.progress(progress,"playing",len(payload),len(payload),started)
         print("设备报告开始播放；B 可随时停止。")
         await self.event(Op.PLAYED,15)
+        self.playback_timings['device_play']=time.monotonic()-play_started
         await self.progress(progress,"played",len(payload),len(payload),started)
         print(f"设备报告播放结束；从编码开始 {time.monotonic()-job_started:.2f} s。实际声音请人工确认。")
 
@@ -360,7 +422,7 @@ class AudioClient:
                             packet=Packet(Op.DATA,self.transfer,self.epoch,sent,pcm[sent:end])
                             try:
                                 await asyncio.wait_for(
-                                    self.client.write_gatt_char(INPUT_UUID,packet.encode(),response=False),
+                                    self.client.write_gatt_char(INPUT_UUID,packet.encode(self.packet_bytes),response=False),
                                     self.timeout)
                             except TimeoutError as exc:
                                 raise TimeoutError("等待 Watch 音频 DATA 写入超时") from exc
@@ -393,7 +455,10 @@ class AudioClient:
     async def close(self):
         if self.heartbeat:
             self.heartbeat.cancel()
-            await self.heartbeat
+            # A task cancelled before its first turn cannot catch cancellation
+            # inside keepalive(); cleanup must still release the device lease.
+            with contextlib.suppress(asyncio.CancelledError):
+                await self.heartbeat
         self.closed=True
         self.abort(RuntimeError("audio session closed"))
         # No bulk-transfer lock: stop preempts a timed-out/in-flight data request.

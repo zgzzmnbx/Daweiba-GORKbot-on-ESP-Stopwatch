@@ -1,0 +1,1814 @@
+{
+  "result": "PASS",
+  "fixtureOnly": true,
+  "realDeviceConnected": false,
+  "cloudRequests": false,
+  "results": [
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "watch",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "watch",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "expressions-bottom",
+      "body": 1480,
+      "scroll": {
+        "client": 412,
+        "scroll": 791,
+        "bottom": 902,
+        "panelBottom": 935,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 15
+      },
+      "end": {
+        "top": 379,
+        "lastTop": 807.109375,
+        "lastBottom": 899.15625,
+        "viewTop": 489.78125,
+        "viewBottom": 902
+      }
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "expressions",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "logs",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "dialogue",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "settings",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "dialogue-active",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "watch",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "watch",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "expressions-bottom",
+      "body": 1180,
+      "scroll": {
+        "client": 301,
+        "scroll": 791,
+        "bottom": 762,
+        "panelBottom": 795,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 15
+      },
+      "end": {
+        "top": 490,
+        "lastTop": 667.703125,
+        "lastBottom": 759.75,
+        "viewTop": 461.375,
+        "viewBottom": 762
+      }
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "expressions",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "logs",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "dialogue",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "settings",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "dialogue-active",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "watch",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "watch",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "expressions-bottom",
+      "body": 800,
+      "scroll": {
+        "client": 205,
+        "scroll": 791,
+        "bottom": 592,
+        "panelBottom": 625,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 15
+      },
+      "end": {
+        "top": 586,
+        "lastTop": 497.109375,
+        "lastBottom": 589.15625,
+        "viewTop": 386.78125,
+        "viewBottom": 592
+      }
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "expressions",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "logs",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "dialogue",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "settings",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "dialogue-active",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "watch",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "watch",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "expressions-bottom",
+      "body": 390,
+      "scroll": {
+        "client": 87,
+        "scroll": 567,
+        "bottom": 239,
+        "panelBottom": 245,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 15
+      },
+      "end": {
+        "top": 480,
+        "lastTop": 172.5,
+        "lastBottom": 236.5,
+        "viewTop": 152.5,
+        "viewBottom": 239
+      }
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "expressions",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "logs",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "dialogue",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "settings",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "dialogue-active",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "watch",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "watch",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "expressions-bottom",
+      "body": 1536,
+      "scroll": {
+        "client": 330,
+        "scroll": 788,
+        "bottom": 806.2000122070312,
+        "panelBottom": 839.2000122070312,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 12
+      },
+      "end": {
+        "top": 457.6000061035156,
+        "lastTop": 711.6625366210938,
+        "lastBottom": 803.3125381469727,
+        "viewTop": 475.7124938964844,
+        "viewBottom": 806.2000122070312
+      }
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "expressions",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "logs",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "dialogue",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "settings",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "dialogue-active",
+      "body": 1536
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "watch",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "watch",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "expressions-bottom",
+      "body": 1280,
+      "scroll": {
+        "client": 220,
+        "scroll": 786,
+        "bottom": 662.3333435058594,
+        "panelBottom": 695.3333435058594,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 10
+      },
+      "end": {
+        "top": 566.6666870117188,
+        "lastTop": 567.6771240234375,
+        "lastBottom": 659.0521240234375,
+        "viewTop": 442.71875,
+        "viewBottom": 662.3333435058594
+      }
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "expressions",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "logs",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "dialogue",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "settings",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "dialogue-active",
+      "body": 1280
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "watch",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "watch",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "expressions-bottom",
+      "body": 1097,
+      "scroll": {
+        "client": 184,
+        "scroll": 785,
+        "bottom": 569.5714721679688,
+        "panelBottom": 602.5714721679688,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 8
+      },
+      "end": {
+        "top": 601.1428833007812,
+        "lastTop": 475.107177734375,
+        "lastBottom": 566.2946853637695,
+        "viewTop": 385.9375305175781,
+        "viewBottom": 569.5714721679688
+      }
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "expressions",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "logs",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "dialogue",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "settings",
+      "body": 1097
+    },
+    {
+      "theme": "mantine",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "dialogue-active",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "watch",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "watch",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "expressions-bottom",
+      "body": 1480,
+      "scroll": {
+        "client": 430,
+        "scroll": 780,
+        "bottom": 896,
+        "panelBottom": 929,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 15
+      },
+      "end": {
+        "top": 350,
+        "lastTop": 803.796875,
+        "lastBottom": 893.796875,
+        "viewTop": 465.796875,
+        "viewBottom": 896
+      }
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "expressions",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "logs",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "dialogue",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "settings",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "zoom": 1,
+      "page": "dialogue-active",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "watch",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "watch",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "expressions-bottom",
+      "body": 1180,
+      "scroll": {
+        "client": 306,
+        "scroll": 780,
+        "bottom": 756,
+        "panelBottom": 789,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 15
+      },
+      "end": {
+        "top": 474,
+        "lastTop": 663.796875,
+        "lastBottom": 753.796875,
+        "viewTop": 449.796875,
+        "viewBottom": 756
+      }
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "expressions",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "logs",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "dialogue",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "composer",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "settings",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "zoom": 1,
+      "page": "dialogue-active",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "watch",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "watch",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "expressions-bottom",
+      "body": 800,
+      "scroll": {
+        "client": 171,
+        "scroll": 780,
+        "bottom": 590,
+        "panelBottom": 623,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 15
+      },
+      "end": {
+        "top": 609,
+        "lastTop": 497.984375,
+        "lastBottom": 587.984375,
+        "viewTop": 418.984375,
+        "viewBottom": 590
+      }
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "expressions",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "logs",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "dialogue",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "composer",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "settings",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "zoom": 1,
+      "page": "dialogue-active",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "watch",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "watch",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "expressions-bottom",
+      "body": 390,
+      "scroll": {
+        "client": 85,
+        "scroll": 572,
+        "bottom": 231,
+        "panelBottom": 237,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 15
+      },
+      "end": {
+        "top": 487,
+        "lastTop": 165,
+        "lastBottom": 229,
+        "viewTop": 146,
+        "viewBottom": 231
+      }
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "expressions",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "logs",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "dialogue",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "composer",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "settings",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "zoom": 1,
+      "page": "dialogue-active",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "watch",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "watch",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "expressions-bottom",
+      "body": 1536,
+      "scroll": {
+        "client": 342,
+        "scroll": 780,
+        "bottom": 800.2000122070312,
+        "panelBottom": 833.2000122070312,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 12
+      },
+      "end": {
+        "top": 437.6000061035156,
+        "lastTop": 708.6000366210938,
+        "lastBottom": 798.6000366210938,
+        "viewTop": 458.20001220703125,
+        "viewBottom": 800.2000122070312
+      }
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "expressions",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "logs",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "dialogue",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "composer",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "settings",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1536,
+      "height": 1080,
+      "zoom": 1.25,
+      "page": "dialogue-active",
+      "body": 1536
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "watch",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "watch",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "expressions-bottom",
+      "body": 1280,
+      "scroll": {
+        "client": 230,
+        "scroll": 780,
+        "bottom": 666.3333435058594,
+        "panelBottom": 699.3333740234375,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 10
+      },
+      "end": {
+        "top": 550,
+        "lastTop": 574.0521240234375,
+        "lastBottom": 664.0521240234375,
+        "viewTop": 436.0520935058594,
+        "viewBottom": 666.3333435058594
+      }
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "expressions",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "logs",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "dialogue",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "composer",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "settings",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1280,
+      "height": 1080,
+      "zoom": 1.5,
+      "page": "dialogue-active",
+      "body": 1280
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "watch",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "watch",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "expressions-bottom",
+      "body": 1097,
+      "scroll": {
+        "client": 151,
+        "scroll": 780,
+        "bottom": 563.5714569091797,
+        "panelBottom": 596.5714569091797,
+        "overflow": "scroll",
+        "width": "auto",
+        "gutter": "stable",
+        "reserved": 8
+      },
+      "end": {
+        "top": 628.5714111328125,
+        "lastTop": 471.732177734375,
+        "lastBottom": 561.7321853637695,
+        "viewTop": 412.3035888671875,
+        "viewBottom": 563.5714569091797
+      }
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "expressions",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "logs",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "dialogue",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "composer",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "settings",
+      "body": 1097
+    },
+    {
+      "theme": "classic",
+      "width": 1097,
+      "height": 1080,
+      "zoom": 1.75,
+      "page": "dialogue-active",
+      "body": 1097
+    }
+  ]
+}

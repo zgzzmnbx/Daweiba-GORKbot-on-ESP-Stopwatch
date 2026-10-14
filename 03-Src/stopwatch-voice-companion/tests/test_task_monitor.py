@@ -376,13 +376,15 @@ def test_pc_cue_starts_while_watch_notification_is_in_flight(monkeypatch, tmp_pa
         sound.setnchannels(1); sound.setsampwidth(2); sound.setframerate(16000)
         sound.writeframes(b'\0\0' * 160)
     monkeypatch.setattr(task_monitor_module, '_fixed_wav', lambda _: cached)
-    monkeypatch.setattr(task_monitor_module, '_pc_speech', lambda _path, _guard: (started.set(), 'played_by_os')[1])
+    monkeypatch.setattr(task_monitor_module, '_pc_dynamic_speech', lambda _audio, _guard: (started.set(), 'played_by_os')[1])
     class Robot:
         async def auto_notify(self, _expression, _message, _guard):
             assert await asyncio.to_thread(started.wait, 0.5)
             return 'accepted'
     class Control:
         robot = Robot()
+        routing={'tts':'cloud'}
+        async def fixed_speech(self,text,guard):return cached.read_bytes()
         def auto_available(self): return True
     async def run():
         monitor = TaskMonitor(None, Control())
@@ -511,7 +513,7 @@ def test_fixed_phrase_routes_to_watch_without_cloud_tts(monkeypatch, tmp_path):
     cached = tmp_path / 'fixed.wav'
     cached.write_bytes(b'fixed-wave')
     phrases = []
-    monkeypatch.setattr(task_monitor_module, '_fixed_wav', lambda phrase: (phrases.append(phrase), cached)[1])
+    monkeypatch.setattr(task_monitor_module, '_fixed_wav', lambda phrase: pytest.fail('legacy Cherry cache bypassed current voice'))
 
     class Robot:
         def __init__(self):
@@ -528,6 +530,11 @@ def test_fixed_phrase_routes_to_watch_without_cloud_tts(monkeypatch, tmp_path):
 
     class Control:
         robot = Robot()
+        routing={'tts':'cloud'}
+        async def fixed_speech(self,text,guard):
+            assert guard()
+            phrases.append(text)
+            return cached.read_bytes()
 
         def auto_available(self):
             return True

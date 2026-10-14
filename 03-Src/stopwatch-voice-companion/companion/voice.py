@@ -1,5 +1,6 @@
 """HTTP-only adapter: never reads voice engine files, environment or keys."""
 import io
+import re
 import uuid
 import wave
 
@@ -31,6 +32,7 @@ class VoiceClient:
     def __init__(self, base_url, timeout=60, transport=None):
         self.http = httpx.AsyncClient(base_url=base_url, timeout=timeout, transport=transport, trust_env=False)
         self.session = None
+        self.last_voice=None
 
     async def call(self, method, path, *, session=None, **kwargs):
         token = session if session is not None else self.session
@@ -91,7 +93,18 @@ class VoiceClient:
         response = await self.call("POST", "/v1/tts/synthesize", json=payload)
         if response.headers.get("content-type", "").split(";")[0] != "audio/wav":
             raise VoiceError(502, "AUDIO_INVALID", "语音服务没有返回完整 WAV")
-        return check_wav(response.content)
+        audio=check_wav(response.content)
+        mode=response.headers.get('X-Voice-Mode','')
+        rendered=response.headers.get('X-Voice-Id','')
+        rendered=rendered if re.fullmatch(r'[A-Za-z0-9_-]{1,40}',rendered) else ''
+        provider=response.headers.get('X-Provider','')
+        provider=provider if re.fullmatch(r'[A-Za-z0-9_-]{1,80}',provider) else ''
+        requested=str(payload['speaker_id']) if mode=='local' else payload.get('cloud_voice','')
+        self.last_voice={'mode':mode if mode in ('local','cloud') else 'unknown',
+            'requested':requested,'rendered':rendered,'provider':provider,'request_id':request_id}
+        if rendered and requested and rendered!=requested:
+            raise VoiceError(502,'VOICE_MISMATCH','合成音色与已选音色不一致，本轮未播放，请检查音色设置')
+        return audio
 
     async def status(self, request_id):
         return (await self.call("GET", f"/v1/requests/{request_id}")).json()

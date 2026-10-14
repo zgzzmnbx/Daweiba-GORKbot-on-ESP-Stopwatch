@@ -1,0 +1,4 @@
+# Preserve versioned diagnostic evidence and supplied license text verbatim.
+# Source code and maintained project documents retain Git whitespace checks.
+04-output/** -whitespace
+**/LICENSE.upstream -whitespace

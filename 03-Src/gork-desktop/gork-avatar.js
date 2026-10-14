@@ -41,6 +41,7 @@
     function draw(now,animate=true) {
       if(stopped) return;
       let seq=seqs[name],total=seq.steps.reduce((n,s)=>n+s.transitionMs+s.holdMs,0);
+      if(mode==='once'&&now-start>=total&&options.onIdle){options.onIdle();return;}
       if(mode==='once'&&now-start>=total){previous=displayed;name='idle';mode='loop';start=now;seq=seqs.idle;total=seq.steps.reduce((n,s)=>n+s.transitionMs+s.holdMs,0);}
       let t=(now-start)%total,from=now-start>=total?poses[seq.steps.at(-1).expressionId]:previous;
       for(const step of seq.steps) {

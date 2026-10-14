@@ -1,0 +1,29 @@
+{
+  "result": "PASS",
+  "version": "0.19.4-dev",
+  "values": {
+    "x": 120,
+    "y": -60,
+    "scale": 1.8,
+    "penScale": 2.5,
+    "strokeWidth": 9
+  },
+  "restored": {
+    "x": 120,
+    "y": -60,
+    "scale": 1.8,
+    "penScale": 2.5,
+    "strokeWidth": 9,
+    "penStyle": "quill"
+  },
+  "desktopPixelsChanged": true,
+  "defaultConfigUnchanged": true,
+  "watchValues": [
+    120,
+    -60,
+    1.8,
+    2.5,
+    9
+  ],
+  "consoleErrors": []
+}

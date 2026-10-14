@@ -1,0 +1,9 @@
+{
+  "available": true,
+  "version": "0.20.7-dev",
+  "pid": 19768,
+  "ai_config_available": true,
+  "key_saved": true,
+  "model": "deepseek-flash",
+  "ai_config_http_status": 200
+}

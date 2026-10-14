@@ -1,0 +1,70 @@
+[
+  {
+    "route": "isolated_production_ASGI",
+    "elapsed": 2.95,
+    "attempts": 2,
+    "value": {
+      "status": "available",
+      "buckets": {
+        "codex": {
+          "name": "codex",
+          "windows": [
+            {
+              "name": "7 天（10080 分钟）",
+              "duration_minutes": 10080,
+              "remaining_percent": 57,
+              "resets_at": 1792478833
+            }
+          ]
+        }
+      },
+      "sampled_at": "2026-10-14T02:32:45.900308+00:00",
+      "stale": false,
+      "source": "codex_official",
+      "scope": "当前 Codex CLI 登录账号",
+      "bucket_id": ""
+    }
+  },
+  {
+    "route": "production_RPC",
+    "elapsed": 3.14,
+    "attempts": 2,
+    "value": {
+      "status": "available",
+      "buckets": {
+        "codex": {
+          "name": "codex",
+          "windows": [
+            {
+              "name": "7 天（10080 分钟）",
+              "duration_minutes": 10080,
+              "remaining_percent": 57,
+              "resets_at": 1792478833
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "route": "production_RPC",
+    "elapsed": 1.54,
+    "attempts": 1,
+    "value": {
+      "status": "available",
+      "buckets": {
+        "codex": {
+          "name": "codex",
+          "windows": [
+            {
+              "name": "7 天（10080 分钟）",
+              "duration_minutes": 10080,
+              "remaining_percent": 57,
+              "resets_at": 1792478833
+            }
+          ]
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,223 @@
+{
+  "result": "PASS",
+  "fixture": true,
+  "physicalOutput": false,
+  "results": [
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 1480,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 1480,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 1480,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 1180,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 1180,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 1180,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 800,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 800,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 800,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "state": "legacy",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "state": "overview",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "state": "editor",
+      "scroll": true
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "state": "legacy",
+      "scroll": true
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "result": "PASS",
+  "scope": "CC Switch v3.20.3 / Codex / local day / all providers",
+  "date": "2026-10-14",
+  "request_count": 98,
+  "real_total_tokens": 19291147,
+  "cached_tokens": 18398080,
+  "method": "read-only production adapter compared with independent CC Switch summary arithmetic"
+}

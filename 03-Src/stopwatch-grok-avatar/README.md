@@ -1,5 +1,95 @@
 # KK — M5Stack StopWatch Avatar
 
+## 2026-10-05 Watch v0.11.10-dev 千问连接播报候选，待当次烧录授权
+
+按用户本轮要求实际用北京DashScope qwen3-tts-flash/Ethan生成固定“Wi-Fi 已连接。”“蓝牙已连接。”各一次，保存原16k单声道WAV、来源参数及增强PCM头文件（1.600/1.120秒），无每次重连云等待。Wi-Fi获得非零IP/可信BLE连接稳定300ms各播一次，双链串播；不依赖Gork启动，不据此宣称当前选用传输通道。录音准备/录音/音频任务优先，回答PCM/Opus和短音可抢占提示，候选最多等待10秒，失联/静音/取消清旧提示，本地提示不发id=0 BLE终端事件。保留六内置短音/GATT/用户参数及v0.11.9录音开头保护。
+
+生产main集成+SoundControl C++和WAV逐样本、生产头像/录音含回答抢占回归通过，35音频/短音/GATT通过，锁定构建SUCCESS（RAM118568、程序2321973、app2322336bytes）。实际当前应用最后写入并独立验证v0.11.9，v0.11.10未烧录，待当次新镜像授权；实机可闻/抢占和首字确认仍需用户，性能/长稳仍延期。PC源码v0.20.25/正式最近v0.20.24不变，本轮不重启正式Gork、不改网络或许可、不提交推送。见04-output/v0.11.10/千问连接播报实施与验收-【codex】.md。以下为历史快照。
+
+## 2026-10-05 Watch v0.11.9-dev 已授权烧录并独立校验，正常启动/首字待确认
+
+用户本次回复“授权”后，于2026-10-05T20:14:04+08:00重新枚举COM5并核对唯一USB序列/物理MAC、ESP32-S3/PSRAM8MB/Flash16MB、app0 0x10000/0x640000及OTA有效序列1。旧v0.11.7独立verify_flash通过；仅写2234400bytes新v0.11.9 app，写入Hash及另进程verify_flash均通过，执行hard reset。热点、蓝牙绑定、设置与其他分区保留；包含v0.11.8 BLE自定义回执修复。
+
+已写入校验不当作正常启动/实屏/首字录入通过，须用户核对Settings v0.11.9-dev并在红色REC出现后立即说完整短句；500ms启动采集保留后才亮REC，总10秒含准备期。性能/长稳仍延期。PC源码v0.20.25-dev，正式最近读取v0.20.24-dev、云端识别/合成已应用、Ethan；未重启Gork或由助手调用云。见04-output/v0.11.9/烧录与校验记录-【codex】.md。以下为历史快照。
+
+## 2026-10-05 PC v0.20.25-dev / Watch v0.11.9-dev候选：默认云端与录音开头保护
+
+Gork语音识别/合成默认云端，一次迁移旧本地路由偏好，以后手动选择、既有音色及独立上传撤销保留；默认设置不录音/不调用云。正式当次0.20.24-dev已确认cloud/cloud、Ethan，未刷新或重启用户窗口；新默认源码下次加载，版本显示正常重开后更新。
+
+Watch旧REC在异步录音请求入队后立即显示，且单块20ms采完再排队存在采集空档风险。v0.11.9改为两块提前入队、按完成槽数计数、独立连续offset，保留500ms启动采集前缀后才亮REC/发送RECORDING；结束排好的最多40ms尾部后停，取消立即停。500ms是基于本次“前半秒漏录”症状的保护值，未测定硬件启动时长；总10秒含准备期，REC后约9.5秒。包含v0.11.8 BLE自定义回执修复，原版待机/用户参数/热点和绑定保留。
+
+94前端、24音频协议/GATT及生产C++头像/录音回归通过，生成一致性及锁定构建成功（RAM118528、程序2234029、app2234400bytes）。新v0.11.9未烧录、待当次授权，实际最后已确认v0.11.7；首字录入改善须实机确认，性能/长稳仍延期。README/AGENTS/计划/CHANGELOG更新；见04-output/v0.20.25/默认云端与录音开头保护验收-【codex】.md。以下为历史快照。
+
+## 2026-10-05 Watch v0.11.8-dev 回执修复候选（待本次烧录授权）
+
+Windows服务缓存已定向重配恢复；用户确认BLE短按红色REC和直接Watch朗读可用。按键问答在“我的书写”阶段断开，定位为固件返回中文显示名而PC要求ASCII精确token回执。v0.11.8新增协议名称并用对应大写token回复，保留中文名称和全部动画参数。生产C++回归、14项协议/GATT检查、锁定构建通过，app2234080字节；实际Watch仍v0.11.7，未烧录。PC正式及源码v0.20.17不变；新镜像仅在获得当次授权后写app0并独立校验，保留热点/绑定。性能及长稳仍按用户要求延期。见04-output/v0.11.8/自定义表情蓝牙回执修复验收-【codex】.md。以下为历史检查记录。
+
+## 2026-10-04 用户确认与本轮验收范围调整
+
+用户针对“最新固件v0.11.7写入校验已通过，录音提示、双端书写和实际听感仍缺完整确认”回复“已经完成”（原消息“一斤完成”）。这三项更新为用户实机确认完成，不再重复列为缺失确认；未提供新的分段延迟、帧率或量化对照数据，不推导为性能验收通过。
+
+用户明确“真机性能与稳定性先不测了”：T12/T13的性能对照、批量对话/故障恢复、8小时长稳、资源循环、电池对照及回退验证延期，不执行、不标PASS，也不再当作本轮必须继续跑的工作。原完整验收标准保留用于以后恢复。
+
+已核对v0.11.7源码，Settings → Network已有三档策略：Auto WiFi first / BLE only / WiFi only。点第一行轮换到BLE only会保存策略、关闭Wi-Fi并停止相关网络入口，热点和蓝牙绑定不清除；选择Auto WiFi first恢复热点尝试。若Bluetooth的Control为OFF，用户须先点BLE ON。首次应用保存约延迟300ms且避开音频忙，重启后恢复策略。菜单功能已存在，本轮不改代码、不构建或再烧录。
+
+“选择蓝牙模式”与“Windows完整服务发现/旧通信已恢复”分开记录：菜单路径有源码依据，旧电脑蓝牙发现异常未因本次记录自动关闭，基础通信仍需实际选择后核对。完整边合成/边传/边播尚未实现，保留PRD36后续路线；不因用户实机确认推导为流式完成。PC当前源码版本保持v0.20.17-dev，正式运行版本另行读取。本轮仅更新记录，不改网络、服务、绑定或设备。
+
+见04-output/v0.11.7/用户确认与连接模式说明-【codex】.md。以下为历史快照。
+
+## 2026-10-04 最新：Watch v0.11.7-dev 已授权烧录并独立校验，正常启动待确认
+
+用户本次“执行烧录”授权后，重新枚举唯一ESP USB设备COM5并核对物理MAC 28:84:85:44:6c:00、ESP32-S3/PSRAM8MB、Flash16MB；读取分区/OTA确认app0 0x10000/0x640000、有效序列1。独立verify_flash确认旧v0.11.6匹配；仅写2234144字节v0.11.7应用，工具写入校验及另进程独立verify_flash均通过，执行hard reset。热点、蓝牙绑定与设置分区未写入。记录时间2026-10-04 21:16:38 +08:00；详见04-output/v0.11.7/烧录与校验记录-【codex】.md。
+
+已请用户正常重启并核对Settings v0.11.7；校验不等于设备启动/实屏/录音/可闻验收。PC源码v0.20.12-dev，运行版以当次health为准，仍须原快捷方式正常重开加载布局/书写联动与默认按键预热；本次不重启电脑程序、无云请求。T12/T13、BLE备用、长稳和提速实测保留。以下为历史快照。
+
+## 2026-10-04 当前：PC v0.20.11-dev 源码 / Watch v0.11.7-dev 编译候选，待当次烧录授权
+
+按键对话首次默认开启；保存手动关闭选择。只在本窗口已有语音会话/控制权、已应用设置及原有上传许可齐全时请求启用，拒绝后不随每次轮询重试。启用只提前协商麦克风关闭的音频会话，新物理短按才允许 PRODUCT_ARM。缓存核对链路/boot/session及失败状态，手动关闭、取消和退出清理；首次按键保留空闲 HELLO，蓝键/准备时再按/中断旧播放仍取消。
+
+移除每轮后固定1秒等待，准备提示及红色REC切换立即进入绘制，不受同状态200毫秒刷新节流；REC仅麦克风真实启动显示。会话耗时补充录音准备、录音到电脑及传输与播放。202项Python（含24协议项）、78前端、生产C++头像/录音及预热/取消、7060局部刷新帧/400提示帧、生成一致性及锁定构建通过；无真实模型请求或当前候选设备验收。
+
+本轮只读现场核对正式8766为v0.20.10-dev、Wi-Fi已认证、按键对话启用且有真实录音上传进度；新PC源码尚需从托盘退出后用原快捷方式正常启动。Watch已写入v0.11.6，v0.11.7尚未写入、须当次授权。Opus现仅回答播放传输，录音回传仍PCM；完整边生成/边传/边播未实现，已列PRD36路线和验收。见04-output/v0.11.7/。README/AGENTS/当前计划/CHANGELOG和模块文档已更新；未提交/推送，原T12/T13、备用BLE、长稳及听感门禁保留。以下为历史快照。
+
+## 2026-10-04 当前：PC v0.20.10-dev / Watch v0.11.6-dev 已写入，实屏待验
+
+Watch 默认待机恢复原版：旧固件启动时启用了动效编辑器的四场景 idle，与桌面原版不同；本次启动和自定义单次播放结束均回到原版，保留眨眼、转头和交互。黄色 G2/A 改为短按开始录音、再按结束并发送，松开不结束；蓝色 G1/B 取消，A+B 进入设置，最长10秒和许可/断线/超时门禁保留。准备期间再次短按取消，诊断 Audio test 的按住/松开逻辑保留。
+
+当前库修订14的“我的加载1”“我的疑惑”“我的书写”已独立编入 Watch，保留名称和全部参数，电脑表情菜单可发到 Watch/两端，设备翻页也能选择。一次后回原版待机，循环可用待机结束；修改参数后需重新导出/编译/授权烧录，参数标识不匹配会拒绝，避免播放旧效果。同步固件书写扩展范围并加圆体裁剪，保留用户参数。
+
+170 Python、76前端、37桌面、生产C++头像/录音状态机、640几何帧和C++/JS姿态比较、7060局部刷新帧/400提示帧、生成一致性及锁定构建通过。用户本次“允许烧录”后重新枚举COM5、核对MAC/16MB/app0/OTA1、独立验证旧v0.11.5，仅写app0 0x10000并独立verify_flash通过，保留热点/绑定。设备最后已验运行仍v0.11.5；v0.11.6正常启动、原版待机实屏、三个表情和真实短按录音/问答/听感待用户确认。正式8766当前健康检查不可用，PC源码v0.20.10须原快捷方式正常启动。见04-output/v0.11.6/原版待机与短按录音及三个表情验收-【codex】.md。未提交/推送；Wi-Fi/BLE长稳门禁未完成。以下为历史快照。
+
+## 2026-10-04 当前：底部黑条修复 v0.11.5-dev 实屏通过；同热点Wi-Fi认证/心跳通过
+
+用户报告空闲文字已消失、底部黑条仍遮挡元素。定位到主循环每200毫秒仍对提示区执行黑色fillRect；源码已改为仅录音/音频忙时绘制提示，提示结束先失效并重绘完整当前画面一次，后续继续局部刷新。生产渲染/提示函数两尺寸7060帧与400提示帧回归通过，待机黑条写入为0，两次结束恢复逐像素一致；锁定构建通过。用户本次“烧录允许”后，已重新枚举COM5/核对MAC、Flash16MB、app0和OTA1，独立验证旧v0.11.4；仅写app0 0x10000，写入Hash及独立verify_flash通过。用户正常重启确认“版本正确，黑条消失”；USB运行握手证实v0.11.5-dev，热点配置保留，Wi-Fi认证成功。
+
+用户已更正本机热点密码，Watch获得IP 10.33.72.225；先前电脑在NETCORE-New/192.168.2.4；本次写入结束后已核对电脑Wi-Fi回到10.33.72.210/24，与Watch同热点子网，正式PC v0.20.1-dev 连续20秒5次状态采样均wifi_connected/设备authenticated为true、route=wifi、无错误，设备boot/session一致。已确认同热点基础认证/心跳互联；业务指令、BLE完整恢复、PTT/听感及T12/T13长稳仍未完成。以下现场段落为历史快照，以本段为当前状态。
+
+## 2026-10-04 最新：USB首次配网，Wi-Fi互联待现场完成
+
+PC源码 v0.20.1-dev；Watch v0.11.3-dev已按用户“允许烧录”仅写app0并独立校验通过，正常重启/实屏与USB配网待验。新增本机USB首次配网，默认Wi-Fi优先，热点密码只由用户在本机掩码框输入；电脑已连接vivo X200 Pro的2.4GHz热点。普通表情页底部空闲“Avatar audio ready”已隐藏，录音工作提示保留。Python158、控制台既有58和新增USB用例、桌面32、生产C++解析/分发和GATT范围回归通过，锁定构建通过。正式8766/8765当前未监听，须正常打开Gork加载新源码。Windows BLE完整恢复仍待修复；Wi-Fi互联/PTT/听感及T12/T13未验收。详见04-output/v0.20.1/USB首次配网与互联记录-【codex】.md。
+
+
+## v0.11.2-dev GATT upgrade compatibility (2026-10-04)
+
+Append the new network service after the existing expression/audio/sound services so bonded clients retain their old service handle ranges. Production registration/attach regression and locked build pass. The user authorized this candidate; only app0 was written and independently verified. User confirmed restart and v0.11.2 on screen. Old audio discovery recovered; full GATT discovery and provisioning remain pending. Existing bond/NVS and v0.11.1 render fix are preserved. See root `04-output/v0.11.2/`.
+
+## v0.11.1-dev render transition fix (2026-10-04, candidate)
+
+User confirmed v0.11.0-dev on the physical screen, then reported residual eye shapes. The v0.11.1-dev candidate clears the outgoing legacy renderer once before entering MotionDraw; steady animation keeps partial updates. Production refresh regression passes 7060 frames / 208 boundaries at 466 and 468 pixels, plus existing native geometry/pose checks. The user then authorized app0-only flashing; v0.11.1-dev was written and independently verified. The user confirmed normal restart, correct v0.11.1-dev, and no currently visible residual eyes. Full scene coverage, device FPS and soak acceptance remain pending. See root `04-output/v0.11.1/`.
+
+## v0.20.0 PC / v0.11.0 Watch candidate (2026-10-04)
+
+TLS-PSK network and delegated Watch PTT share the existing authenticated BLE/audio/Controller pipeline. The current app0 image was written and independently verified; device boot, BLE, provisioning, hearing and performance are still unverified. PC runtime is v0.20.0-dev. See root `04-output/v0.20.0/` for the protocol decision, evidence matrix and recovery procedure. Historical version notes below retain their original scope.
+
+
+## v0.10.0-dev motion candidate (source/build only, 2026-10-03)
+
+Four configurable scenes (idle/loading/writing/question) and four distinct pen shapes consume parameters generated from the same validated desktop v2 JSON. `tools/convert_gork_motion.py` extracts the pinned sphere/camera geometry and the current 466×466 screen body inset, then emits `src/motion_config.h` and its Watch JSON. All eye, pose, timing and prop fields remain present; no web JS runtime is used on the MCU.
+
+The encrypted command parser accepts `once loading`, `loop loading` (also writing/question), `motion complete`, `motion cancel`, `motion idle` and `legacy idle`, within the existing 20-byte limit. Legacy expressions and audio remain available. Configured idle is the candidate default; the desktop API currently blocks new Watch scenes because the physical device still runs v0.9.1-dev. This build does not implement live JSON transfer to Watch.
+
+PlatformIO compilation passes: static RAM 64,440/327,680 bytes (19.7%), Flash 1,727,829/6,553,600 bytes (26.4%). Actual host-compiled C++ passes 640 raster frames and JS pose comparison; host timing is not device FPS. No device was flashed or rebound. Screen, frame time, BLE coexistence/reconnect and fallback need separate hardware acceptance. See root `00-docs/00-PRD/32-v0.19.0-动效编辑器接入与Watch映射-【codex】.md` and `04-output/v0.19.0/`.
+
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 [![Build firmware](https://github.com/Trentct/m5stack-stopwatch-avatar/actions/workflows/build.yml/badge.svg)](https://github.com/Trentct/m5stack-stopwatch-avatar/actions/workflows/build.yml)

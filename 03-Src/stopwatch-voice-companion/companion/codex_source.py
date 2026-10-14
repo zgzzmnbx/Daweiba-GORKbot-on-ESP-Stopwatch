@@ -227,6 +227,24 @@ class QuotaRPC:
         self.process = None
 
     async def read(self, timeout=12):
+        deadline = time.monotonic() + timeout
+        for attempt in range(3):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise RuntimeError('rpc_timeout')
+            try:
+                return await asyncio.wait_for(self._read_once(remaining), remaining)
+            except asyncio.TimeoutError:
+                raise RuntimeError('rpc_timeout') from None
+            except RuntimeError as exc:
+                if str(exc) != 'rpc_network' or attempt == 2:
+                    raise
+                delay = .25 * (attempt + 1)
+                if deadline - time.monotonic() <= delay:
+                    raise RuntimeError('rpc_timeout') from None
+                await asyncio.sleep(delay)
+
+    async def _read_once(self, timeout):
         executable = shutil.which(self.executable)
         if not executable:
             raise RuntimeError('cli_missing')
@@ -257,7 +275,7 @@ class QuotaRPC:
                         if type(other) is int and 1 <= other <= 3 and len(pending) < 3:
                             pending[other] = obj
                 await send({'jsonrpc': '2.0', 'id': 1, 'method': 'initialize',
-                            'params': {'clientInfo': {'name': 'gork-quota-readonly', 'version': '0.18.1'}}})
+                            'params': {'clientInfo': {'name': 'gork-quota-readonly', 'version': '0.18.4'}}})
                 obj = await response(1)
                 if 'error' in obj: raise RuntimeError('rpc_initialize')
                 await send({'jsonrpc': '2.0', 'method': 'initialized'})
@@ -277,6 +295,12 @@ class QuotaRPC:
                 result = await response(3)
                 if 'error' in result:
                     code = result['error'].get('code') if isinstance(result['error'], dict) else None
+                    message = str(result['error'].get('message', '')).lower() if isinstance(result['error'], dict) else ''
+                    # Only known transport failures are retryable. Never echo provider text.
+                    if code == -32603 and any(text in message for text in (
+                            'error sending request', 'connection reset', 'connection refused',
+                            'connection closed', 'dns error', 'timed out')):
+                        raise RuntimeError('rpc_network')
                     raise RuntimeError(f'rpc_error_{code}')
                 return result.get('result', {})
             return await asyncio.wait_for(call(), timeout)
@@ -290,3 +314,53 @@ class QuotaRPC:
         if self.process and self.process.returncode is None:
             self.process.kill()
             await self.process.wait()
+
+
+class ThreadTitleRPC:
+    """Read only thread metadata; never request turns or use prompt previews as titles."""
+    def __init__(self, executable='codex'):
+        self.executable = executable
+
+    async def read(self, thread_id, timeout=5):
+        executable = shutil.which(self.executable)
+        if not executable:
+            return ''
+        kwargs = {}
+        if os.name == 'nt':
+            import subprocess
+            kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+        proc = await asyncio.create_subprocess_exec(
+            executable, 'app-server', '--listen', 'stdio://',
+            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL, **kwargs)
+        try:
+            async def call():
+                async def send(value):
+                    proc.stdin.write((json.dumps(value, separators=(',', ':')) + '\n').encode())
+                    await proc.stdin.drain()
+                async def response(request_id):
+                    while True:
+                        line = await proc.stdout.readline()
+                        if not line:
+                            return {}
+                        item = json.loads(line)
+                        if item.get('id') == request_id:
+                            return item
+                await send({'jsonrpc': '2.0', 'id': 1, 'method': 'initialize',
+                            'params': {'clientInfo': {'name': 'gork-title-readonly', 'version': '0.18.4'}}})
+                if 'error' in await response(1):
+                    return ''
+                await send({'jsonrpc': '2.0', 'method': 'initialized'})
+                await send({'jsonrpc': '2.0', 'id': 2, 'method': 'thread/read',
+                            'params': {'threadId': thread_id, 'includeTurns': False}})
+                result = (await response(2)).get('result') or {}
+                thread = result.get('thread') if isinstance(result, dict) else None
+                name = thread.get('name') if isinstance(thread, dict) else None
+                return name if isinstance(name, str) else ''
+            return await asyncio.wait_for(call(), timeout)
+        except (OSError, RuntimeError, ValueError, asyncio.TimeoutError):
+            return ''
+        finally:
+            if proc.returncode is None:
+                proc.kill()
+            await proc.wait()

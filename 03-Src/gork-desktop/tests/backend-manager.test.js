@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isOurBackend, stopOwnedBackend } = require('../backend-manager');
+const { isOurBackend, stopOwnedBackend, ensureBackend } = require('../backend-manager');
 
 test('backend identity requires app, instance and pid', () => {
   assert.equal(isOurBackend({ app: 'stopwatch-voice-companion', instance: 'abc', pid: 42 }), true);
@@ -21,4 +21,11 @@ test('owned Windows launcher stops the verified server pid', async () => {
   const child = { pid: 10, exitCode: 0, kill: () => assert.fail('wrapper already exited') };
   assert.equal(await stopOwnedBackend({ ownership: 'owned', process: child, serverPid: 11 }, (pid) => killed.push(pid)), true);
   assert.deepEqual(killed, [11]);
+});
+test('existing backend is reused only at the expected version; stale external server is never killed or replaced',async()=>{
+  const health={app:'stopwatch-voice-companion',instance:'fixture',pid:42,version:'0.20.3-dev'};
+  const options={baseUrl:'http://127.0.0.1:18876',fetchImpl:async()=>({ok:true,json:async()=>health}),spawnImpl:()=>assert.fail('must not spawn over external server')};
+  await assert.rejects(ensureBackend({...options,expectedVersion:'0.20.7-dev'}),error=>error.code==='GORK_BACKEND_VERSION');
+  const managed=await ensureBackend({...options,expectedVersion:health.version});
+  assert.equal(managed.ownership,'external');assert.equal(await stopOwnedBackend(managed,()=>assert.fail('external kill')),false);
 });

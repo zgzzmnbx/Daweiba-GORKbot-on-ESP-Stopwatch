@@ -3,26 +3,39 @@ import {Recorder, WavPlayer} from './audio-client.js';
 import {createDebugConsole} from './debug-console.js';
 import {createExpressionMenu} from './expression-menu.js';
 import {createAppearancePicker} from './appearance-picker.js';
+import {createExternalUI} from './external-ui.js';
+import {createWatchChat} from './watch-chat.js';
 
 const $ = id => document.getElementById(id);
 let debugStorage;
 try { debugStorage = window.localStorage; } catch {}
 const debugConsole = createDebugConsole(document, debugStorage, text => navigator.clipboard.writeText(text));
-const face = window.GorkAvatar?.mount($('gork-face'));
+const face = (window.GorkDesktopSceneAdapter || window.GorkAvatar)?.mount($('gork-face'));
 const characterFace = face;
 let manualPreview = false, manualPreviewUntil = 0, lastFaceState = '', renderedPage = '';
-let sentinelFace = 'idle';
-let sentinelEnabled = false;
-let expressionMenu = null, expressionPending = false;
+let sentinelFace = 'idle',answerMotion = null, externalPresentation = null, lastExternalRevision = null;
+let sentinelEnabled = false, externalProtocol = false;
+let expressionMenu = null, expressionPending = false, customExpressions = [];
 function shareAvatarScene(expression, mode = 'loop', startedAt = Date.now()) {
+  if (customExpressions.some(entry=>entry.id===expression)) { window.gorkDesktop?.playCustomExpression?.(expression,mode)?.catch(error=>message(error.message,true));return; }
   window.gorkDesktop?.setAvatarScene?.({expression, mode, startedAt})?.catch(() => {});
 }
 let appliedTts = '';
-let recordingPending = false, connectionPending = false, previewSerial = 0;
+let recordingPending = false, connectionPending = false, previewSerial = 0, voiceConnectionRevision = 0;
 for (const id of ['auto-read', 'expression-follow']) {
   try { $(id).checked = window.localStorage?.getItem('gork.' + id) !== 'false'; } catch { $(id).checked = true; }
 }
-$('tts').value = 'cloud';
+// One-time migration to the requested cloud defaults. Later manual selections
+// and independent upload revocations continue to survive reloads.
+$('asr').value = $('tts').value = 'cloud';
+let migrateCloudDefaults = true;
+try {
+  migrateCloudDefaults = window.localStorage?.getItem('gork.cloud-defaults-v1') !== 'true';
+  if (migrateCloudDefaults) {
+    for (const id of ['asr', 'tts']) window.localStorage?.setItem('gork.' + id, 'cloud');
+    window.localStorage?.setItem('gork.cloud-defaults-v1', 'true');
+  }
+} catch {}
 const consentIds = ['audio-consent','text-consent','answer-consent'];
 for (const id of consentIds) {
   let saved = null;
@@ -33,21 +46,24 @@ const epoch = new Epoch();
 let client = crypto.randomUUID(), connected = false, workspace = false, dirty = false, phase = 'idle';
 let turnReady = false;
 let context, playback, deadline;
-let previewContext, previewPlayback, robotConnected = false;
+let previewContext, previewPlayback, robotConnected = false, robotRoute = '';
 let watchSpeechSync = false;
+let answerSpeechContinuity=false;
 const previewPlayer = new WavPlayer();
 const recorder = new Recorder();
 let delayBusy = false, outputPending = false, composerWatchAudio = false, composerWatchProgress = '';
 let tick = false, polling = false, suggestedAddress = '';
-let capabilities = null, serviceStarting = false, startupVoiceTimer = null;
-const startupVoice = {enabled: true, done: false, active: false, attempts: 0, maxAttempts: 60};
+let healthPolling = false, watchDelegated = false, healthIdleTicks = 0;
+let capabilities = null, serviceStarting = false, voiceServiceOffline = false, startupVoiceTimer = null;
+let voiceHealthFailures = 0, voiceHealthState = '';
+const startupVoice = {enabled: true, paused: false, active: false, attempts: 0};
 let savedSpeech = {speaker_id:3, cloud_voice:'Cherry', speed:1.0};
 try {
   const saved = JSON.parse(window.localStorage?.getItem('gork.speech') || 'null');
   if (saved && typeof saved === 'object') savedSpeech = {...savedSpeech,...saved};
   for (const id of ['asr','tts']) {
     const value = window.localStorage?.getItem('gork.' + id);
-    if (['local','cloud'].includes(value)) $(id).value = value;
+    if (!migrateCloudDefaults && ['local','cloud'].includes(value)) $(id).value = value;
   }
 } catch {}
 if (!$('text-consent').checked) $('tts').value = 'local';
@@ -55,33 +71,45 @@ if (!$('audio-consent').checked) $('asr').value = 'local';
 $('voice-speed').value = String(savedSpeech.speed);
 const labels = {idle: '待机', listening: '正在聆听', processing: '处理中', speaking: '正在回读', ready: '文字已就绪', error: '请检查连接'};
 $('output-mode').value = 'pc';
-$('bubble-target').value = 'watch';
+$('bubble-target').value = 'both';
 
 function message(text, error = false) {
   $('message').textContent = text; $('message').className = 'message' + (error ? ' error' : '');
   // Raw failures may contain provider payloads. Keep them out of telemetry history.
   debugConsole.push('UI', error ? '操作失败；请查看工作区提示（原始错误不写入日志）' : text, error);
 }
-function addMessage(role, text) {
+const watchRows = new Map();
+const watchChat = createWatchChat(addMessage);
+function addMessage(role, text, metadata = {}) {
   if (!document.createElement) return;
+  const previous = metadata.id && watchRows.get(metadata.id);
+  if (previous) {
+    previous.content.textContent = text;
+    previous.label.textContent = `${role === 'user' ? '你' : 'Gork'} · ${metadata.source}${metadata.timing ? ' · '+metadata.timing : ''}`;
+    return;
+  }
   $('empty-chat')?.remove();
   const row = document.createElement('article'); row.className = 'chat-message ' + role;
-  const label = document.createElement('small'); label.textContent = role === 'user' ? '你' : 'Gork';
+  const label = document.createElement('small'); label.textContent = (role === 'user' ? '你' : 'Gork') +
+    (metadata.source ? ` · ${metadata.source}${metadata.timing ? ' · '+metadata.timing : ''}` : '');
   const content = document.createElement('div'); content.textContent = text;
   row.append(label, content);
   if (role === 'assistant') {
     const actions = document.createElement('div'); actions.className = 'actions compact';
     const read = document.createElement('button'); read.textContent = '朗读';
-    read.onclick = () => speak(false, text);
+    read.onclick = () => speak(false, content.textContent);
     const copy = document.createElement('button'); copy.textContent = '复制';
-    copy.onclick = async () => { try { await navigator.clipboard.writeText(text); message('已复制。'); } catch { message('无法访问剪贴板，请选择文字复制。', true); } };
+    copy.onclick = async () => { try { await navigator.clipboard.writeText(content.textContent); message('已复制。'); } catch { message('无法访问剪贴板，请选择文字复制。', true); } };
     actions.append(read, copy); row.append(actions);
   }
   $('chat-log').append(row); $('chat-log').scrollTop = $('chat-log').scrollHeight;
+  if (metadata.id) watchRows.set(metadata.id,{content,label,row});
 }
 function navigate() {
   if (!globalThis.location) return;
-  const page = ['dialogue', 'cost', 'codex', 'character', 'watch', 'settings', 'logs'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dialogue';
+  const page = ['dialogue', 'cost', 'external', 'codex', 'motion', 'character', 'watch', 'settings', 'logs'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dialogue';
+  const motionFrame = $('motion-editor-frame');
+  if (motionFrame) { if (page === 'motion' && !motionFrame.getAttribute('src')) motionFrame.src = '/static/motion/index.html'; else if (page !== 'motion' && motionFrame.getAttribute('src')) motionFrame.removeAttribute('src'); }
   if (location.hash !== `#${page}`) history.replaceState(null, '', `#${page}`);
   document.querySelectorAll?.('[data-page]').forEach(item => { item.hidden = item.dataset.page !== page; });
   document.querySelectorAll?.('[data-page-link]').forEach(item => {
@@ -96,19 +124,29 @@ function render(next = phase) {
   if (manualPreview && sentinelEnabled && Date.now() >= manualPreviewUntil) {
     manualPreview = false; lastFaceState = '';
   }
-  const faceState = $('expression-follow').checked ? (next === 'idle' ? sentinelFace : next) : 'idle';
-  if (!manualPreview && faceState !== lastFaceState) {
+  const automaticExternal = externalPresentation && !['listening','processing','speaking','generating'].includes(next) && !manualPreview && !answerMotion;
+  const faceState = automaticExternal ? externalPresentation.expression : $('expression-follow').checked ? (answerMotion?.id || (next === 'idle' ? sentinelFace : next)) : 'idle';
+  if ((!manualPreview || answerMotion) && (faceState !== lastFaceState || (automaticExternal && lastExternalRevision !== externalPresentation.revision))) {
     const startedAt = Date.now();
-    face?.set(faceState, {startedAt, force:true}); shareAvatarScene(faceState, 'loop', startedAt); lastFaceState = faceState;
+    if(automaticExternal){
+      lastExternalRevision=externalPresentation.revision;
+      if(externalPresentation.custom_motion)face?.playCustom?.(externalPresentation.custom_motion,{mode:externalPresentation.mode,startedAt});
+      else face?.set(faceState,{mode:externalPresentation.mode,startedAt,force:true});
+    }
+    else if(answerMotion&&faceState===answerMotion.id)face?.playCustom?.(answerMotion,{mode:'loop',startedAt});
+    else{face?.set(faceState, {startedAt, force:true}); shareAvatarScene(faceState, 'loop', startedAt);}
+    lastFaceState = faceState;
   }
   $('companion-phase').textContent = labels[phase] || '待机';
-  $('robot-voice-summary').textContent = connected ? labels[phase] : '未连接';
+  const voiceLabel = connectionPending ? '连接中' : connected ? labels[phase] :
+    startupVoice.enabled && !startupVoice.paused && (startupVoice.active || startupVoiceTimer !== null) ? '等待重连' : '未连接';
+  $('robot-voice-summary').textContent = voiceLabel;
   $('robot-device-summary').textContent = robotConnected ? '已连接' : '未连接';
   $('robot-route-summary').textContent = (appliedTts || $('tts').value) === 'cloud' ? '云端朗读' : '本地朗读';
   debugConsole.push('VOICE', `${connected ? '会话已连接' : '会话未连接'} · ${labels[phase] || '待机'} · ${$('robot-route-summary').textContent}`);
   $('quick-connect').textContent = connected ? '语音已连接' : '连接语音';
   $('quick-connect').disabled = connected || connectionPending;
-  $('phase').textContent = connected ? labels[phase] : '未连接';
+  $('phase').textContent = voiceLabel;
   const busy = ['listening', 'processing', 'speaking'].includes(phase);
   $('voice-preview').disabled = !connected || dirty || busy || delayBusy;
   $('voice-stop').disabled = !connected;
@@ -119,11 +157,11 @@ function render(next = phase) {
   const text = $('transcript').value.trim(), answerMode = $('interaction-mode').value === 'answer';
   const watchTarget = bubbleTarget !== 'desktop';
   const watchBytes = new TextEncoder().encode(text).length;
-  const bubbleTooLong = output === 'bubble' && !answerMode && watchTarget && (Array.from(text).length > 24 || watchBytes > 72);
+  const bubbleTooLong = output === 'bubble' && !answerMode && bubbleTarget==='watch' && (Array.from(text).length > 24 || watchBytes > 72);
   $('bubble-target-control').hidden = output !== 'bubble';
   $('speak').disabled = busy || delayBusy || outputPending || !text || bubbleTooLong ||
     (output === 'pc' && (!connected || !appliedTts)) ||
-    (output === 'bubble' && (!workspace || (watchTarget && !robotConnected) || (answerMode && !connected))) ||
+    (output === 'bubble' && (!workspace || (bubbleTarget==='watch' && !robotConnected) || (answerMode && !connected))) ||
     (output === 'watch-audio' && (!workspace || !robotConnected || !connected || !appliedTts || !watchSpeechSync));
   $('speak-label').textContent = output === 'bubble' ? `显示到${bubbleTarget === 'watch' ? ' Watch' : bubbleTarget === 'both' ? '两端' : '桌面'}` :
     output === 'watch-audio' ? 'Watch 朗读' : answerMode && !$('auto-read').checked ? '生成回答' : '电脑朗读';
@@ -136,6 +174,7 @@ function render(next = phase) {
       '音频传完后再显示文字并开始朗读；低电平语音自动增强，最长 10 秒') :
     !connected ? '请先连接语音，再通过电脑扬声器朗读' :
     answerMode ? '先取得 AI 回答，再按自动朗读设置决定是否播放' : '使用电脑扬声器朗读输入文字';
+  $('answer-status').hidden = !bubbleTooLong && !((output==='watch-audio'||(output==='bubble'&&bubbleTarget==='watch'))&&!robotConnected);
   $('transcript').readOnly = busy;
   $('connect').hidden = connected; $('release').hidden = !connected;
   $('scan').disabled = !workspace; $('apply').disabled = !connected;
@@ -146,11 +185,14 @@ function render(next = phase) {
   $('sound-volume').disabled = busy || !workspace || !robotConnected;
   $('delay-start').disabled = busy || delayBusy || !connected || !robotConnected;
   $('delay-cancel').disabled = !delayBusy;
-  $('count').textContent = output === 'bubble' && watchTarget && !answerMode ?
+  $('count').textContent = output === 'bubble' && bubbleTarget==='watch' && !answerMode ?
     `${Array.from($('transcript').value).length}/24字 · ${new TextEncoder().encode($('transcript').value).length}/72B` :
     `${Array.from($('transcript').value).length} / 300`;
-  $('global-voice').textContent = `语音：${connected ? labels[phase] : '未连接'}`;
-  $('global-watch').textContent = `Watch：${robotConnected ? '已连接' : '未连接'}`;
+  $('global-voice').textContent = `语音：${voiceLabel}`;
+  const watchLink = robotRoute === 'wifi' ? 'Wi-Fi ' : robotRoute === 'ble' ? '蓝牙' : '';
+  $('global-watch').textContent = `Watch：${robotConnected ? `${watchLink}已连接` : '未连接'}`;
+  $('global-voice').dataset.state = connected ? 'ready' : 'offline';
+  $('global-watch').dataset.state = robotConnected ? 'ready' : 'offline';
   $('global-operation').textContent = delayBusy ? '设备音频任务进行中' : labels[phase] || '待机';
   $('workspace-acquire').textContent = workspace ? '已取得控制权' : '取得控制权';
   $('character-play').disabled = !workspace || busy || delayBusy || expressionPending;
@@ -186,7 +228,8 @@ function stopPreview() {
 function failed(error, gen) {
   if (error.name === 'AbortError' || (gen !== undefined && !epoch.valid(gen))) return;
   recordingPending = false; localStop();
-  if (error.status === 401) { connected = false; epoch.next(); $('takeover').hidden = true; }
+  answerMotion=null;
+  if (error.status === 401) { connected = false; epoch.next(); $('takeover').hidden = true; scheduleStartupVoice(1000); }
   render('error'); message(error.message || '连接中断，请检查服务后重试。', true);
   if (connected && gen !== undefined && epoch.valid(gen)) state('error', gen).catch(() => {});
 }
@@ -195,38 +238,46 @@ function clearStartupVoiceTimer() {
   startupVoiceTimer = null;
 }
 function cancelStartupVoice() {
-  clearStartupVoiceTimer(); startupVoice.done = true;
+  clearStartupVoiceTimer(); startupVoice.paused = true;
 }
 function scheduleStartupVoice(delay = 0) {
-  if (!startupVoice.enabled || startupVoice.done || startupVoice.active || connected || connectionPending
-      || startupVoice.attempts >= startupVoice.maxAttempts || startupVoiceTimer !== null) return;
-  startupVoiceTimer = setTimeout(() => { startupVoiceTimer = null; autoConnectVoice(); }, delay);
+  if (!startupVoice.enabled || startupVoice.paused || startupVoice.active || connected || connectionPending
+      || startupVoiceTimer !== null) return;
+  startupVoiceTimer = setTimeout(() => { startupVoiceTimer = null; return autoConnectVoice(); }, delay);
+  render();
 }
 async function autoConnectVoice() {
-  if (!startupVoice.enabled || startupVoice.done || startupVoice.active || connected || connectionPending) return;
+  if (!startupVoice.enabled || startupVoice.paused || startupVoice.active || connected || connectionPending) return;
   startupVoice.active = true; startupVoice.attempts += 1;
   message(startupVoice.attempts === 1 ? '正在自动连接语音…' : '语音服务尚未就绪，正在重试自动连接…');
   let result;
-  try { result = await connect(false, {startup:true}); }
+  try {
+    // Only restart a configured service whose manager reports it has stopped.
+    if (voiceServiceOffline && !serviceStarting) {
+      serviceStarting = true;
+      try { await api('/voice-service/start','POST'); }
+      catch (error) { serviceStarting = false; throw error; }
+    }
+    result = await connect(false, {startup:true});
+  }
   catch (error) { result = {ok:false, error}; }
   finally { startupVoice.active = false; }
-  if (result?.ok || connected) { startupVoice.done = true; return; }
+  if (result?.ok) { startupVoice.attempts = 0; return; }
   const code = result?.error?.code;
   if (code === 'SESSION_BUSY' || code === 'WORKSPACE_BUSY') {
-    startupVoice.done = true;
+    cancelStartupVoice();
     message('已有语音会话正在使用，请点击“接管会话”。', true);
     return;
   }
-  if (startupVoice.attempts >= startupVoice.maxAttempts) {
-    startupVoice.done = true;
-    message('开机自动连接语音失败，请点击“连接语音”重试。', true);
+  if (['PROTOCOL_VERSION','VOICE_INVALID','CLOUD_UPLOAD_DENIED'].includes(code)) {
+    cancelStartupVoice();message('语音设置需要检查，请调整后点击“连接语音”。', true);
     return;
   }
-  scheduleStartupVoice(1000);
+  scheduleStartupVoice(Math.min(30000,1000*2**Math.min(startupVoice.attempts-1,5)));
 }
 async function stop() {
   turnReady = false;
-  recordingPending = false; localStop(); const gen = epoch.next(); render('idle'); message('已停止本地录音与播放，正在取消服务请求。');
+  recordingPending = false; localStop(); answerMotion=null; const gen = epoch.next(); render('idle'); message('已停止本地录音与播放，正在取消服务请求。');
   const deviceCancel = robotConnected ? api('/device/audio', 'DELETE').catch(() => {}) : Promise.resolve();
   if (connected) {
     try { await api('/stop', 'POST', {generation: gen}); if (epoch.valid(gen)) message('已停止。旧结果不会继续播放；已提交的云端请求可能仍产生费用。'); }
@@ -241,9 +292,12 @@ async function stopAll() {
   try { const result = await api('/desktop/stop', 'POST'); if (Number.isInteger(result.generation)) epoch.value = Math.max(epoch.value, result.generation); message('已停止电脑音频、在途语音与设备操作；设备停止回执以实际返回为准。'); }
   catch (error) { message(error.message, true); }
 }
-async function state(name, gen) { await api('/state', 'POST', {generation: gen, state: name}, {signal: epoch.abort.signal}); }
+async function state(name, gen) {
+  const result=await api('/state', 'POST', {generation: gen, state: name}, {signal: epoch.abort.signal});
+  if(epoch.valid(gen)&&'interaction_expression' in result){answerMotion=result.interaction_expression||null;if(answerMotion)manualPreview=false;}
+}
 async function begin() {
-  manualPreview = false; localStop(); const gen = epoch.next();
+  manualPreview = false; localStop(); answerMotion=null; const gen = epoch.next();
   await api('/begin', 'POST', {generation: gen}, {signal: epoch.abort.signal});
   if (!epoch.valid(gen)) throw new DOMException('旧操作', 'AbortError');
   turnReady = true;
@@ -296,10 +350,14 @@ async function speak(preview = false, explicitText = null) {
     let spoken = text;
     if (!preview && explicitText === null && $('interaction-mode').value === 'answer') {
       message('正在请求回答；内容仅发送给已配置的文字回答服务。');
-      const result = await api('/answer', 'POST', {generation: gen, text}, {signal: epoch.abort.signal});
+      const result = await api('/answer', 'POST', {generation: gen, text,
+        ...(answerSpeechContinuity?{speech_pending:$('auto-read').checked}:{})}, {signal: epoch.abort.signal});
       if (!epoch.valid(gen)) return;
+      if('interaction_expression' in result)answerMotion=result.interaction_expression||null;
       spoken = result.text; addMessage('assistant', spoken); render('processing');
       if (!$('auto-read').checked || Array.from(spoken).length > 300) {
+        await state('idle',gen);
+        if(!epoch.valid(gen))return;
         localStop(); render('ready');
         message(Array.from(spoken).length > 300 ? '回答已完整显示，超过 300 字未自动朗读；可复制片段后朗读。' : '回答已显示；自动朗读已关闭。');
         return;
@@ -313,7 +371,7 @@ async function speak(preview = false, explicitText = null) {
     playback = audio.createBufferSource(); playback.buffer = buffer; playback.connect(audio.destination);
     playback.onended = () => {
       if (!epoch.valid(gen)) return;
-      localStop(); render('ready'); message('回读完成。可以修改文字，或开始新一轮。');
+      localStop(); answerMotion=null; render('ready'); message('回读完成。可以修改文字，或开始新一轮。');
       const endGen = epoch.next();
       api('/stop', 'POST', {generation: endGen}).catch(error => failed(error, endGen));
     };
@@ -324,8 +382,8 @@ async function speak(preview = false, explicitText = null) {
 async function displayComposerText() {
   const original = $('transcript').value.trim(), target = $('bubble-target').value;
   const answerMode = $('interaction-mode').value === 'answer';
-  if (!original || !workspace || (target !== 'desktop' && !robotConnected) || (answerMode && !connected) || outputPending) return;
-  if (!answerMode && target !== 'desktop' && (Array.from(original).length > 24 || new TextEncoder().encode(original).length > 72)) {
+  if (!original || !workspace || (target === 'watch' && !robotConnected) || (answerMode && !connected) || outputPending) return;
+  if (!answerMode && target === 'watch' && (Array.from(original).length > 24 || new TextEncoder().encode(original).length > 72)) {
     message('Watch 文字最多 24 字、72 字节，请缩短后发送。', true); return;
   }
   outputPending = true; render(); addMessage('user', original);
@@ -339,7 +397,7 @@ async function displayComposerText() {
       if (!epoch.valid(gen)) return;
       addMessage('assistant', text);
     }
-    if (target !== 'desktop' && (Array.from(text).length > 24 || new TextEncoder().encode(text).length > 72)) {
+    if (target === 'watch' && (Array.from(text).length > 24 || new TextEncoder().encode(text).length > 72)) {
       message('文字已显示在会话中，但超过 Watch 的 24 字或 72 字节限制，未发送到任何小人；请缩短文字。', true); return;
     }
     const result = await api('/character/bubble', 'POST', {text, target}, {signal:epoch.abort.signal});
@@ -366,8 +424,12 @@ async function speakOnWatch() {
     let text = original;
     if (answerMode) {
       message('正在获取 AI 回答。');
-      text = (await api('/answer', 'POST', {generation:gen, text:original, watch_speech:true}, {signal:epoch.abort.signal})).text;
+      const answer=await api('/answer', 'POST', {generation:gen, text:original, watch_speech:true,
+        ...(answerSpeechContinuity?{speech_pending:true}:{})}, {signal:epoch.abort.signal});
+      text=answer.text;
       if (!epoch.valid(gen)) return;
+      if('interaction_expression' in answer)answerMotion=answer.interaction_expression||null;
+      render();
       addMessage('assistant', text);
     }
     if (!text || Array.from(text).length > 300) throw new Error('文字超过 300 字，已保留在会话中，未合成或发送到 Watch。');
@@ -380,6 +442,9 @@ async function speakOnWatch() {
     if (!epoch.valid(gen)) return;
     await waitAudio(job.job_id, gen, 'played');
     if (epoch.valid(gen)) {
+      await state('idle',gen);
+      if(!epoch.valid(gen))return;
+      answerMotion=null;
       render('ready');
       message(`Watch 报告播放完成${job.gain_db > 0 ? ` · 朗读增强 +${job.gain_db} dB` : ''}；实际听感请以设备为准。`);
     }
@@ -393,27 +458,56 @@ function submitComposer() {
   return speak();
 }
 async function refresh() {
+  if (healthPolling) return;
+  healthPolling = true;
   try {
     const data = await api('/health'); suggestedAddress = data.device_address;
+    const lastVoice=data.speech_output?.last;
+    if(lastVoice?.rendered)debugConsole.push('TTS',`${lastVoice.mode==='cloud'?'云端':'本地'}音色：${lastVoice.rendered}`,false,'voice');
+    answerMotion=data.interaction_expression||data.answer_expression||null;
+    if(answerMotion)manualPreview=false;
+    // These flags are set only after this window successfully acquires its session.
+    // Health is public capability/status data; it has no workspace ownership field.
+    const watchReady=connected&&workspace&&!dirty&&!connectionPending&&$('answer-consent').checked&&
+      ($('asr').value!=='cloud'||$('audio-consent').checked)&&($('tts').value!=='cloud'||$('text-consent').checked);
+    window.GorkNetworkUI?.update(data.robot?.network,data.watch_dialogue,api,data.answer,data.answer_setup,
+      {ready:watchReady,key:JSON.stringify([appliedTts,$('asr').value,data.answer?.model,data.answer_setup?.revision])});
+    watchChat.consume(data.watch_dialogue);
+    watchDelegated = data.watch_dialogue?.enabled === true;
+    if(data.watch_dialogue?.enabled && Number.isInteger(data.watch_dialogue.generation)) epoch.value=Math.max(epoch.value,data.watch_dialogue.generation);
     const runningVersion = data.version ? `v${data.version}` : '未知';
     $('desktop-version').textContent = runningVersion;
     $('header-version').textContent = runningVersion;
     watchSpeechSync = data.watch_speech_sync === true;
+    answerSpeechContinuity=data.answer_speech_continuity===true;
     startupVoice.enabled = data.auto_connect_voice !== false;
-    if (!startupVoice.enabled) { clearStartupVoiceTimer(); startupVoice.done = true; }
+    if (!startupVoice.enabled) clearStartupVoiceTimer();
     $('service-url').textContent = data.voice_url;
-    $('voice-status').textContent = data.voice_error ? '离线' : '在线';
-    $('engine-status').textContent = data.voice_error ? data.voice_error.message : `本地引擎：${data.voice.ready ? '已就绪' : '正在加载或尚未就绪'}；云端能力以服务配置为准。`;
     const service = data.voice_service || {};
-    debugConsole.push('SERVICE', data.voice_error ? '语音服务离线' : data.voice?.ready ? '语音服务就绪' : '语音模型加载中');
+    voiceHealthFailures = data.voice_error ? voiceHealthFailures + 1 : 0;
+    const errorCode = /^[A-Z][A-Z0-9_]{0,39}$/.test(data.voice_error?.code || '') ? data.voice_error.code : '检查失败';
+    const nextVoiceState = data.voice_error
+      ? voiceHealthFailures >= 2 ? 'unavailable' : voiceHealthState
+      : data.voice?.ready ? 'ready' : 'loading';
+    $('voice-status').textContent = data.voice_error
+      ? voiceHealthFailures >= 2 ? '暂不可用' : voiceHealthState === 'ready' ? '在线' : '检查中'
+      : '在线';
+    $('engine-status').textContent = data.voice_error ? data.voice_error.message : `本地引擎：${data.voice.ready ? '已就绪' : '正在加载或尚未就绪'}；云端能力以服务配置为准。`;
+    if (nextVoiceState && nextVoiceState !== voiceHealthState) {
+      debugConsole.push('SERVICE', nextVoiceState === 'unavailable' ? `语音健康检查连续失败（${errorCode}）`
+        : nextVoiceState === 'ready' ? '语音服务就绪' : '语音模型加载中');
+      voiceHealthState = nextVoiceState;
+    }
     serviceStarting = service.mode === 'starting';
+    voiceServiceOffline = Boolean(data.voice_error && service.configured && service.mode === 'offline');
     $('voice-lifecycle').textContent = serviceStarting ? '后台启动中…可留在此页面等待。' :
-      data.voice_error ? (service.error || '服务离线，可点击启动 / 重试。') :
+      data.voice_error ? (service.error || (service.owned ? '托管进程仍在运行，健康检查未通过。' : '服务暂不可用，可点击启动 / 重试。')) :
       service.owned ? '由 Gork 托管 · 退出控制台时关闭' : '复用已运行的服务 · 退出控制台不会关闭它';
     const voiceCatalogue = caps => JSON.stringify([caps?.tts?.speakers,caps?.cloud?.voices,caps?.cloud?.request_voice]);
     if (data.capabilities && voiceCatalogue(data.capabilities) !== voiceCatalogue(capabilities)) {
       capabilities = data.capabilities; fillVoices();
     }
+    externalProtocol = !!data.external_protocol; externalPresentation = data.external_presentation || null;
     paintRobot(data.robot);
     const answer = data.answer || {enabled:false, reason:'未配置回答服务；当前为跟读/朗读模式'};
     $('answer-option').disabled = !answer.enabled;
@@ -421,7 +515,7 @@ async function refresh() {
     if (!answer.enabled && $('interaction-mode').value === 'answer') $('interaction-mode').value = 'read';
     render();
     if (data.capabilities && data.capabilities.protocol_version !== 1) message('接口协议版本不兼容，请更新独立语音服务。', true);
-    if (startupVoice.enabled && !startupVoice.done && !connected && !connectionPending) {
+    if (startupVoice.enabled && !startupVoice.paused && !connected && !connectionPending) {
       const ready = !data.voice_error && data.voice && data.voice.ready !== false;
       scheduleStartupVoice(ready ? 0 : 1000);
     }
@@ -430,7 +524,7 @@ async function refresh() {
     $('header-version').textContent = '版本无法读取';
     $('voice-status').textContent = '工作台断开'; failed(error);
     scheduleStartupVoice(1000);
-  }
+  } finally { healthPolling = false; }
 }
 function fillVoices() {
   const cloud = $('tts').value === 'cloud';
@@ -459,11 +553,16 @@ function speechSettings() {
 }
 function paintRobot(robot) {
   robotConnected = Boolean(robot.connected);
-  debugConsole.push('BLE', robotConnected ? 'StopWatch 已连接' : 'StopWatch 未连接');
-  debugConsole.push('DEVICE', robot.error ? '设备操作异常；展开设备诊断查看' : robot.receipt ? '已收到设备回执（不代表实屏/发声验收）' : '等待设备回执', Boolean(robot.error));
-  $('robot-status').textContent = robot.connected ? '已连接' : '离线 · 语音仍可用';
-  $('receipt').textContent = robot.error || (robot.receipt ? `设备回执 ${robot.receipt}` : '未收到设备回执');
-  $('watch-diagnostics').textContent = robot.error || (robot.receipt ? `最近回执：${robot.receipt}` : '暂无设备回执。');
+  robotRoute = robotConnected ? robot.network?.route || '' : '';
+  const bleConnected = robot.network ? Boolean(robot.network.ble_connected) : robotConnected;
+  const operationError = robot.operation_error ?? robot.error;
+  const bleError = robot.ble_error || '';
+  debugConsole.push('DEVICE', robotConnected ? 'StopWatch 已连接' : 'StopWatch 未连接', false, 'connection');
+  debugConsole.push('DEVICE', operationError ? '设备操作异常；展开设备诊断查看' : robot.receipt ? '已收到设备回执（不代表实屏/发声验收）' : '等待设备回执', Boolean(operationError), 'operation');
+  debugConsole.push('BLE', bleError ? '蓝牙连接异常；展开设备诊断查看' : bleConnected ? '蓝牙已连接' : '蓝牙未连接', Boolean(bleError), 'connection');
+  $('robot-status').textContent = bleConnected ? '已连接' : '未连接';
+  $('receipt').textContent = operationError ? '最近设备操作未完成；详情见下方诊断。' : robot.receipt ? `最近设备回执：${robot.receipt}` : '尚无设备操作回执';
+  $('watch-diagnostics').textContent = [operationError && `设备操作：${operationError}`, bleError && `蓝牙连接：${bleError}`, robot.network?.error && `Wi-Fi：${robot.network.error}`].filter(Boolean).join('\n') || (robot.receipt ? `最近回执：${robot.receipt}` : '暂无设备回执。');
   $('unpair').disabled = !workspace || !robot.enabled;
   render();
 }
@@ -557,28 +656,39 @@ async function delayedAudio() {
 async function connect(replace = false, {startup = false} = {}) {
   if (connectionPending) return;
   if (replace && !confirm('接管会使已有语音会话失效。确认接管？')) return;
-  if (!startup) cancelStartupVoice();
+  if (!startup) { clearStartupVoiceTimer(); startupVoice.paused = false; startupVoice.attempts = 0; }
+  const revision = ++voiceConnectionRevision;
   connectionPending = true; localStop(); epoch.next(); $('connect').disabled = true; render();
   try {
-    await api('/session', 'POST', {replace}); epoch.value = 0; connected = true; workspace = true; dirty = true; appliedTts = ''; turnReady = false;
+    const session = await api('/session', 'POST', {replace});
+    if (revision !== voiceConnectionRevision) {
+      if (startupVoice.paused) await api('/voice/session','DELETE').catch(()=>{});
+      return {ok:false};
+    }
+    epoch.value = Number.isInteger(session.generation) ? session.generation : 0; connected = true; workspace = true; dirty = true; appliedTts = ''; turnReady = false;
     $('takeover').hidden = true;
-    await apply();
+    const applied = await apply();
+    if (!connected || dirty) { connected = false; return applied || {ok:false}; }
     $('record-hint').textContent = '准备好时，开始录音。';
-    return {ok:true};
+    return {ok:connected};
   } catch (error) {
-    if (error.code === 'SESSION_BUSY' || error.code === 'WORKSPACE_BUSY') $('takeover').hidden = false;
+    if (error.code === 'SESSION_BUSY' || error.code === 'WORKSPACE_BUSY') { $('takeover').hidden = false; cancelStartupVoice(); }
     if (!startup) failed(error);
     return {ok:false, error};
   }
-  finally { connectionPending = false; $('connect').disabled = false; render(); }
+  finally {
+    connectionPending = false; $('connect').disabled = false; render();
+    if (connected && !dirty) await refresh();
+    if (!connected && !startup) scheduleStartupVoice(1000);
+  }
 }
 async function apply(revoking = false) {
   const routing = {asr: $('asr').value, tts: $('tts').value, allow_audio_upload: $('audio-consent').checked, allow_text_upload: $('text-consent').checked};
-  if ((routing.asr === 'cloud' && !routing.allow_audio_upload) || (routing.tts === 'cloud' && !routing.allow_text_upload)) { message('请单独勾选所选云端路径的上传许可，或切回本地。', true); return; }
+  if ((routing.asr === 'cloud' && !routing.allow_audio_upload) || (routing.tts === 'cloud' && !routing.allow_text_upload)) { message('请单独勾选所选云端路径的上传许可，或切回本地。', true); return {ok:false,error:{code:'CLOUD_UPLOAD_DENIED'}}; }
   localStop(); const gen = epoch.next();
   try {
     const speech = speechSettings();
-    await api('/settings', 'PATCH', {generation: gen, routing, allow_answer_upload: $('answer-consent').checked, speech: revoking ? null : speech});
+    await api('/settings', 'PATCH', {generation: gen, routing, allow_answer_upload: $('answer-consent').checked, sound_target:$('output-mode').value==='watch-audio'?'watch':'pc', speech: revoking ? null : speech});
     if (!epoch.valid(gen)) return;
     if (!revoking) savedSpeech = {...speech, speed: routing.tts === 'cloud' ? savedSpeech.speed : speech.speed};
     try {
@@ -588,9 +698,12 @@ async function apply(revoking = false) {
     dirty = Boolean(revoking); appliedTts = routing.tts; render('idle'); $('settings-status').textContent = `${routing.asr === 'local' ? '本地' : '云端'} / ${routing.tts === 'local' ? '本地' : '云端'} · 已应用`;
     if (revoking) { $('settings-status').textContent = '上传许可已撤销 · 音色草稿仍需保存'; message('上传许可已撤销，相关路径已停止。'); }
     else message('设置已应用。新请求使用新路径，旧结果不会播放。');
-  } catch (error) { appliedTts = ''; failed(error, gen); }
+    refreshVoiceLibrary();
+    return {ok:true};
+  } catch (error) { appliedTts = ''; failed(error, gen); return {ok:false,error}; }
 }
 async function release() {
+  cancelStartupVoice();voiceConnectionRevision++;
   localStop(); epoch.next(); connected = false; render('idle');
   try { await api('/voice/session', 'DELETE'); message('已释放语音会话；角色和 StopWatch 控制权保留。'); } catch (error) { message(error.message, true); }
 }
@@ -633,6 +746,8 @@ function paintCodex(data) {
     $('codex-sound-target').value = data.sound_target;
     $('codex-threshold').value = data.threshold;
     $('codex-ring-mode').value = data.ring_mode;
+    $('codex-drop-step').value = data.drop_step ?? 2;
+    $('codex-drop-animation').checked = data.drop_animation !== false;
     codexLoaded = true;
   }
   if (!codexPending) $('codex-enable').checked = data.enabled;
@@ -683,7 +798,8 @@ async function applyCodex() {
       thread_id:$('codex-mode').value === 'specific' ? $('codex-thread').value : '',
       target:$('codex-target').value, sound:$('codex-sound').checked,
       sound_target:$('codex-sound-target').value, threshold:Number($('codex-threshold').value),
-      bucket_id:$('codex-bucket').value, ring_mode:$('codex-ring-mode').value};
+      bucket_id:$('codex-bucket').value, ring_mode:$('codex-ring-mode').value,
+      drop_step:Number($('codex-drop-step').value), drop_animation:$('codex-drop-animation').checked};
     let data;
     try { data = await api('/codex/sentinel', 'PUT', values); }
     catch (error) {
@@ -699,6 +815,16 @@ async function applyCodex() {
 }
 $('codex-enable').onchange = applyCodex;
 $('codex-apply').onclick = applyCodex;
+$('codex-drop-preview').onclick = async () => {
+  if (!window.gorkDesktop?.previewQuotaDrop) {
+    $('codex-status').textContent = '请在 Electron 桌面客户端中试运行小人动效。';
+    return;
+  }
+  try {
+    await window.gorkDesktop.previewQuotaDrop(Number($('codex-drop-step').value), $('codex-drop-animation').checked);
+    $('codex-status').textContent = '本机预览已开始；请查看桌面小人。';
+  } catch (error) { $('codex-status').textContent = `试运行失败：${error.message}`; }
+};
 $('codex-acquire').onclick = () => acquireWorkspace();
 $('codex-takeover').onclick = () => acquireWorkspace(true);
 $('codex-refresh').onclick = async () => {
@@ -716,6 +842,9 @@ function sentinelSpecificVisibility() {
 function paintSentinel(data) {
   sentinelEnabled = data.enabled === true;
   if (!sentinelLoaded) {
+    $('sentinel-source').value = data.source || 'legacy';
+    $('sentinel-source').disabled = !data.source;
+    $('sentinel-source-note').textContent = data.source ? `当前来源：${data.source === 'astra' ? '智算 Astra' : '原版造价智算'}。选择后应用设置，首次连接不补播历史任务。` : '当前后台尚未支持 Astra 来源，请从托盘退出并重开 Gork 控制台。';
     $('sentinel-mode').value = data.mode;
     $('sentinel-target').value = data.target;
     $('sentinel-sound').checked = data.sound;
@@ -765,20 +894,26 @@ async function applySentinel() {
     const mode = enabled ? $('sentinel-mode').value : 'auto';
     const task_id = mode === 'specific' ? ($('sentinel-task').value || sentinelSelectedTaskId) : '';
     if (enabled && mode === 'specific' && !task_id) throw new Error('请先选择要关注的任务。');
+    const source = $('sentinel-source').value || 'legacy';
     const result = await api('/cost/sentinel', 'PUT', {enabled, mode, task_id,
+      ...(!$('sentinel-source').disabled ? {source} : {}),
       target:$('sentinel-target').value, sound:$('sentinel-sound').checked,
       sound_kind:$('sentinel-sound-kind').value,
       sound_target:$('sentinel-sound-target').value});
     if (result.enabled && !wasEnabled) { manualPreview = false; lastFaceState = ''; }
     sentinelLoaded = false; paintSentinel(result);
-  } catch (error) { $('sentinel-status').textContent = error.message; await refreshSentinel(); }
+  } catch (error) { await refreshSentinel(); $('sentinel-status').textContent = `设置未保存：${error.message}`; }
   finally { sentinelPending = false; $('sentinel-apply').disabled = false; }
 }
 async function loadSentinelProjects(page = 1) {
   try {
     if (!workspace) await acquireWorkspace();
     if (!workspace) return;
-    const result = await api(`/cost/projects?page=${page}`);
+    const source = $('sentinel-source').value || 'legacy';
+    const version = ++sentinelListVersion;
+    const route = $('sentinel-source').disabled ? '/cost/projects' : '/cost/sentinel/projects';
+    const result = await api(`${route}?page=${page}&source=${source}`);
+    if (source !== $('sentinel-source').value || version !== sentinelListVersion) return;
     sentinelProjectPage = page; sentinelProjectTotal = result.total;
     $('sentinel-page').textContent = `第 ${page} 页 · 共 ${result.total} 项`;
     $('sentinel-project').replaceChildren(new Option('请选择项目', ''));
@@ -795,9 +930,22 @@ $('sentinel-project').onchange = async () => {
   $('sentinel-task').replaceChildren(new Option('请选择任务', ''));
   const id = $('sentinel-project').value; if (!id) return;
   try {
-    const result = await api(`/cost/projects/${encodeURIComponent(id)}`);
+    const source = $('sentinel-source').value || 'legacy';
+    const version = ++sentinelListVersion;
+    const route = $('sentinel-source').disabled ? '/cost/projects' : '/cost/sentinel/projects';
+    const result = await api(`${route}/${encodeURIComponent(id)}?source=${source}`);
+    if (source !== $('sentinel-source').value || id !== $('sentinel-project').value || version !== sentinelListVersion) return;
     for (const item of result.tasks) if (item.task_id) $('sentinel-task').add(new Option(item.task_name || item.task_id, item.task_id));
   } catch (error) { $('sentinel-status').textContent = error.message; }
+};
+let sentinelListVersion = 0;
+$('sentinel-source').onchange = () => {
+  sentinelListVersion++; sentinelSelectedTaskId = ''; sentinelProjectPage = 1; sentinelProjectTotal = 0;
+  $('sentinel-project').replaceChildren(new Option('请选择项目', ''));
+  $('sentinel-task').replaceChildren(new Option('请选择任务', ''));
+  $('sentinel-page').textContent = '第 1 页';
+  $('sentinel-source-note').textContent = '来源尚未应用。选择跟随方式与输出位置，再点击应用设置。';
+  if ($('sentinel-mode').value === 'specific') loadSentinelProjects(1);
 };
 $('sentinel-task').onchange = () => { sentinelSelectedTaskId = $('sentinel-task').value; };
 $('sentinel-mode').onchange = () => { sentinelSpecificVisibility(); if ($('sentinel-mode').value === 'specific') loadSentinelProjects(1); };
@@ -807,6 +955,7 @@ $('sentinel-apply').onclick = applySentinel;
 let voiceLibraryBusy = false;
 function paintVoiceLibrary(data) {
   $('voice-library-status').textContent = `${data.voice_label} · ${data.model} · 已缓存 ${data.ready}/${data.total} 条`;
+  if(data.warmup?.state==='generating')$('voice-library-status').textContent+=' · 正在预生成';
   const holder = $('voice-library-items'); holder.replaceChildren();
   for (const item of data.items) {
     const row = document.createElement('div'); row.className = 'voice-library-row';
@@ -827,7 +976,7 @@ function paintVoiceLibrary(data) {
     update.onclick = () => generateVoiceLibrary(item.id, true);
     row.append(label, state, preview, update); holder.append(row);
   }
-  $('voice-library-generate').disabled = voiceLibraryBusy || data.ready === data.total;
+  $('voice-library-generate').disabled = voiceLibraryBusy || data.warmup?.state==='generating' || data.ready === data.total;
 }
 async function refreshVoiceLibrary() {
   try { paintVoiceLibrary(await api('/character/voice-library')); }
@@ -837,13 +986,13 @@ async function generateVoiceLibrary(itemId = '', force = false) {
   if (voiceLibraryBusy) return;
   let failure = '';
   voiceLibraryBusy = true; $('voice-library-generate').disabled = true;
-  $('voice-library-status').textContent = '正在用芊悦生成并保存短句，请稍候…';
+  $('voice-library-status').textContent = '正在用当前音色生成并保存固定短句…';
   try {
     if (!connected) throw new Error('请先在设置页连接语音会话。');
     if (!workspace) throw new Error('请先取得工作台控制权。');
     const result = await api('/character/voice-library/generate', 'POST', {item_id:itemId, force});
     paintVoiceLibrary(result.library);
-    message(`已保存 ${result.generated.length} 条芊悦播报语音。`);
+    message(`已保存 ${result.generated.length} 条当前音色的固定播报。`);
   } catch (error) { failure = error.message; message(error.message, true); }
   finally { voiceLibraryBusy = false; await refreshVoiceLibrary(); if (failure) $('voice-library-status').textContent += ` · 生成中断：${failure}`; }
 }
@@ -929,11 +1078,13 @@ $('cost-transfer').onclick = () => {
 };
 function characterOptions() {
   const names = [...new Set([...(window.GorkCatalog?.sequences || []).map(item => item.id), 'happy-work'])];
-  const select = $('character-expression'); select.replaceChildren();
+  const select = $('character-expression'), previous=select.value; select.replaceChildren();
   const chinese = {waking:'醒来',searching:'搜索',working:'工作',suspicious:'怀疑',idle:'待机',listening:'聆听',thinking:'思考',happy:'开心',excited:'兴奋',surprised:'惊讶',confused:'疑惑',angry:'生气',sleeping:'睡觉',drowsy:'困倦',love:'喜爱',wink:'眨眼',curious:'好奇',focused:'专注',bored:'无聊',tired:'疲惫',proud:'得意',shy:'害羞',sad:'难过',laughing:'大笑',scared:'害怕',playful:'俏皮',celebrate:'庆祝','happy-work':'开心工作（仅 StopWatch）'};
   for (const name of names) select.add(new Option((chinese[name] || name) + ' · ' + name, name));
-  if (names.includes('idle')) select.value = 'idle';
+  for(const entry of customExpressions)select.add(new Option(entry.name+' · 自定义',entry.id));
+  select.value=names.includes(previous)||customExpressions.some(entry=>entry.id===previous)?previous:'idle';
 }
+async function refreshCustomExpressions(){try{const r=await fetch('/api/motion/expressions');if(!r.ok)return;const library=await r.json();if(!Array.isArray(library.entries))return;customExpressions=library.entries;face?.setLibrary?.(customExpressions);expressionMenu?.setCustomEntries(customExpressions);characterOptions();}catch{}}
 function characterTarget() { return $('character-target').value; }
 function characterResult(value) {
   const desktop = value.desktop?.requested ? (value.desktop.accepted ? '桌面：已接收' : '桌面：未接收') : '桌面：未发送';
@@ -957,7 +1108,8 @@ async function quickExpression(expression, target, mode) {
     if (target !== 'watch' && result.desktop?.accepted) {
       const startedAt = Date.now(); manualPreview = true; manualPreviewUntil = startedAt + 15000;
       characterFace?.set(expression,{mode,startedAt,force:true});
-      shareAvatarScene(expression,mode,startedAt);
+      if(customExpressions.some(entry=>entry.id===expression)&&window.gorkDesktop?.playCustomExpression)await window.gorkDesktop.playCustomExpression(expression,mode);
+      else shareAvatarScene(expression,mode,startedAt);
     }
     return characterResult(result);
   } finally { expressionPending=false; render(); }
@@ -988,10 +1140,10 @@ async function clearBubble() {
 }
 async function heartbeat() {
     if (!connected || polling) return;
-    const tab = client;
+    const tab = client, revision = voiceConnectionRevision;
   polling = true;
-  try { const data = await api('/session', 'GET', undefined, {signal: AbortSignal.timeout(4000)}); if (client === tab) paintRobot(data.robot); }
-  catch (error) { if (client === tab) { localStop(); epoch.next(); connected = false; render('idle'); message(`会话连接已失效，已停止本地播放。${error.message}`, true); } }
+  try { const data = await api('/session', 'GET', undefined, {signal: AbortSignal.timeout(4000)}); if (client === tab && revision === voiceConnectionRevision) paintRobot(data.robot); }
+  catch (error) { if (client === tab && revision === voiceConnectionRevision) { localStop(); epoch.next(); connected = false; turnReady = false; render('idle'); message('语音连接中断，已停止本地播放；正在等待自动恢复。', true); scheduleStartupVoice(1000); } }
   finally { polling = false; }
 }
 async function workspaceHeartbeat() {
@@ -1031,9 +1183,15 @@ $('connect').onclick = () => connect(); $('takeover').onclick = () => connect(tr
 $('voice-release').onclick = release; $('workspace-acquire').onclick = () => acquireWorkspace();
 $('apply').onclick = () => apply(); $('refresh').onclick = refresh; $('transcript').oninput = () => render();
 $('transcript').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); submitComposer(); } });
-$('output-mode').onchange = () => render(); $('bubble-target').onchange = () => render();
+$('output-mode').onchange = () => { render(); if(workspace && externalProtocol)api('/external/output','PATCH',{target:$('output-mode').value==='watch-audio'?'watch':'pc'}).catch(error=>message(error.message,true)); }; $('bubble-target').onchange = () => render();
 $('interaction-mode').onchange = () => { render(); message($('interaction-mode').value === 'answer' ? '先获取 AI 回答，再按所选方式输出；需已应用独立许可。' : '直接输出原文，不调用回答服务。'); };
-$('clear-answer').onclick = async () => { try { if (connected) await api('/answer/history', 'DELETE'); $('chat-log').replaceChildren(); message('会话记录与回答上下文已清空。'); } catch (error) { message(error.message, true); } };
+$('clear-answer').onclick = async () => { try {
+  if (!connected) { message('请先连接语音会话，再开始新会话。',true); return; }
+  const cleared = await api('/answer/history', 'DELETE');
+  watchChat.clear(cleared);watchRows.clear();
+  if (Number.isInteger(cleared.generation)) epoch.value=Math.max(epoch.value,cleared.generation);
+  $('chat-log').replaceChildren();message('会话记录与回答上下文已清空。');
+} catch (error) { message(error.message, true); } };
 $('sound-preview').onclick = previewSound;
 $('sound-play').onclick = () => deviceSound('POST', '/device/sound', {sound_id: Number($('sound-select').value)});
 $('sound-stop').onclick = () => { stopPreview(); if (workspace && robotConnected) return deviceSound('DELETE', '/device/sound'); };
@@ -1059,22 +1217,25 @@ $('scan').onclick = async () => {
 };
 $('pair').onclick = async () => { $('pair').disabled = true; try { paintRobot(await api('/device', 'POST', {address: $('device').value})); message('蓝牙已连接；回执不等于实屏效果，请看设备。'); } catch (error) { message(error.message, true); } finally { $('pair').disabled = false; } };
 $('unpair').onclick = async () => { try { paintRobot(await api('/device', 'DELETE')); } catch (error) { message(error.message, true); } };
-window.addEventListener('hashchange', navigate);
+window.addEventListener('hashchange',()=>{navigate();if(location.hash==='#external'&&workspace)externalUI.refresh();});
 window.addEventListener('blur', () => { if (phase === 'listening' || recordingPending) stop(); });
 $('character-acquire').onclick = () => acquireWorkspace();
 $('workspace-takeover').onclick = () => acquireWorkspace(true);
-window.addEventListener('pagehide', () => { expressionMenu?.dispose(); cancelStartupVoice(); stopPreview(); localStop(); epoch.next(); if (workspace) api('/workspace', 'DELETE', undefined, {keepalive: true}).catch(() => {}); });
+window.addEventListener('pagehide', () => { expressionMenu?.dispose(); cancelStartupVoice(); voiceConnectionRevision++; stopPreview(); localStop(); epoch.next(); if (workspace) api('/workspace', 'DELETE', undefined, {keepalive: true}).catch(() => {}); });
 if (window.gorkDesktop?.onStopAll) window.gorkDesktop.onStopAll(() => {
   stopPreview(); localStop(); epoch.next(); delayBusy = false; render('idle'); message('已由桌面控制台停止本地录音、播放和在途任务。');
 });
-expressionMenu = createExpressionMenu(document,{catalog:window.GorkCatalog,renderer:window.GorkAvatar,send:quickExpression});
+expressionMenu = createExpressionMenu(document,{catalog:window.GorkCatalog,renderer:window.GorkAvatar,motion:window.GorkMotionPreview,send:quickExpression});
 if(window.GorkAppearance) createAppearancePicker(document,{library:window.GorkAppearance,renderer:window.GorkAvatar,catalog:window.GorkCatalog,storage:debugStorage,bridge:window.gorkDesktop,onChange:value=>{face?.setAppearance(value);expressionMenu.setAppearance(value);}});
+refreshCustomExpressions();
+window.addEventListener('message',e=>{if(e.origin===location.origin&&e.source===$('motion-editor-frame')?.contentWindow&&e.data?.type==='gork-motion-library-changed')refreshCustomExpressions();});
 characterOptions(); fillVoices(); navigate(); render(); refresh(); setInterval(heartbeat, 1000); setInterval(workspaceHeartbeat, 1000);
-setInterval(refresh, 5000);
+setInterval(() => { if (watchDelegated || ++healthIdleTicks >= 5) { healthIdleTicks = 0; refresh(); } }, 1000);
 refreshSentinel(); setInterval(() => { if (sentinelEnabled) refreshSentinel(); }, 2500);
 refreshCodex();
 setInterval(() => { if (codexEnabled || location.hash === '#codex') refreshCodex(); }, 2500);
 refreshVoiceLibrary();
+setInterval(()=>{if(location.hash==='#character'&&!voiceLibraryBusy)refreshVoiceLibrary();},5000);
 
 $('quick-connect').onclick = () => connect();
 for (const id of ['auto-read','expression-follow']) $(id).onchange = () => {
@@ -1104,6 +1265,24 @@ $('desktop-visible').onchange = async () => {
   await refreshDesktopVisibility();
 };
 refreshDesktopVisibility(); setInterval(refreshDesktopVisibility, 2000);
+
+let pointerFollowBusy = false;
+async function refreshPointerFollow() {
+  if (!window.gorkDesktop?.getPointerFollow || pointerFollowBusy) return;
+  try {
+    $('desktop-pointer-follow').checked = await window.gorkDesktop.getPointerFollow();
+    $('desktop-pointer-follow').disabled = false;
+    $('desktop-pointer-hint').textContent = '默认开启；待机时平滑看向鼠标，自动记住';
+  } catch { $('desktop-pointer-follow').disabled = true; }
+}
+$('desktop-pointer-follow').onchange = async () => {
+  if (!window.gorkDesktop?.setPointerFollow || pointerFollowBusy) return;
+  pointerFollowBusy = true; $('desktop-pointer-follow').disabled = true;
+  try { await window.gorkDesktop.setPointerFollow($('desktop-pointer-follow').checked); }
+  catch (error) { message(error.message || '无法切换鼠标跟随', true); }
+  finally { pointerFollowBusy = false; await refreshPointerFollow(); }
+};
+refreshPointerFollow(); setInterval(refreshPointerFollow, 2000);
 
 let avatarTopBusy = false;
 async function refreshAvatarAlwaysOnTop() {
@@ -1169,3 +1348,6 @@ $('desktop-bubble-position').onchange = async () => {
   finally { bubblePositionBusy = false; $('desktop-bubble-position').blur?.(); await refreshBubblePosition(); }
 };
 refreshBubblePosition(); setInterval(refreshBubblePosition, 2000);
+
+const externalUI = typeof createExternalUI === 'function' ? createExternalUI({document, api, acquireWorkspace, hasWorkspace:()=>workspace, clipboard:text=>navigator.clipboard.writeText(text)}) : {refresh:async()=>{}};
+setInterval(()=>{if(location.hash==='#external'&&workspace)externalUI.refresh();},2500);

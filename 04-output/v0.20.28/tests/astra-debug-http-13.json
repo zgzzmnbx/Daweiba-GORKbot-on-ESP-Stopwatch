@@ -1,0 +1,431 @@
+{
+  "isolated_gork_port": 8782,
+  "automatic_output": false,
+  "real_audio": false,
+  "records": [
+    {
+      "event_id": "d8ceaf7fb04e4faa936c3d10634aec6c",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "active",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "d8ceaf7fb04e4faa936c3d10634aec6c",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "conversion_start",
+        "sequence": 3,
+        "kind": "state",
+        "occurred_at": "2026-10-08T02:55:04.705222+00:00",
+        "expression": "working",
+        "expression_mode": "loop",
+        "text": "【调试·模拟数据】资料转换已开始。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 10000,
+        "ttl_ms": 30000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "7c39566b3f4347cd9a794f33dbc60f20",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "active",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "7c39566b3f4347cd9a794f33dbc60f20",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "match_start",
+        "sequence": 4,
+        "kind": "state",
+        "occurred_at": "2026-10-08T02:55:06.930777+00:00",
+        "expression": "working",
+        "expression_mode": "loop",
+        "text": "【调试·模拟数据】规则匹配已开始。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 10000,
+        "ttl_ms": 30000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "f360e54322184473b9c4e2306fa189a4",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "f360e54322184473b9c4e2306fa189a4",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "match_completed",
+        "sequence": 5,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T02:55:09.638013+00:00",
+        "expression": "happy",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】完成通知：表内含税总额9447173元。公式重算未确认。1项待复核。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 2000,
+        "ttl_ms": 90000,
+        "priority": 2,
+        "lease_ms": 30000,
+        "amount_summary": {
+          "value": "9447173.00",
+          "currency": "CNY",
+          "unit": "yuan",
+          "basis": "tax_included",
+          "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+          "calculation_status": "unconfirmed"
+        }
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "fce78da78d2049b7a47a65acf58159b1",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "fce78da78d2049b7a47a65acf58159b1",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "match_failed",
+        "sequence": 6,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T02:55:12.348968+00:00",
+        "expression": "confused",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】匹配未完成，请查看错误。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 5000,
+        "ttl_ms": 90000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "e7d31f4bcf3947f18bdf6daa96bfd46c",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "active",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "e7d31f4bcf3947f18bdf6daa96bfd46c",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "warning_start",
+        "sequence": 7,
+        "kind": "state",
+        "occurred_at": "2026-10-08T02:55:15.106800+00:00",
+        "expression": "working",
+        "expression_mode": "loop",
+        "text": "【调试·模拟数据】风险检查已开始。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 10000,
+        "ttl_ms": 30000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "c2b76860ccad46bfb2b9ac1cb504a5a6",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "c2b76860ccad46bfb2b9ac1cb504a5a6",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "warning_completed",
+        "sequence": 8,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T02:55:17.642106+00:00",
+        "expression": "happy",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】风险检查完成，未发现经验偏离。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 2000,
+        "ttl_ms": 90000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "f83e0bf7425341ca9e92a5c595c8b0b6",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "f83e0bf7425341ca9e92a5c595c8b0b6",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "warning_found",
+        "sequence": 9,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T02:55:20.294379+00:00",
+        "expression": "confused",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】风险检查完成，2项需复核。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 10000,
+        "ttl_ms": 90000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "1b9d6af5eb674cb792f68f7e6d0f9fda",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "1b9d6af5eb674cb792f68f7e6d0f9fda",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "warning_failed",
+        "sequence": 10,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T02:55:22.996010+00:00",
+        "expression": "confused",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】风险检查未完成，请查看错误。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 5000,
+        "ttl_ms": 90000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "b6cdd03e72df4fd4a0f55cf703b579c9",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "active",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "b6cdd03e72df4fd4a0f55cf703b579c9",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "report_start",
+        "sequence": 11,
+        "kind": "state",
+        "occurred_at": "2026-10-08T02:55:25.495664+00:00",
+        "expression": "thinking",
+        "expression_mode": "loop",
+        "text": "【调试·模拟数据】风险报告生成已开始。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 10000,
+        "ttl_ms": 30000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "e4615faf5b01415abde3c23057843265",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "e4615faf5b01415abde3c23057843265",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "report_generated",
+        "sequence": 12,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T02:55:28.165724+00:00",
+        "expression": "happy",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】最终风险报告已生成。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 2000,
+        "ttl_ms": 90000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "3528a32de0aa470da6bed33bac5ac2d5",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "3528a32de0aa470da6bed33bac5ac2d5",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "report_failed",
+        "sequence": 13,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T02:55:30.883930+00:00",
+        "expression": "confused",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】风险报告未生成，请查看错误。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 5000,
+        "ttl_ms": 90000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "6f7f8b78db9d4054a49d98b11c75b5cd",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "6f7f8b78db9d4054a49d98b11c75b5cd",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "review_requested",
+        "sequence": 14,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T02:55:33.622715+00:00",
+        "expression": "curious",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】同事复核已发起，等待投递确认。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 2000,
+        "ttl_ms": 30000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "3c67d8232aea40448b8802cb396e6a6d",
+      "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+      "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "3c67d8232aea40448b8802cb396e6a6d",
+        "task_id": "debug-e56390b878a44a09839b35f4c065941e",
+        "attempt": "debug-2d29812c77b34ddf99e3e28f589fbda7",
+        "stage": "review_sent",
+        "sequence": 15,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T02:55:36.071948+00:00",
+        "expression": "happy",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】复核资料已送达，等待同事反馈。",
+        "speech": null,
+        "display_target": "both",
+        "duration_ms": 2000,
+        "ttl_ms": 30000,
+        "priority": 2,
+        "lease_ms": 30000
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "not_requested"
+      },
+      "error": ""
+    }
+  ]
+}

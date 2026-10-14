@@ -1,0 +1,32 @@
+{
+  "fixtureOnly": true,
+  "scenarios": [
+    {
+      "scenario": "orphan",
+      "action": "clean",
+      "reason": "owned-orphan",
+      "exit_code": 0,
+      "preserved": false,
+      "cleaned_count": 1,
+      "entryScriptVerified": true
+    },
+    {
+      "scenario": "independent",
+      "action": "reuse",
+      "reason": "external-backend",
+      "exit_code": 0,
+      "preserved": true,
+      "cleaned_count": 0,
+      "entryScriptVerified": true
+    },
+    {
+      "scenario": "foreign",
+      "action": "block",
+      "reason": "foreign-port",
+      "exit_code": 1,
+      "preserved": true,
+      "cleaned_count": 0,
+      "entryScriptVerified": true
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "version": "0.20.3-dev",
+  "answer": {
+    "enabled": false,
+    "reason": "未配置回答服务；当前为跟读/朗读模式"
+  },
+  "wifi_connected": true,
+  "route": "wifi"
+}

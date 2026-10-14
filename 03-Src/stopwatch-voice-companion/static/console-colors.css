@@ -1,0 +1,48 @@
+/* Runtime Mantine palettes. The classic stylesheet keeps its original colors. */
+:root[data-console-color=blue]{
+  --tone-0:var(--mantine-color-blue-0);--tone-1:var(--mantine-color-blue-1);--tone-2:var(--mantine-color-blue-2);--tone-3:var(--mantine-color-blue-3);--tone-4:var(--mantine-color-blue-4);--tone-5:var(--mantine-color-blue-5);--tone-6:var(--mantine-color-blue-6);--tone-7:var(--mantine-color-blue-7);--tone-8:var(--mantine-color-blue-8);--tone-9:var(--mantine-color-blue-9);
+  --theme-fill:var(--tone-8);--theme-fill-hover:var(--tone-9)
+}
+:root[data-console-color=indigo]{
+  --tone-0:var(--mantine-color-indigo-0);--tone-1:var(--mantine-color-indigo-1);--tone-2:var(--mantine-color-indigo-2);--tone-3:var(--mantine-color-indigo-3);--tone-4:var(--mantine-color-indigo-4);--tone-5:var(--mantine-color-indigo-5);--tone-6:var(--mantine-color-indigo-6);--tone-7:var(--mantine-color-indigo-7);--tone-8:var(--mantine-color-indigo-8);--tone-9:var(--mantine-color-indigo-9);
+  --theme-fill:var(--tone-8);--theme-fill-hover:var(--tone-9)
+}
+:root[data-console-color=cyan]{
+  --tone-0:var(--mantine-color-cyan-0);--tone-1:var(--mantine-color-cyan-1);--tone-2:var(--mantine-color-cyan-2);--tone-3:var(--mantine-color-cyan-3);--tone-4:var(--mantine-color-cyan-4);--tone-5:var(--mantine-color-cyan-5);--tone-6:var(--mantine-color-cyan-6);--tone-7:var(--mantine-color-cyan-7);--tone-8:var(--mantine-color-cyan-8);--tone-9:var(--mantine-color-cyan-9);
+  --theme-fill:var(--tone-9);--theme-fill-hover:color-mix(in srgb,var(--tone-9) 85%,black)
+}
+:root[data-console-color=teal]{
+  --tone-0:var(--mantine-color-teal-0);--tone-1:var(--mantine-color-teal-1);--tone-2:var(--mantine-color-teal-2);--tone-3:var(--mantine-color-teal-3);--tone-4:var(--mantine-color-teal-4);--tone-5:var(--mantine-color-teal-5);--tone-6:var(--mantine-color-teal-6);--tone-7:var(--mantine-color-teal-7);--tone-8:var(--mantine-color-teal-8);--tone-9:var(--mantine-color-teal-9);
+  --theme-fill:var(--tone-9);--theme-fill-hover:color-mix(in srgb,var(--tone-9) 85%,black)
+}
+:root[data-console-color=violet]{
+  --tone-0:var(--mantine-color-violet-0);--tone-1:var(--mantine-color-violet-1);--tone-2:var(--mantine-color-violet-2);--tone-3:var(--mantine-color-violet-3);--tone-4:var(--mantine-color-violet-4);--tone-5:var(--mantine-color-violet-5);--tone-6:var(--mantine-color-violet-6);--tone-7:var(--mantine-color-violet-7);--tone-8:var(--mantine-color-violet-8);--tone-9:var(--mantine-color-violet-9);
+  --theme-fill:var(--tone-8);--theme-fill-hover:var(--tone-9)
+}
+:root[data-console-theme=mantine][data-console-color]:not([data-console-color=gork]){
+  --bg:color-mix(in srgb,var(--tone-0) 52%,white);--ink:#263447;--muted:#6a788a;--line:color-mix(in srgb,var(--tone-1) 55%,#e6e9ee);--accent:var(--tone-6);--accent-strong:var(--tone-9);--accent-muted:var(--tone-5);--accent-edge:var(--tone-3);--soft:var(--tone-0);--header-bg:color-mix(in srgb,var(--tone-0) 78%,white);--header-border:var(--tone-2);--header-ink:var(--tone-9);--header-muted:#617286;--header-control-border:var(--tone-2);--header-ready-bg:var(--tone-0);--header-ready-border:var(--tone-2);--header-ready-ink:var(--tone-9);--header-ready-dot:var(--tone-6);--focus-ring:0 0 0 3px color-mix(in srgb,var(--tone-6) 18%,transparent);
+  --mantine-color-gork-0:var(--tone-0);--mantine-color-gork-1:var(--tone-1);--mantine-color-gork-2:var(--tone-2);--mantine-color-gork-3:var(--tone-3);--mantine-color-gork-4:var(--tone-4);--mantine-color-gork-5:var(--tone-5);--mantine-color-gork-6:var(--tone-6);--mantine-color-gork-7:var(--tone-7);--mantine-color-gork-8:var(--tone-8);--mantine-color-gork-9:var(--tone-9);
+  --mantine-color-gork-filled:var(--theme-fill);--mantine-color-gork-filled-hover:var(--theme-fill-hover);--mantine-color-gork-light:var(--tone-0);--mantine-color-gork-light-hover:var(--tone-1);--mantine-color-gork-light-color:var(--tone-9);--mantine-color-gork-outline:var(--tone-8);--mantine-color-gork-outline-hover:color-mix(in srgb,var(--tone-6) 5%,transparent)
+}
+:root[data-console-theme=mantine][data-console-color]:not([data-console-color=gork]) button.primary.mantine-Button-root:disabled{background:var(--tone-1);color:var(--tone-5)}
+:root[data-console-theme=mantine][data-console-color]:not([data-console-color=gork]) .companion-tools .expression-grid,:root[data-console-theme=mantine][data-console-color]:not([data-console-color=gork]) .companion-tools .debug-log{scrollbar-color:var(--tone-3) transparent}
+:root[data-console-theme=mantine][data-console-color]:not([data-console-color=gork]) .companion-tools :is(.expression-grid,.debug-log)::-webkit-scrollbar-thumb{background:var(--tone-3)}
+:root[data-console-theme=mantine] #global-voice,:root[data-console-theme=mantine] #global-watch{background:var(--header-control-bg);border-color:var(--header-control-border);color:var(--header-muted)}
+:root[data-console-theme=mantine] #global-voice[data-state=ready],:root[data-console-theme=mantine] #global-watch[data-state=ready]{background:var(--header-ready-bg);border-color:var(--header-ready-border);color:var(--header-ready-ink)}
+:root[data-console-theme=mantine] #global-voice[data-state=ready]::before,:root[data-console-theme=mantine] #global-watch[data-state=ready]::before{background:var(--header-ready-dot)}
+.theme-color-menu{position:relative;order:5;flex:none;z-index:20;font:12px/1.4 'Segoe UI','Microsoft YaHei UI',sans-serif;color:#344254}
+.theme-color-menu>summary{display:flex;align-items:center;gap:7px;height:34px;padding:0 10px;border:1px solid var(--header-control-border,#dce2e8);border-radius:7px;background:var(--header-control-bg,#fff);color:var(--header-ink,#344254);font-size:12px;font-weight:500;white-space:nowrap;cursor:pointer}
+.theme-color-menu>summary::-webkit-details-marker{display:none}
+.theme-color-menu[open]>summary{border-color:var(--accent);box-shadow:var(--focus-ring)}
+.theme-color-current,.theme-color-dot{display:inline-block;flex:none;width:13px;height:13px;border-radius:50%;background:#16876a}
+.theme-color-current{background:#16876a}
+[data-console-color=blue] .theme-color-current{background:#228be6}[data-console-color=indigo] .theme-color-current{background:#4c6ef5}[data-console-color=cyan] .theme-color-current{background:#15aabf}[data-console-color=teal] .theme-color-current{background:#12b886}[data-console-color=violet] .theme-color-current{background:#7950f2}
+.theme-color-dot[data-color=blue]{background:#228be6}.theme-color-dot[data-color=indigo]{background:#4c6ef5}.theme-color-dot[data-color=cyan]{background:#15aabf}.theme-color-dot[data-color=teal]{background:#12b886}.theme-color-dot[data-color=violet]{background:#7950f2}
+.theme-color-panel{position:absolute;right:0;top:calc(100% + 8px);width:204px;padding:10px;border:1px solid #dce2e8;border-radius:10px;background:#fff;box-shadow:0 12px 30px #17283b24;color:#344254}
+.theme-color-panel fieldset{border:0;margin:0;padding:0;min-width:0}
+.theme-color-panel legend{font-size:11px;font-weight:600;padding:4px 6px 8px}
+.theme-color-panel label{display:flex;align-items:center;gap:8px;padding:7px 6px;border-radius:6px;font-size:12px;cursor:pointer}
+.theme-color-panel label:hover,.theme-color-panel label:focus-within{background:#f1f5fa}
+.theme-color-panel input{margin:0;accent-color:var(--accent)}
+.theme-color-panel p{margin:6px 6px 2px;color:#6a788a;font-size:10px;line-height:1.5}
+@media(max-width:700px){.theme-color-menu>summary{height:30px;padding:0 7px;font-size:11px}.theme-color-panel{right:-2px;max-width:calc(100vw - 16px)}}

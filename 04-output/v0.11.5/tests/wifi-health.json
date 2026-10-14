@@ -1,0 +1,107 @@
+[
+  {
+    "revision": 5,
+    "policy": "auto_wifi_first",
+    "route": "wifi",
+    "active": null,
+    "wifi_connected": true,
+    "ble_connected": false,
+    "address": "10.33.72.225",
+    "error": "",
+    "device": {
+      "protocol": 1,
+      "boot": 4085665487,
+      "session": 1578025344,
+      "address": "10.33.72.225",
+      "state": "authenticated PC",
+      "authenticated": true,
+      "free_heap": 63076,
+      "free_psram": 7924631
+    },
+    "observed_at": "2026-10-04T13:21:14+0800"
+  },
+  {
+    "revision": 5,
+    "policy": "auto_wifi_first",
+    "route": "wifi",
+    "active": null,
+    "wifi_connected": true,
+    "ble_connected": false,
+    "address": "10.33.72.225",
+    "error": "",
+    "device": {
+      "protocol": 1,
+      "boot": 4085665487,
+      "session": 1578025344,
+      "address": "10.33.72.225",
+      "state": "authenticated PC",
+      "authenticated": true,
+      "free_heap": 63076,
+      "free_psram": 7924631
+    },
+    "observed_at": "2026-10-04T13:21:19+0800"
+  },
+  {
+    "revision": 5,
+    "policy": "auto_wifi_first",
+    "route": "wifi",
+    "active": null,
+    "wifi_connected": true,
+    "ble_connected": false,
+    "address": "10.33.72.225",
+    "error": "",
+    "device": {
+      "protocol": 1,
+      "boot": 4085665487,
+      "session": 1578025344,
+      "address": "10.33.72.225",
+      "state": "authenticated PC",
+      "authenticated": true,
+      "free_heap": 63076,
+      "free_psram": 7924631
+    },
+    "observed_at": "2026-10-04T13:21:24+0800"
+  },
+  {
+    "revision": 5,
+    "policy": "auto_wifi_first",
+    "route": "wifi",
+    "active": null,
+    "wifi_connected": true,
+    "ble_connected": false,
+    "address": "10.33.72.225",
+    "error": "",
+    "device": {
+      "protocol": 1,
+      "boot": 4085665487,
+      "session": 1578025344,
+      "address": "10.33.72.225",
+      "state": "authenticated PC",
+      "authenticated": true,
+      "free_heap": 63076,
+      "free_psram": 7924631
+    },
+    "observed_at": "2026-10-04T13:21:29+0800"
+  },
+  {
+    "revision": 5,
+    "policy": "auto_wifi_first",
+    "route": "wifi",
+    "active": null,
+    "wifi_connected": true,
+    "ble_connected": false,
+    "address": "10.33.72.225",
+    "error": "",
+    "device": {
+      "protocol": 1,
+      "boot": 4085665487,
+      "session": 1578025344,
+      "address": "10.33.72.225",
+      "state": "authenticated PC",
+      "authenticated": true,
+      "free_heap": 63068,
+      "free_psram": 7924631
+    },
+    "observed_at": "2026-10-04T13:21:34+0800"
+  }
+]

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+<title>今日 token 与额度 · Gork</title><link rel="stylesheet" href="token-card.css"></head>
+<body><main class="token-card" aria-label="今日 Codex token 与额度卡片">
+  <header><h1>今日 token</h1><span id="token-date">北京时间</span></header>
+  <div class="total"><strong id="token-total">—</strong><span>tokens</span></div>
+  <p class="notice" id="token-notice" role="status" aria-live="polite">正在读取 CC Switch…</p>
+  <section class="quota" aria-label="Codex 剩余额度">
+    <h2>Codex 剩余额度</h2>
+    <div id="quota-windows"></div>
+    <div class="total" id="quota-empty"><strong>—</strong></div>
+    <p class="notice" id="quota-notice" role="status" aria-live="polite">正在读取额度…</p>
+  </section>
+  <details id="token-details">
+    <summary>详细信息</summary>
+    <div class="details-body">
+      <p id="token-status"></p>
+      <dl><div><dt>输入 · 含缓存</dt><dd id="token-input">—</dd></div><div><dt>输出</dt><dd id="token-output">—</dd></div></dl>
+      <p class="cache" id="token-cache">其中缓存 —</p>
+      <footer><span class="source">CC Switch <i>·</i> 本机 Codex</span><span id="token-updated">仅统计已同步记录</span></footer>
+      <div class="quota-details"><span id="quota-bucket"></span><div id="quota-detail-windows"></div><p id="quota-status"></p><p class="quota-source">Codex 官方 · 当前 CLI 登录账号</p></div>
+    </div>
+  </details>
+</main><script src="token-hover.js"></script><script src="token-card.js"></script></body></html>

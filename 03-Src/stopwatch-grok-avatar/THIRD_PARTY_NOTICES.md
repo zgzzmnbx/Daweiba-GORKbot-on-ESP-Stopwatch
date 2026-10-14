@@ -1,5 +1,15 @@
 # Third-party notices
 
+## Qwen connection speech assets (v0.11.10-dev)
+
+`assets/connection-voice/{wifi,ble}.wav` and `src/connection_voice.h` contain
+two user-authorized fixed connection announcements generated through Beijing
+DashScope `qwen3-tts-flash`, voice `Ethan`, on 2026-10-05. They are distinct
+from the six existing synthesized short tones and do not change that catalog.
+See `assets/connection-voice/README.md` and `source.json` for exact text,
+conversion, amplitude bounds, and reproducibility. No public publication is
+claimed or performed by this local firmware build.
+
 ## Grok Icon Study geometry reference
 
 - Project: [blessonism/grok-icon-study](https://github.com/blessonism/grok-icon-study)
@@ -41,3 +51,9 @@ The firmware downloads these libraries at their pinned commits through PlatformI
 | [M5IOE1](https://github.com/m5stack/M5IOE1) | `846eec7d05e25c09013be2acdb8804487f48a62e` | MIT, Copyright (c) 2026 M5Stack Technology CO LTD |
 
 The complete license text for each dependency is included in its downloaded package. Their MIT copyright and permission notices must be preserved when redistributing substantial portions or a bundle that includes those libraries.
+
+## Windows Gork Motion Studio handoff (2026-10-03)
+
+- Input: the user's `Stopwatch-Windows-Handoff-20261003.zip`, including the original `gork-scenes.gork.json` and reusable motion studio modules.
+- Motion modules and the derived C++ choreography/drawing adaptation: AGPL-3.0-only. Preserve the supplied upstream license and notices in `../stopwatch-voice-companion/static/motion/LICENSE.upstream`, `PEN-REFERENCES.md` and the corresponding source archive.
+- The Windows integration retains the repository's existing pinned procedural engine/presets instead of replacing them with the handoff vendor copy. Four pen silhouettes and deterministic scene parameters are adapted locally; this task performs no public release.

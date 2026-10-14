@@ -27,3 +27,6 @@ answer_base_url = ""
 answer_model = ""
 answer_api_key_env = "GORK_ANSWER_API_KEY"
 answer_history_turns = 4
+ # Fixed prompts only; waits for the current owner's cloud voice and text consent.
+ # Never plays audio during warmup. Rendered numbers/counts may reuse exact matching audio on demand.
+prewarm_fixed_voice = false

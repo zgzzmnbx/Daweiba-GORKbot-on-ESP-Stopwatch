@@ -1,0 +1,4 @@
+48f1a001-8a75-4db6-9c18-590f7e9b0a01 legacy=40 before=40 candidate=40
+48f1b001-8a75-4db6-9c18-590f7e9b0a01 legacy=55 before=70 candidate=55
+48f1c001-8a75-4db6-9c18-590f7e9b0a01 legacy=70 before=85 candidate=70
+PASS: all 3 old service ranges preserved; 2 moved before fix; 4 service failures stop BLE.

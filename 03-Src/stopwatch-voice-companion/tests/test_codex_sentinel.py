@@ -14,7 +14,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from companion.app import CodexSettings, _codex_preferences, create_app
-from companion.codex_monitor import CodexMonitor, quota_snapshot, quota_window
+from companion.codex_monitor import CodexMonitor, quota_snapshot, quota_window, quota_step_drops
+
+
+class Titles:
+    async def read(self, thread_id):
+        return '示例任务'
 from companion.codex_source import JsonlSource, HookSpool, QuotaRPC, normalize_hook, normalize_jsonl
 from companion.control import Controller
 from companion.notification_coordinator import NotificationCoordinator
@@ -101,7 +106,7 @@ def test_delayed_discovery_of_more_than_40_old_files_never_replays(tmp_path):
             os.utime(path, (time.time() - 1000 + index, time.time() - 1000 + index))
         source = JsonlSource(root)
         control = Controller(FakeVoice(), Robot())
-        monitor = CodexMonitor(control, jsonl=source, hooks=Hooks(), rpc=RPC())
+        monitor = CodexMonitor(control, jsonl=source, hooks=Hooks(), rpc=RPC(), titles=Titles())
         control.codex_monitor = monitor
         await monitor.configure(DEFAULTS)
         for entry in source.poll(): await monitor.accept(entry)
@@ -128,7 +133,7 @@ def test_delayed_discovery_of_more_than_40_old_files_never_replays(tmp_path):
 def test_recovery_cutoff_suppresses_delayed_historical_terminal():
     async def run():
         control = Controller(FakeVoice(), Robot())
-        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC())
+        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC(), titles=Titles())
         control.codex_monitor = monitor
         await monitor.configure(DEFAULTS)
         old = event('turn_completed', 'old', at='2026-09-20T10:00:00+00:00')
@@ -253,10 +258,54 @@ def test_quota_rpc_matches_ids_with_early_response_and_ignores_notifications(mon
     assert process.returncode == 0
 
 
+def test_quota_rpc_retries_only_transport_failure_within_one_total_budget(monkeypatch):
+    calls=[]
+    async def read_once(self,timeout):
+        calls.append(timeout)
+        if len(calls)<3:raise RuntimeError('rpc_network')
+        return {'rateLimits':{}}
+    monkeypatch.setattr(QuotaRPC,'_read_once',read_once)
+    assert asyncio.run(QuotaRPC().read())=={'rateLimits':{}}
+    assert len(calls)==3 and calls[2]<calls[1]<calls[0]<=12
+    async def denied(self,timeout):
+        calls.append(timeout);raise RuntimeError('not_logged_in')
+    monkeypatch.setattr(QuotaRPC,'_read_once',denied);calls.clear()
+    with pytest.raises(RuntimeError,match='not_logged_in'):asyncio.run(QuotaRPC().read())
+    assert len(calls)==1
+    async def slow(self,timeout):await asyncio.sleep(1)
+    monkeypatch.setattr(QuotaRPC,'_read_once',slow)
+    with pytest.raises(RuntimeError,match='rpc_timeout'):asyncio.run(QuotaRPC().read(timeout=.02))
+
+
+def test_quota_rpc_transport_error_is_sanitized_and_process_always_closed(monkeypatch):
+    processes=[]
+    class Input:
+        def write(self,data):pass
+        async def drain(self):pass
+    class Output:
+        def __init__(self):self.i=0
+        async def readline(self):
+            self.i+=1
+            obj={'id':self.i,'result':{}}
+            if self.i==2:obj['result']={'account':{'type':'chatgpt'}}
+            if self.i==3:obj={'id':3,'error':{'code':-32603,'message':'failed to fetch: error sending request private-secret'}}
+            return (json.dumps(obj)+'\n').encode()
+    class Process:
+        def __init__(self):self.stdin=Input();self.stdout=Output();self.returncode=None;processes.append(self)
+        def kill(self):self.returncode=0
+        async def wait(self):return self.returncode
+    async def create(*args,**kwargs):return Process()
+    monkeypatch.setattr('companion.codex_source.shutil.which',lambda _: 'codex')
+    monkeypatch.setattr('companion.codex_source.asyncio.create_subprocess_exec',create)
+    with pytest.raises(RuntimeError,match='^rpc_network$') as caught:asyncio.run(QuotaRPC().read())
+    assert 'private' not in str(caught.value) and len(processes)==3
+    assert all(p.returncode==0 for p in processes)
+
+
 def test_low_quota_hysteresis_notifies_once_per_crossing():
     async def run():
         robot = Robot(); control = Controller(FakeVoice(), robot)
-        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC())
+        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC(), titles=Titles())
         monitor.enabled = True; monitor.target = 'watch'; monitor.threshold = 20
         control.codex_monitor = monitor
         reset = time.time() + 3600
@@ -269,6 +318,73 @@ def test_low_quota_hysteresis_notifies_once_per_crossing():
         for value in (30, 19, 18, 24, 25, 19): await sample(value)
         assert [item['kind'] for item in monitor.history] == ['quota_low', 'quota_low']
         assert len(robot.calls) == 2
+        await monitor.stop()
+    asyncio.run(run())
+
+
+def test_quota_step_drops_accumulate_within_same_reset_cycle():
+    sampled_at = time.time()
+    def sample(remaining, reset=sampled_at + 3600):
+        return quota_snapshot({'rateLimits': {'primary': {
+            'usedPercent': 100 - remaining, 'windowDurationMins': 300, 'resetsAt': reset}}})
+    baselines = {}
+    assert quota_step_drops(baselines, sample(50), sampled_at, '', 2) == []
+    assert quota_step_drops(baselines, sample(49), sampled_at+120, '', 2) == []
+    drops = quota_step_drops(baselines, sample(47.5), sampled_at+240, '', 2)
+    assert drops[0]['drop_points'] == 2.5 and drops[0]['remaining'] == 47.5
+    assert quota_step_drops(baselines, sample(46.5), sampled_at+360, '', 2) == []
+    assert quota_step_drops(baselines, sample(40, sampled_at+7200), sampled_at+480, '', 2) == []
+
+
+def test_fast_quota_drop_shows_avatar_badge_even_with_ring_hidden_and_deduplicates_low():
+    async def run():
+        control = Controller(FakeVoice(), Robot())
+        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC(), titles=Titles())
+        control.codex_monitor = monitor
+        monitor.enabled = True; monitor.target = 'desktop'; monitor.ring_mode = 'hidden'
+        sampled_at = time.time(); reset = sampled_at + 3600
+        def sample(remaining):
+            return quota_snapshot({'rateLimits': {'primary': {
+                'usedPercent': 100 - remaining, 'windowDurationMins': 300, 'resetsAt': reset}}})
+        monitor.quota = sample(23); monitor.quota_at = sampled_at
+        monitor.quota_status = 'available'
+        assert not monitor._check_quota_steps(0, sampled_at, monitor.epoch)
+        monitor.quota = sample(19); monitor.quota_at = sampled_at + 120
+        keys = monitor._check_quota_steps(sampled_at, sampled_at + 120, monitor.epoch)
+        assert keys
+        await monitor._check_low(monitor.epoch, skip=keys)
+        await asyncio.sleep(.03)
+        assert [item['kind'] for item in monitor.history] == ['quota_drop']
+        assert monitor.desktop_summary()['enabled'] is False
+        assert monitor.desktop_summary()['trend']['drop_points'] == 4
+        assert '剩余 19%' in control.desktop_state()['character']['bubble']
+        monitor.quota = sample(18)
+        assert not monitor._check_quota_steps(sampled_at + 120, sampled_at + 240, monitor.epoch)
+        monitor.quota_drop['until'] = time.monotonic() - 1
+        assert monitor.desktop_summary()['trend'] is None
+        await monitor.stop()
+    asyncio.run(run())
+
+
+def test_quota_drop_animation_off_keeps_bubble_without_trend_or_expression():
+    async def run():
+        control = Controller(FakeVoice(), Robot())
+        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC(), titles=Titles())
+        control.codex_monitor = monitor
+        monitor.enabled = True; monitor.target = 'desktop'; monitor.drop_animation = False
+        sampled_at = time.time()
+        monitor.quota = quota_snapshot({'rateLimits': {'primary': {
+            'usedPercent': 60, 'windowDurationMins': 300, 'resetsAt': sampled_at + 3600}}})
+        monitor.quota_at = sampled_at; monitor.quota_status = 'available'
+        monitor._check_quota_steps(0, sampled_at, monitor.epoch)
+        monitor.quota['buckets']['default']['windows'][0]['remaining_percent'] = 37
+        monitor.quota_at = sampled_at + 120
+        monitor._check_quota_steps(sampled_at, sampled_at + 120, monitor.epoch)
+        await asyncio.sleep(.03)
+        state = control.desktop_state()
+        assert '额度下降' in state['character']['bubble']
+        assert state['codex']['trend'] is None
+        assert state['character'].get('auto') is not True
         await monitor.stop()
     asyncio.run(run())
 
@@ -333,7 +449,7 @@ def test_quota_ring_defaults_hidden_and_legacy_checkbox_does_not_enable_it(tmp_p
     assert preferences['target'] == 'watch'
     assert preferences['ring_mode'] == 'hidden'
     assert 'show_ring' not in preferences
-    monitor = CodexMonitor(Controller(FakeVoice(), Robot()), jsonl=Source(), hooks=Hooks(), rpc=RPC())
+    monitor = CodexMonitor(Controller(FakeVoice(), Robot()), jsonl=Source(), hooks=Hooks(), rpc=RPC(), titles=Titles())
     monitor.enabled = True
     assert monitor.desktop_summary()['enabled'] is False
     monitor.ring_mode = 'hover'
@@ -344,7 +460,7 @@ def test_quota_ring_defaults_hidden_and_legacy_checkbox_does_not_enable_it(tmp_p
 def test_codex_short_turn_waiting_recovery_stale_and_stop():
     async def run():
         control = Controller(FakeVoice(), Robot())
-        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC())
+        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC(), titles=Titles())
         control.codex_monitor = monitor
         await monitor.configure(DEFAULTS)
         await monitor.accept(event('running', 'one', baseline=True, at='2026-01-01T00:00:00+00:00'))
@@ -362,7 +478,7 @@ def test_codex_short_turn_waiting_recovery_stale_and_stop():
         assert monitor.threads[THREAD]['status'] == 'turn_completed'
         assert [x['kind'] for x in monitor.history] == ['turn_completed']
         presentation = control.notifications.current()
-        assert presentation['bubble'] == '本轮已结束，请查看结果。'
+        assert presentation['bubble'] == '示例任务：本轮已结束，请查看结果。'
         assert presentation['dismiss_on_click'] is True
         assert 299 < presentation['until'] - time.monotonic() <= 300
         assert control.desktop_state()['character']['dismissOnClick'] is True
@@ -375,10 +491,26 @@ def test_codex_short_turn_waiting_recovery_stale_and_stop():
     asyncio.run(run())
 
 
+def test_completed_turn_falls_back_to_short_session_id_when_title_is_unavailable():
+    async def run():
+        class Untitled:
+            async def read(self, thread_id): return ''
+        control = Controller(FakeVoice(), Robot())
+        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC(), titles=Untitled())
+        control.codex_monitor = monitor
+        await monitor.configure(DEFAULTS)
+        await monitor.accept(event('running', 'one'))
+        await monitor.accept(event('turn_completed', 'one'))
+        await asyncio.sleep(.03)
+        assert control.notifications.current()['bubble'] == f'Codex 会话 {THREAD[:8]}：本轮已结束，请查看结果。'
+        await monitor.stop()
+    asyncio.run(run())
+
+
 def test_codex_running_pose_is_sent_through_real_desktop_state():
     async def run():
         control = Controller(FakeVoice(), Robot())
-        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC())
+        monitor = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC(), titles=Titles())
         control.codex_monitor = monitor
         await monitor.configure(DEFAULTS)
         await monitor.accept(event('running', 'one', baseline=True))
@@ -395,7 +527,7 @@ def test_real_cost_and_codex_monitors_share_one_delivery_lane():
         robot = Robot()
         control = Controller(FakeVoice(), robot)
         cost = TaskMonitor(None, control)
-        codex = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC())
+        codex = CodexMonitor(control, jsonl=Source(), hooks=Hooks(), rpc=RPC(), titles=Titles())
         control.task_monitor = cost; control.codex_monitor = codex
         cost.enabled = True; cost.target = 'watch'
         await codex.configure({**DEFAULTS, 'target': 'watch'})

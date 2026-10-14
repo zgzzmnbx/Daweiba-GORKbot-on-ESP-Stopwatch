@@ -27,6 +27,16 @@ PHRASES = (
     ('task_review', '任务', '本次处理结束，请复核结果。'),
     ('task_completed', '任务', '本次处理结束，请查看结果。'),
     ('task_attention', '任务', '有事项需要复核，请查看结果。'),
+    ('notice_conversion', '转换', '资料转换已开始。'),
+    ('notice_match', '匹配', '规则匹配已开始。'),
+    ('notice_match_failed', '匹配', '匹配未完成，请查看错误。'),
+    ('notice_warning', '预警', '风险检查已开始。'),
+    ('notice_warning_failed', '预警', '风险检查未完成，请查看错误。'),
+    ('notice_report', '报告', '风险报告生成已开始。'),
+    ('notice_report_done', '报告', '最终风险报告已生成。'),
+    ('notice_report_failed', '报告', '风险报告未生成，请查看错误。'),
+    ('notice_review_requested', '复核', '同事复核已发起，等待投递确认。'),
+    ('notice_review_sent', '复核', '复核资料已送达，等待同事反馈。'),
 )
 BY_ID = {item[0]: item for item in PHRASES}
 BY_TEXT = {item[2]: item for item in PHRASES}
@@ -88,3 +98,11 @@ def catalogue():
     return {'voice': VOICE, 'voice_label': VOICE_LABEL, 'model': MODEL,
             'ready': sum(item['ready'] for item in entries), 'total': len(entries),
             'items': entries}
+
+
+def catalogue_for(profile):
+    from . import speech_cache
+    entries=[{'id':key,'group':group,'text':text,'ready':speech_cache.read(text,profile) is not None}
+             for key,group,text in PHRASES]
+    return {'voice':profile['voice'],'voice_label':profile['voice'],'model':profile['model'],
+            'profile':profile,'ready':sum(item['ready'] for item in entries),'total':len(entries),'items':entries}

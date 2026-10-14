@@ -1,0 +1,13 @@
+{
+  "codex": {
+    "enabled": false,
+    "ring_mode": "hover",
+    "status": "disabled",
+    "stale": true,
+    "bucket": null,
+    "trend": null,
+    "scope": "当前监测账号额度"
+  },
+  "version": "0.20.33-dev",
+  "checked_at": "2026-10-14T03:01:55.0636728+08:00"
+}

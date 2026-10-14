@@ -1,0 +1,49 @@
+{
+  "result": "PASS",
+  "backup": "Codex-Temp\\pre-custom-expressions-20261004-001712",
+  "bytePreservedFiles": 160,
+  "intentionalBaselineChanges": [
+    "00-docs/00-PRD/02-当前版本计划.md",
+    "00-docs/00-PRD/33-v0.19.2-自定义表情库与编辑保存-【codex】.md",
+    "03-Src/gork-desktop/README.md",
+    "03-Src/gork-desktop/motion/gork-config.js",
+    "03-Src/gork-desktop/package-lock.json",
+    "03-Src/gork-desktop/package.json",
+    "03-Src/stopwatch-voice-companion/README.md",
+    "03-Src/stopwatch-voice-companion/companion/__init__.py",
+    "03-Src/stopwatch-voice-companion/package-lock.json",
+    "03-Src/stopwatch-voice-companion/package.json",
+    "03-Src/stopwatch-voice-companion/static/motion/INTEGRATION.md",
+    "03-Src/stopwatch-voice-companion/static/motion/field-specs.json",
+    "03-Src/stopwatch-voice-companion/static/motion/gork-config.js",
+    "03-Src/stopwatch-voice-companion/static/motion/source.zip",
+    "03-Src/stopwatch-voice-companion/tests/motion/editor-render.test.cjs",
+    "03-Src/stopwatch-voice-companion/tests/motion/pen-styles.test.cjs",
+    "03-Src/stopwatch-voice-companion/tests/motion/run.cjs",
+    "03-Src/stopwatch-voice-companion/tests/test_motion.py",
+    "AGENTS.md",
+    "CHANGELOG-历史归档.md",
+    "CHANGELOG.md",
+    "README.md",
+    "tools/export_motion_source.py"
+  ],
+  "repos": [
+    {
+      "repo": "root",
+      "headUnchanged": true,
+      "stagingUnchanged": true,
+      "whitespace": "PASS"
+    },
+    {
+      "repo": "firmware",
+      "headUnchanged": true,
+      "stagingUnchanged": true,
+      "whitespace": "PASS"
+    }
+  ],
+  "userLocalConfigurationFilesBytePreserved": 4,
+  "firmwareBaselineFilesBytePreserved": 36,
+  "defaultCatalogAndUserMotionLibrary": "byte preserved",
+  "statusLabelCss": "byte preserved",
+  "sharedAdapterAndCorrespondingSource": "PASS"
+}

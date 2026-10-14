@@ -1,0 +1,14 @@
+{
+  "device": "StopWatch-Gork",
+  "protocol": 1,
+  "firmware": "v0.11.5-dev",
+  "network": {
+    "configured": true,
+    "address": "10.33.72.225",
+    "policy": 0,
+    "power": 1,
+    "source": "unknown",
+    "state": "authenticated PC",
+    "authenticated": true
+  }
+}

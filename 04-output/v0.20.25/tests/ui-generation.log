@@ -1,0 +1,5 @@
+
+> gork-console-ui@0.20.25-dev check:ui
+> node ui/build.mjs --check
+
+Mantine shell and CSS match the source and locked dependency

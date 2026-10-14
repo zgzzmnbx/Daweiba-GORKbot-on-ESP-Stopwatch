@@ -1,0 +1,208 @@
+{
+  "result": "PASS",
+  "version": "0.20.32-dev",
+  "rightPose": {
+    "headX": 27.22064586218379,
+    "headY": 33.6085945585494
+  },
+  "leftPose": {
+    "headX": -26.071831896995473,
+    "headY": -32.600737939615684
+  },
+  "centerPose": {
+    "headX": -0.165137912534981,
+    "headY": -0.2581692188546203
+  },
+  "thinking": {
+    "headX": -12.303515625,
+    "headY": -17.601171875000002
+  },
+  "sizes": [
+    {
+      "scale": 25,
+      "width": 60,
+      "scroll": 60,
+      "dpr": 1.5
+    },
+    {
+      "scale": 100,
+      "width": 240,
+      "scroll": 240,
+      "dpr": 1.5
+    },
+    {
+      "scale": 150,
+      "width": 360,
+      "scroll": 360,
+      "dpr": 1.5
+    }
+  ],
+  "nativeCursor": {
+    "x": 3,
+    "y": 433
+  },
+  "nativeSamples": [
+    {
+      "clientX": -724,
+      "clientY": 114,
+      "viewport": {
+        "width": 1138,
+        "height": 640
+      }
+    },
+    {
+      "clientX": -724,
+      "clientY": 114,
+      "viewport": {
+        "width": 1138,
+        "height": 640
+      }
+    }
+  ],
+  "coordinateDriver": "deterministic DIP samples through production screen/IPC",
+  "checks": [
+    "global cursor outside avatar",
+    "both axes and neutral center at 150% DPI",
+    "immediate switch and stopped sampling",
+    "saved off after console reload",
+    "manual/custom animation priority",
+    "hide/show cleanup",
+    "25/100/150 sizes",
+    "classic/Mantine switch layouts"
+  ],
+  "errors": [],
+  "requests": [
+    [
+      "GET",
+      "/api/health"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/motion/expressions"
+    ],
+    [
+      "GET",
+      "/api/health"
+    ],
+    [
+      "GET",
+      "/api/codex/sentinel"
+    ],
+    [
+      "GET",
+      "/api/character/voice-library"
+    ],
+    [
+      "GET",
+      "/api/cost/sentinel"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/motion/expressions"
+    ],
+    [
+      "GET",
+      "/api/cost/sentinel"
+    ],
+    [
+      "GET",
+      "/api/health"
+    ],
+    [
+      "GET",
+      "/api/codex/sentinel"
+    ],
+    [
+      "GET",
+      "/api/character/voice-library"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/motion/expressions/motion-000000000001"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/desktop/state"
+    ],
+    [
+      "GET",
+      "/api/health"
+    ]
+  ]
+}

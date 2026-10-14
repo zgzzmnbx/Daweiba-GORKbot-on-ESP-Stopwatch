@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+import re
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Optional
 
@@ -19,6 +20,7 @@ DEVICE_NAME = "GorkBot-SW"
 SERVICE_UUID = "48f1a001-8a75-4db6-9c18-590f7e9b0a01"
 SOUND_SERVICE_UUID = "48f1c001-8a75-4db6-9c18-590f7e9b0a01"
 AUDIO_SERVICE_UUID = "48f1b001-8a75-4db6-9c18-590f7e9b0a01"
+NETWORK_SERVICE_UUID = "48f1d001-8a75-4db6-9c18-590f7e9b0a01"
 COMMAND_UUID = "48f1a002-8a75-4db6-9c18-590f7e9b0a01"
 STATUS_UUID = "48f1a003-8a75-4db6-9c18-590f7e9b0a01"
 MAX_COMMAND_BYTES = 20
@@ -85,6 +87,9 @@ def _load_bleak() -> tuple[Any, Any]:
     return BleakClient, BleakScanner
 
 
+def is_custom_command(text: str) -> bool:
+    return isinstance(text,str) and re.fullmatch(r'cx[a-p]{12}',text) is not None
+
 def normalize_command(text: str) -> str:
     """Normalize and validate one protocol command before it reaches BLE."""
 
@@ -97,14 +102,14 @@ def normalize_command(text: str) -> str:
         raise BleConsoleError("命令只能包含英文小写字母、连字符和单个空格")
     if command.startswith("loop ") or command.startswith("once "):
         mode, expression = command.split(" ", 1)
-        if expression not in _EXPRESSION_SET:
+        if expression not in _EXPRESSION_SET and not is_custom_command(expression):
             raise BleConsoleError(f"未知表情：{expression}")
         command = f"{mode} {expression}"
     elif command.startswith("pingpong "):
         expression = command[len("pingpong ") :]
         if expression not in _EXPRESSION_SET:
             raise BleConsoleError(f"未知表情：{expression}")
-    elif command not in _EXPRESSION_SET:
+    elif command not in _EXPRESSION_SET and not is_custom_command(command):
         raise BleConsoleError(f"未知表情：{command}")
     encoded = command.encode("ascii")
     if len(encoded) > MAX_COMMAND_BYTES:
@@ -290,7 +295,7 @@ class BleExpressionClient:
         # the one shared client. Injected test transports keep their small API.
         if self._client_factory is None:
             options.update(timeout=timeout,
-                           services=[SERVICE_UUID, SOUND_SERVICE_UUID, AUDIO_SERVICE_UUID],
+                           services=[SERVICE_UUID, SOUND_SERVICE_UUID, AUDIO_SERVICE_UUID, NETWORK_SERVICE_UUID],
                            winrt={"use_cached_services": False})
         self.client = factory(device, **options)
         try:

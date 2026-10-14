@@ -1,0 +1,208 @@
+{
+  "result": "PASS",
+  "fixtureOnly": true,
+  "realDeviceConnected": false,
+  "cloudRequests": false,
+  "results": [
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "page": "watch",
+      "expanded": false,
+      "bodyWidth": 1480,
+      "controls": 3
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "page": "watch",
+      "expanded": true,
+      "bodyWidth": 1480,
+      "controls": 7
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "page": "dialogue",
+      "idleSectionHeight": 111.296875
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "page": "watch",
+      "expanded": false,
+      "bodyWidth": 1180,
+      "controls": 3
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "page": "watch",
+      "expanded": true,
+      "bodyWidth": 1180,
+      "controls": 7
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "page": "dialogue",
+      "idleSectionHeight": 111.296875
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "page": "watch",
+      "expanded": false,
+      "bodyWidth": 800,
+      "controls": 3
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "page": "watch",
+      "expanded": true,
+      "bodyWidth": 800,
+      "controls": 7
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "page": "dialogue",
+      "idleSectionHeight": 111.296875
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "page": "watch",
+      "expanded": false,
+      "bodyWidth": 390,
+      "controls": 3
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "page": "watch",
+      "expanded": true,
+      "bodyWidth": 390,
+      "controls": 7
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "page": "dialogue",
+      "idleSectionHeight": 81.796875
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "page": "watch",
+      "expanded": false,
+      "bodyWidth": 1480,
+      "controls": 3
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "page": "watch",
+      "expanded": true,
+      "bodyWidth": 1480,
+      "controls": 7
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "page": "dialogue",
+      "idleSectionHeight": 111.296875
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "page": "watch",
+      "expanded": false,
+      "bodyWidth": 1180,
+      "controls": 3
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "page": "watch",
+      "expanded": true,
+      "bodyWidth": 1180,
+      "controls": 7
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "page": "dialogue",
+      "idleSectionHeight": 111.296875
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "page": "watch",
+      "expanded": false,
+      "bodyWidth": 800,
+      "controls": 3
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "page": "watch",
+      "expanded": true,
+      "bodyWidth": 800,
+      "controls": 7
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "page": "dialogue",
+      "idleSectionHeight": 111.296875
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "page": "watch",
+      "expanded": false,
+      "bodyWidth": 390,
+      "controls": 3
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "page": "watch",
+      "expanded": true,
+      "bodyWidth": 390,
+      "controls": 7
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "page": "dialogue",
+      "idleSectionHeight": 81.796875
+    }
+  ]
+}

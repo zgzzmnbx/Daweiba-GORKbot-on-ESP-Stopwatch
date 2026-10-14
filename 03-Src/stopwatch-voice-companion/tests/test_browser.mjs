@@ -7,6 +7,7 @@ import {webcrypto} from 'node:crypto';
 import {createDebugConsole} from '../static/debug-console.js';
 import {createExpressionMenu} from '../static/expression-menu.js';
 import {createAppearancePicker} from '../static/appearance-picker.js';
+import {createWatchChat} from '../static/watch-chat.js';
 const catalogScope = {window:{}};
 vm.runInNewContext(fs.readFileSync(new URL('../static/gork-catalog.js',import.meta.url),'utf8'),catalogScope);
 
@@ -35,7 +36,7 @@ function workbench(saved = {}, uiOptions = {}) {
   const elements = new Map(), waiting = [], played = [], requests = [], events = {}, avatarStates = [], previewMounts = [];
   let sentinel = uiOptions.sentinel || {enabled:true,mode:'auto',task_id:'',target:'desktop',sound:false,sound_target:'pc',current:null,last_result:null,last_success_at:'',connection_error:'',history:[],presentation:null};
   const nodes = name => ({nodeName:name, children:[], dataset:{}, listeners:{}, hidden:false,
-    classList:{toggle(){}},setAttribute(){},focus(){this.focused=true;},remove(){this.removed=true;},
+    attrs:{},classList:{toggle(){}},setAttribute(k,v){this.attrs[k]=v;},getAttribute(k){return this.attrs[k];},removeAttribute(k){delete this.attrs[k];},focus(){this.focused=true;},remove(){this.removed=true;},
     append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;this.options=[];this.value='';},
     addEventListener(type,fn){(this.listeners[type] ||= []).push(fn);},
     async keydown(event){for(const fn of this.listeners.keydown || []) await fn(event);}});
@@ -56,17 +57,20 @@ function workbench(saved = {}, uiOptions = {}) {
     createBufferSource(){const player={stopped:false,connect(){},disconnect(){},start(){played.push(this);},stop(){this.stopped=true;}};return player;}
   }
   const context = vm.createContext({
-    toPCM16,Epoch,AbortController,AbortSignal,DOMException,ArrayBuffer,TextEncoder,performance,AudioContext,createDebugConsole,createExpressionMenu,createAppearancePicker,
+    toPCM16,Epoch,AbortController,AbortSignal,DOMException,ArrayBuffer,TextEncoder,performance,AudioContext,createDebugConsole,createExpressionMenu,createAppearancePicker,createWatchChat,
     Recorder:class{async start(){requests.push({url:'recorder:start'});return true;}finish(){return new ArrayBuffer(44);}stop(){}},
     WavPlayer:class{constructor(){this.playing=false;}async play(_bytes,onended){this.playing=true;this.onended=onended;return true;}stop(){this.playing=false;}},
     Option:class{constructor(label,value){this.label=label;this.value=value;}},
     crypto:webcrypto,location,history:{replaceState(_a,_b,hash){location.hash=hash;}},
     document:{getElementById:element,createElement:nodes,querySelectorAll:selector=>selector==='[data-page]'?pages:selector==='[data-page-link]'?tabs:[],body:{dataset:{}}},
-    window:{GorkCatalog:catalogScope.window.GorkCatalog,GorkAvatar:{mount(_canvas,_catalog,options){const mount={options,disposed:false};previewMounts.push(mount);return {set:state=>avatarStates.push(state),dispose(){mount.disposed=true;}};}},gorkDesktop:desktop,
-      addEventListener(name,fn){events[name]=fn;},localStorage:{getItem:key=>saved[key]??null,setItem:(key,value)=>{saved[key]=value;}}},
+    window:{GorkCatalog:catalogScope.window.GorkCatalog,GorkAvatar:{mount(_canvas,_catalog,options){const mount={options,disposed:false};previewMounts.push(mount);return {set:state=>avatarStates.push(state),playCustom:(entry,opts)=>avatarStates.push({custom:entry.id,...opts}),dispose(){mount.disposed=true;}};}},gorkDesktop:desktop,
+      addEventListener(name,fn){events[name]=fn;},localStorage:{getItem:key=>saved[key]??null,setItem:(key,value)=>{if(uiOptions.storageWritesFail)throw new Error('Storage quota exceeded');saved[key]=value;}}},
     setInterval:()=>0,clearInterval(){},clearTimeout,setTimeout,console,
-    async fetch(url, options){
+    async fetch(url, options={}){
       requests.push({url,body:options.body,headers:options.headers});
+      const injected = await uiOptions.onRequest?.(url,options);
+      if(injected) return injected;
+      if(url==='/api/motion/expressions')return {ok:true,json:async()=>({revision:1,entries:uiOptions.customEntries||[]})};
       if(url==='/api/workspace' && uiOptions.workspaceBusy) return {ok:false,status:409,json:async()=>({error:{code:'WORKSPACE_BUSY',message:'工作台已占用'}})};
       if(url==='/api/character' && options.method==='POST') {
         const {target}=JSON.parse(options.body);
@@ -83,6 +87,12 @@ function workbench(saved = {}, uiOptions = {}) {
         if (options.method === 'PUT') sentinel = {...sentinel,...JSON.parse(options.body)};
         return {ok:true,json:async()=>sentinel};
       }
+      if (url.startsWith('/api/cost/sentinel/projects') && uiOptions.sentinelProjects) {
+        const source = new URL(url, 'http://localhost').searchParams.get('source');
+        const result = {items:[{project_id:source,project_name:source}],total:1};
+        if (uiOptions.delaySentinelProjects) return await new Promise(resolve=>waiting.push(()=>resolve({ok:true,json:async()=>result})));
+        return {ok:true,json:async()=>result};
+      }
       if (url === '/api/character/voice-library' && uiOptions.voiceLibrary)
         return {ok:true,json:async()=>uiOptions.voiceLibrary};
       if (url === '/api/character/voice-library/generate' && uiOptions.voiceLibrary) {
@@ -94,9 +104,10 @@ function workbench(saved = {}, uiOptions = {}) {
       if (url === '/api/device/audio/speech' && uiOptions.oldBackend)
         return {ok:false,status:404,json:async()=>({})};
       if(url==='/api/tts') return await new Promise(resolve=>waiting.push(()=>resolve({ok:true,arrayBuffer:async()=>new ArrayBuffer(44)})));
-      return {ok:true,json:async()=>url==='/api/health'?{version:uiOptions.healthVersion || '9.8.7-test',auto_connect_voice:uiOptions.autoConnectVoice === true,watch_speech_sync:uiOptions.oldBackend !== true,voice:{ready:true},voice_url:'local',robot:{connected:uiOptions.robotConnected === true},answer:{enabled:true},
+      return {ok:true,json:async()=>url==='/api/health'?(uiOptions.healthResponses?.length ? uiOptions.healthResponses.shift() : {version:uiOptions.healthVersion || '9.8.7-test',auto_connect_voice:uiOptions.autoConnectVoice === true,watch_speech_sync:uiOptions.oldBackend !== true,answer_speech_continuity:uiOptions.answerSpeechContinuity!==false,voice:{ready:true},voice_url:'local',robot:{connected:uiOptions.robotConnected === true},answer:{enabled:true},
         capabilities:{protocol_version:1,tts:{speakers:[{id:3,label:'local 3'},{id:58,label:'local 58'}]},
-          cloud:{request_voice:true,voices:[{id:'Cherry',label:'Cherry'},{id:'Ethan',label:'Ethan'}]}}}:url==='/api/answer'?{text:'单独的回答'}:
+          cloud:{request_voice:true,voices:[{id:'Cherry',label:'Cherry'},{id:'Ethan',label:'Ethan'}]}}}):url==='/api/answer'?(uiOptions.answerResult||{text:'单独的回答'}):
+        url==='/api/state'&&uiOptions.stateResult?uiOptions.stateResult:
         url==='/api/character/bubble'?{desktop:{requested:true,accepted:true},watch:{requested:true,accepted:true,receipt:'OK:TEXT'}}:
         ['/api/device/audio/speech','/api/device/audio/play'].includes(url)?{job_id:'test-job'}:
         url==='/api/device/audio'?(uiOptions.audioResult || {job_id:'test-job',running:false,stage:'played',bytes:44,total:44}):{generation:0,robot:{}}};
@@ -107,6 +118,45 @@ function workbench(saved = {}, uiOptions = {}) {
   return {element,waiting,played,requests,pages,tabs,location,events,avatarStates,saved,previewMounts,context};
 }
 const settle = () => new Promise(resolve=>setImmediate(resolve));
+
+test('header follows the selected Watch route through switching and disconnects', async()=>{
+  const ui=workbench();await settle();
+  for(const [robot,text,state] of [
+    [{connected:true,network:{route:'ble',ble_connected:true,wifi_connected:true,policy:'auto_wifi_first'}},'Watch：蓝牙已连接','ready'],
+    [{connected:true,network:{route:'wifi',ble_connected:true,wifi_connected:true,policy:'auto_wifi_first'}},'Watch：Wi-Fi 已连接','ready'],
+    [{connected:false,network:{route:'wifi',ble_connected:true,wifi_connected:false}},'Watch：未连接','offline'],
+    [{connected:true,network:{route:'ble',ble_connected:true,wifi_connected:false}},'Watch：蓝牙已连接','ready'],
+    [{connected:true},'Watch：已连接','ready'],
+    [{connected:true,network:{route:'offline',ble_connected:true}},'Watch：已连接','ready'],
+  ]) {
+    vm.runInContext(`paintRobot(${JSON.stringify(robot)})`,ui.context);
+    assert.equal(ui.element('global-watch').textContent,text);
+    assert.equal(ui.element('global-watch').dataset.state,state);
+  }
+});
+
+test('answer writing replaces manual preview and restores the original avatar afterwards',async()=>{
+  const entry={id:'motion-000000000001',name:'我的书写',scene:'writing',config:{}};
+  const base={version:'fixture',auto_connect_voice:false,voice:{ready:true},robot:{connected:true},answer:{enabled:true}};
+  const ui=workbench({}, {healthResponses:[base,{...base,answer_expression:entry},base]});await settle();
+  vm.runInContext("manualPreview=true;",ui.context);
+  await vm.runInContext('refresh()',ui.context);
+  assert.equal(ui.avatarStates.at(-1).custom,entry.id);assert.equal(ui.avatarStates.at(-1).mode,'loop');
+  const before=ui.avatarStates.length;
+  await vm.runInContext('refresh()',ui.context);
+  assert.equal(ui.avatarStates.length,before+1);assert.equal(typeof ui.avatarStates.at(-1),'string');
+});
+
+test('record and spoken-answer custom snapshots override preview and restore after the interaction',async()=>{
+  const question={id:'motion-000000000002',name:'我的疑惑',scene:'question',config:{saved:true}};
+  const writing={id:'motion-000000000001',name:'我的书写',scene:'writing',config:{saved:true}};
+  const base={version:'fixture',auto_connect_voice:false,voice:{ready:true},robot:{connected:true},answer:{enabled:true}};
+  const ui=workbench({}, {healthResponses:[base,{...base,interaction_expression:question},{...base,interaction_expression:writing},base]});await settle();
+  vm.runInContext('manualPreview=true;',ui.context);
+  await vm.runInContext('refresh()',ui.context);assert.equal(ui.avatarStates.at(-1).custom,question.id);
+  await vm.runInContext('refresh()',ui.context);assert.equal(ui.avatarStates.at(-1).custom,writing.id);
+  await vm.runInContext('refresh()',ui.context);assert.equal(typeof ui.avatarStates.at(-1),'string');
+});
 
 test('character voice library lists cached phrases and previews locally', async () => {
   const voiceLibrary={voice:'Cherry',voice_label:'芊悦 · Cherry',model:'qwen3-tts-flash',ready:1,total:1,
@@ -125,6 +175,34 @@ test('settings shows the running console version from health', async () => {
   const ui=workbench({}, {hash:'#settings'}); await settle();
   assert.equal(ui.element('desktop-version').textContent,'v9.8.7-test');
   assert.equal(ui.element('header-version').textContent,'v9.8.7-test');
+});
+
+test('voice status logs only sustained state changes, not isolated health failures', async () => {
+  const base={version:'9.8.7-test',auto_connect_voice:false,voice_url:'local',
+    voice_service:{mode:'owned',owned:true},robot:{connected:false},answer:{enabled:false}};
+  const ready={...base,voice:{ready:true}};
+  const failed={...base,voice_error:{code:'VOICE_OFFLINE',message:'检查失败'}};
+  const ui=workbench({}, {healthResponses:[ready,failed,ready,failed,failed,failed,ready,ready]});
+  await settle();
+  const serviceRows=()=>ui.element('debug-log').children.map(row=>row.textContent).filter(row=>row.includes('[SERVICE]'));
+  assert.equal(serviceRows().length,1);
+  await vm.runInContext('refresh()',ui.context);
+  assert.equal(ui.element('voice-status').textContent,'在线');
+  assert.equal(serviceRows().length,1);
+  await vm.runInContext('refresh()',ui.context);
+  assert.equal(serviceRows().length,1);
+  await vm.runInContext('refresh()',ui.context);
+  assert.equal(serviceRows().length,1);
+  await vm.runInContext('refresh()',ui.context);
+  assert.equal(ui.element('voice-status').textContent,'暂不可用');
+  assert.match(serviceRows().at(-1),/连续失败（VOICE_OFFLINE）/);
+  await vm.runInContext('refresh()',ui.context);
+  assert.equal(serviceRows().length,2);
+  await vm.runInContext('refresh()',ui.context);
+  assert.equal(ui.element('voice-status').textContent,'在线');
+  assert.equal(serviceRows().length,3);
+  await vm.runInContext('refresh()',ui.context);
+  assert.equal(serviceRows().length,3);
 });
 
 test('cost query is opt-in AI, labels demo, renders literal sources and never speaks', async () => {
@@ -155,6 +233,36 @@ test('task sentinel starts on and the switch can turn it off without fetching bu
 test('task sentinel switch is rendered as a switch in the generated console', () => {
   const html=fs.readFileSync(new URL('../static/index.html',import.meta.url),'utf8');
   assert.match(html,/<input(?=[^>]*id="sentinel-enable")(?=[^>]*role="switch")[^>]*>/);
+});
+
+test('Astra selection is explicit and old consoles cannot submit an unsupported source', async()=>{
+  const old=workbench();await settle();
+  assert.equal(old.element('sentinel-source').disabled,true);
+  assert.match(old.element('sentinel-source-note').textContent,/重开/);
+  const sentinel={source:'legacy',enabled:false,mode:'auto',target:'both',sound:true,sound_kind:'speech',sound_target:'pc',history:[]};
+  const ui=workbench({}, {hash:'#cost',sentinel});await settle();
+  ui.element('sentinel-source').value='astra';
+  await ui.element('sentinel-source').change();
+  assert.equal(ui.requests.some(r=>r.url==='/api/cost/sentinel'&&r.body),false);
+  assert.match(ui.element('sentinel-source-note').textContent,/尚未应用/);
+  ui.element('sentinel-enable').checked=true;
+  await ui.element('sentinel-apply').onclick();
+  const request=ui.requests.find(r=>r.url==='/api/cost/sentinel'&&r.body);
+  assert.deepEqual(JSON.parse(request.body),{source:'astra',enabled:true,mode:'auto',task_id:'',target:'both',sound:true,sound_kind:'speech',sound_target:'pc'});
+  assert.match(ui.element('sentinel-source-note').textContent,/当前来源：智算 Astra/);
+});
+
+test('late project list from the old source cannot overwrite the selected source',async()=>{
+  const ui=workbench({}, {sentinel:{source:'legacy',enabled:false,mode:'auto',target:'desktop',history:[]},sentinelProjects:true,delaySentinelProjects:true});
+  await settle();
+  const previous=ui.element('sentinel-projects').onclick();await settle();
+  ui.element('sentinel-source').value='astra';await ui.element('sentinel-source').change();
+  const current=ui.element('sentinel-projects').onclick();await settle();
+  assert.equal(ui.waiting.length,2);
+  ui.waiting[1]();await current;
+  ui.waiting[0]();await previous;
+  assert.deepEqual(ui.element('sentinel-project').options.map(item=>item.value),['astra']);
+  assert.equal(ui.requests.some(r=>r.url==='/api/cost/sentinel'&&r.body),false);
 });
 
 test('manual character preview returns to the active sentinel after its priority window', async () => {
@@ -202,7 +310,7 @@ test('cost late result is discarded after stop and summary handoff cannot autopl
 });
 
 test('voice catalogue, saved preferences and cloud speed restriction',async()=>{
-  const saved={'gork.tts':'local','gork.speech':JSON.stringify({speaker_id:58,cloud_voice:'Ethan',speed:1.15})};
+  const saved={'gork.cloud-defaults-v1':'true','gork.tts':'local','gork.speech':JSON.stringify({speaker_id:58,cloud_voice:'Ethan',speed:1.15})};
   const ui=workbench(saved);await settle();
   assert.equal(ui.element('voice-select').value,'58');
   ui.element('tts').value='cloud';await ui.element('tts').change();
@@ -273,9 +381,9 @@ test('actual UI handlers: 20 active players stop before server cancellation', as
   assert.equal(ui.played.length,20);
 });
 
-test('new browser defaults use local ASR, cloud TTS and no automatic request', async()=>{
+test('new browser defaults use cloud ASR and TTS without starting a recording or cloud request', async()=>{
   const ui=workbench(); await settle();
-  assert.equal(ui.element('asr').value,'local');
+  assert.equal(ui.element('asr').value,'cloud');
   assert.equal(ui.element('tts').value,'cloud');
   assert.equal(ui.element('robot-route-summary').textContent,'云端朗读');
   assert.equal(ui.element('auto-read').checked,true);
@@ -292,8 +400,90 @@ test('startup auto-connect creates one safe voice session without recording or t
   assert.equal(ui.element('quick-connect').textContent,'语音已连接');
 });
 
+function reconnectTimers(ui){
+  const timers=new Map();let serial=0;
+  ui.context.setTimeout=(fn,delay)=>{timers.set(++serial,{fn,delay});return serial;};
+  ui.context.clearTimeout=id=>timers.delete(id);
+  return {timers,async fire(){const [id,value]=timers.entries().next().value;timers.delete(id);await value.fn();await settle();}};
+}
+test('temporary settings failure retries the owned session and uses the resumed generation',async()=>{
+  let settingsFail=true;
+  const options={onRequest(url,request){
+    if(url==='/api/session'&&request.method==='POST')return {ok:true,json:async()=>({generation:7,resumed:true})};
+    if(url==='/api/settings'&&settingsFail){settingsFail=false;return {ok:false,status:503,json:async()=>({error:{code:'VOICE_OFFLINE',message:'暂时离线'}})};}
+  }};
+  const ui=workbench({},options);await settle();const timing=reconnectTimers(ui);
+  vm.runInContext('startupVoice.enabled=true',ui.context);
+  await vm.runInContext('autoConnectVoice()',ui.context);
+  assert.equal(timing.timers.size,1);assert.equal(ui.element('quick-connect').textContent,'连接语音');
+  await timing.fire();assert.equal(ui.element('quick-connect').textContent,'语音已连接');
+  assert.equal(JSON.parse(ui.requests.filter(r=>r.url==='/api/settings').at(-1).body).generation,8);
+});
+test('a lost session reconnects after successful startup, retaining tone and consent without playback',async()=>{
+  let lost=false;
+  const saved={'gork.cloud-defaults-v1':'true','gork.speech':JSON.stringify({cloud_voice:'Ethan',speaker_id:58,speed:1}),
+    'gork.audio-consent':'false','gork.asr':'local','gork.text-consent':'true','gork.answer-consent':'false'};
+  const ui=workbench(saved,{autoConnectVoice:true,onRequest(url,options){
+    if(lost&&url==='/api/session'&&(!options.method||options.method==='GET'))return {ok:false,status:401,json:async()=>({error:{code:'VOICE_SESSION_INVALID',message:'失效'}})};
+  }});
+  await settle();await new Promise(resolve=>setTimeout(resolve,0));await settle();
+  const timing=reconnectTimers(ui);lost=true;
+  await vm.runInContext('heartbeat()',ui.context);
+  assert.equal(timing.timers.size,1,'successful startup must not permanently disable recovery');
+  lost=false;await timing.fire();
+  assert.equal(ui.element('quick-connect').textContent,'语音已连接');
+  const posts=ui.requests.filter(r=>r.url==='/api/session'&&r.body);
+  assert.equal(posts.length,2);assert(posts.every(r=>JSON.parse(r.body).replace===false));
+  const settings=JSON.parse(ui.requests.filter(r=>r.url==='/api/settings').at(-1).body);
+  assert.equal(settings.speech.cloud_voice,'Ethan');assert.equal(settings.routing.allow_audio_upload,false);
+  assert.equal(settings.allow_answer_upload,false);
+  assert.equal(ui.requests.some(r=>['/api/asr','/api/tts','recorder:start'].includes(r.url)),false);
+});
+test('automatic retry continues beyond the old startup cap with backoff and stops on manual release or busy owner',async()=>{
+  const options={autoConnectVoice:false};const ui=workbench({},options);await settle();
+  vm.runInContext('startupVoice.enabled=true;startupVoice.attempts=60',ui.context);
+  const timing=reconnectTimers(ui);
+  options.onRequest=(url,request)=>url==='/api/session'&&request.method==='POST'?
+    {ok:false,status:503,json:async()=>({error:{code:'VOICE_OFFLINE',message:'离线'}})}:undefined;
+  await vm.runInContext('autoConnectVoice()',ui.context);
+  assert.equal(timing.timers.size,1);assert.equal([...timing.timers.values()][0].delay,30000);
+  await vm.runInContext('release()',ui.context);assert.equal(timing.timers.size,0);
+  await vm.runInContext('refresh()',ui.context);assert.equal(timing.timers.size,0);
+  options.onRequest=(url,request)=>url==='/api/session'&&request.method==='POST'?
+    {ok:false,status:409,json:async()=>({error:{code:'SESSION_BUSY',message:'占用'}})}:undefined;
+  await ui.element('connect').onclick();
+  assert.equal(timing.timers.size,0,'busy owners are not taken over automatically');
+});
+test('late heartbeat and connection responses cannot undo a newer connection or explicit release',async()=>{
+  const options={};const ui=workbench({},options);await settle();await ui.element('connect').onclick();
+  let failHeartbeat;
+  options.onRequest=(url,request)=>url==='/api/session'&&request.method==='GET'?new Promise(resolve=>{failHeartbeat=resolve;}):undefined;
+  const old=vm.runInContext('heartbeat()',ui.context);await settle();
+  await ui.element('connect').onclick();
+  failHeartbeat({ok:false,status:401,json:async()=>({error:{code:'VOICE_SESSION_INVALID',message:'过期响应'}})});await old;
+  assert.equal(ui.element('quick-connect').textContent,'语音已连接');
+  let finishConnection;
+  options.onRequest=(url,request)=>url==='/api/session'&&request.method==='POST'?new Promise(resolve=>{finishConnection=resolve;}):undefined;
+  const pending=ui.element('connect').onclick();await settle();await ui.element('release').onclick();
+  finishConnection({ok:true,json:async()=>({generation:9})});await pending;
+  assert.equal(ui.element('quick-connect').textContent,'连接语音');
+});
+test('automatic recovery only starts a configured stopped manager, never a running or external service',async()=>{
+  const options={};const ui=workbench({},options);await settle();const timing=reconnectTimers(ui);
+  for(const mode of ['owned','external','starting','offline']){
+    options.onRequest=url=>url==='/api/health'?{ok:true,json:async()=>({auto_connect_voice:true,
+      voice_error:{code:'VOICE_OFFLINE',message:'离线'},voice_service:{mode,configured:true},robot:{},answer:{}})}:undefined;
+    await vm.runInContext('refresh()',ui.context);
+    vm.runInContext('connected=false;startupVoice.paused=false',ui.context);
+    const before=ui.requests.filter(r=>r.url==='/api/voice-service/start').length;
+    await vm.runInContext('autoConnectVoice()',ui.context);
+    assert.equal(ui.requests.filter(r=>r.url==='/api/voice-service/start').length-before,mode==='offline'?1:0);
+  }
+  timing.timers.clear();
+});
+
 test('saved local route and independent consent revocations survive reload', async()=>{
-  const saved={'gork.tts':'local','gork.audio-consent':'false','gork.text-consent':'false','gork.answer-consent':'false'};
+  const saved={'gork.cloud-defaults-v1':'true','gork.tts':'local','gork.audio-consent':'false','gork.text-consent':'false','gork.answer-consent':'false'};
   const ui=workbench(saved); await settle();
   assert.equal(ui.element('tts').value,'local');
   assert.equal(ui.element('robot-route-summary').textContent,'本地朗读');
@@ -303,6 +493,22 @@ test('saved local route and independent consent revocations survive reload', asy
   assert.equal(body.routing.allow_audio_upload,false);
   assert.equal(body.routing.allow_text_upload,false);
   assert.equal(body.allow_answer_upload,false);
+});
+
+test('cloud-default migration replaces old routes once and preserves subsequent manual choices', async()=>{
+  const saved={'gork.asr':'local','gork.tts':'local'};
+  const first=workbench(saved);await settle();
+  assert.equal(first.element('asr').value,'cloud');assert.equal(first.element('tts').value,'cloud');
+  assert.equal(saved['gork.cloud-defaults-v1'],'true');
+  saved['gork.asr']='local';saved['gork.tts']='local';
+  const second=workbench(saved);await settle();
+  assert.equal(second.element('asr').value,'local');assert.equal(second.element('tts').value,'local');
+  const revoked=workbench({'gork.asr':'local','gork.tts':'local','gork.audio-consent':'false','gork.text-consent':'false'});await settle();
+  assert.equal(revoked.element('asr').value,'local');assert.equal(revoked.element('tts').value,'local');
+  assert.equal(revoked.element('audio-consent').checked,false);assert.equal(revoked.element('text-consent').checked,false);
+  assert.equal(revoked.requests.some(r=>['/api/asr','/api/tts','recorder:start'].includes(r.url)),false);
+  const full=workbench({'gork.asr':'local','gork.tts':'local'},{storageWritesFail:true});await settle();
+  assert.equal(full.element('asr').value,'cloud');assert.equal(full.element('tts').value,'cloud');
 });
 
 test('revoking text upload switches cloud TTS to local immediately', async()=>{
@@ -328,6 +534,7 @@ test('ordinary route draft leaves current playback path usable until Apply', asy
 test('one composer sends Watch text without TTS and blocks overlong bubbles', async()=>{
   const ui=workbench({}, {robotConnected:true}); await settle(); await ui.element('workspace-acquire').onclick();
   ui.element('output-mode').value='bubble'; await ui.element('output-mode').change();
+  ui.element('bubble-target').value='watch'; await ui.element('bubble-target').change();
   assert.equal(ui.element('bubble-target-control').hidden,false);
   ui.element('transcript').value='晚安'; ui.element('transcript').oninput();
   await ui.element('speak').onclick();
@@ -351,6 +558,18 @@ test('unified display keeps desktop bubble and needs no Watch connection', async
   assert.equal(ui.element('speak').disabled,false);
   await ui.element('speak').onclick();
   assert.equal(JSON.parse(ui.requests.find(r=>r.url==='/api/character/bubble').body).target,'desktop');
+});
+
+test('both display keeps long desktop text available when Watch is offline', async()=>{
+  const ui=workbench();await settle();await ui.element('workspace-acquire').onclick();
+  ui.element('output-mode').value='bubble';await ui.element('output-mode').change();
+  assert.equal(ui.element('bubble-target').value,'both');
+  ui.element('transcript').value='桌面完整文字'.repeat(10);ui.element('transcript').oninput();
+  assert.equal(ui.element('speak').disabled,false);
+  await ui.element('speak').onclick();
+  const request=JSON.parse(ui.requests.find(r=>r.url==='/api/character/bubble').body);
+  assert.equal(request.target,'both');assert.equal(request.text,ui.element('transcript').value);
+  assert.equal(ui.requests.some(r=>r.url==='/api/tts'),false);
 });
 
 test('AI answer can be displayed on Watch without synthesizing audio', async()=>{
@@ -441,12 +660,36 @@ test('auto-read off keeps answer visible without TTS and does not alter editor',
   ui.element('interaction-mode').value='answer'; ui.element('transcript').value='原始问题';
   await ui.element('speak').onclick();
   assert.equal(ui.requests.filter(r=>r.url==='/api/answer').length,1);
+  assert.equal(JSON.parse(ui.requests.find(r=>r.url==='/api/answer').body).speech_pending,false);
   assert.equal(ui.requests.filter(r=>r.url==='/api/tts').length,0);
   assert.equal(ui.element('transcript').value,'原始问题');
   const rows=ui.element('chat-log').children;
   assert.equal(rows.length,2);
   assert.equal(rows[0].children[1].textContent,'原始问题');
   assert.equal(rows[1].children[1].textContent,'单独的回答');
+});
+
+test('composer uses one writing loop across answer, TTS and playback and clears it immediately at the end',async()=>{
+  const entry={id:'motion-000000000001',name:'我的书写',scene:'writing',config:{}};
+  const ui=workbench({}, {answerResult:{text:'回答',interaction_expression:entry},stateResult:{interaction_expression:entry}});
+  await settle();await ui.element('connect').onclick();
+  ui.element('interaction-mode').value='answer';ui.element('transcript').value='问题';
+  const request=ui.element('speak').onclick();await settle();
+  assert.equal(JSON.parse(ui.requests.find(r=>r.url==='/api/answer').body).speech_pending,true);
+  assert.equal(ui.avatarStates.filter(s=>s.custom===entry.id).length,1);
+  ui.waiting.shift()();await request;
+  assert.equal(ui.avatarStates.filter(s=>s.custom===entry.id).length,1);
+  ui.played[0].onended();await settle();
+  assert.equal(typeof ui.avatarStates.at(-1),'string','completed playback ends the custom motion immediately');
+});
+
+test('new composer omits the speech continuation field when an older backend has no capability',async()=>{
+  const ui=workbench({'gork.auto-read':'false'}, {answerSpeechContinuity:false});
+  await settle();await ui.element('connect').onclick();
+  ui.element('interaction-mode').value='answer';ui.element('transcript').value='问题';
+  await ui.element('speak').onclick();
+  const body=JSON.parse(ui.requests.find(r=>r.url==='/api/answer').body);
+  assert.equal('speech_pending' in body,false);
 });
 
 test('tabs change only right-hand pages and keep one mounted avatar', async()=>{
@@ -486,6 +729,19 @@ test('desktop avatar switch uses bridge and reads back actual window state', asy
   assert.deepEqual(calls,[false]);
   assert.equal(ui.element('desktop-visible').checked,false);
   assert.equal(ui.element('desktop-visible').disabled,false);
+});
+
+test('pointer follow switch defaults on, toggles immediately, restores saved off and recovers from failure', async()=>{
+  let enabled=true,fail=false;const calls=[];
+  const desktop={getPointerFollow:async()=>enabled,setPointerFollow:async value=>{calls.push(value);if(fail)throw Error('保存失败');enabled=value;}};
+  const ui=workbench({}, {desktop});await settle();
+  const toggle=ui.element('desktop-pointer-follow');
+  assert.equal(toggle.checked,true);assert.equal(toggle.disabled,false);
+  toggle.checked=false;await toggle.change();assert.equal(toggle.checked,false);assert.deepEqual(calls,[false]);
+  const reopened=workbench({}, {desktop});await settle();assert.equal(reopened.element('desktop-pointer-follow').checked,false);
+  fail=true;toggle.checked=true;await toggle.change();assert.equal(toggle.checked,false);assert.equal(toggle.disabled,false);
+  fail=false;toggle.checked=true;await toggle.change();assert.equal(toggle.checked,true);
+  assert.equal(ui.requests.some(r=>r.url==='/api/device'),false);
 });
 
 test('desktop size changes coalesce pending values and leave the web avatar untouched', async()=>{
@@ -561,9 +817,28 @@ test('expression menu builds 23 real previews only when expanded and hover sends
   assert.equal(ui.avatarStates.at(-1),'happy');
   assert.equal(ui.requests.some(r=>r.url==='/api/character'),false);
   await tiles[1].onclick();
-  assert.deepEqual(JSON.parse(ui.requests.find(r=>r.url==='/api/character').body),{expression:'happy',target:'desktop',mode:'once'});
+  assert.deepEqual(JSON.parse(ui.requests.find(r=>r.url==='/api/character').body),{expression:'happy',target:'both',mode:'once'});
   assert.equal(JSON.parse(ui.requests.find(r=>r.url==='/api/workspace').body).replace,false);
   assert.match(ui.element('expression-feedback').textContent,/桌面：已接收/);
+});
+
+test('custom library joins menu without playing; explicit clicks route to desktop, Watch and both',async()=>{
+  const calls=[],entry={id:'motion-000000000001',name:'专注书写',scene:'writing',config:{}};
+  const ui=workbench({}, {robotConnected:true,customEntries:[entry],desktop:{playCustomExpression:async(id,mode)=>calls.push({id,mode})}});await settle();
+  const tiles=openExpressions(ui);assert.equal(tiles.length,24);
+  assert.equal(tiles[23].dataset.expression,entry.id);assert.match(tiles[23].children[1].textContent,/专注书写.*自定义/);
+  assert.equal(calls.length,0);assert.equal(ui.requests.some(r=>r.url==='/api/character'),false);
+  tiles[23].listeners.pointerenter[0]();assert.equal(calls.length,0);
+  assert.equal(ui.element('expression-target').value,'both');
+  ui.element('expression-target').value='desktop';await ui.element('expression-target').change();
+  await tiles[23].onclick();assert.deepEqual(calls,[{id:entry.id,mode:'once'}]);
+  assert.deepEqual(JSON.parse(ui.requests.find(r=>r.url==='/api/character').body),{expression:entry.id,target:'desktop',mode:'once'});
+  ui.element('expression-target').value='watch';await ui.element('expression-target').change();await tiles[23].onclick();
+  assert.deepEqual(JSON.parse(ui.requests.filter(r=>r.url==='/api/character').at(-1).body),{expression:entry.id,target:'watch',mode:'once'});
+  assert.equal(calls.length,1);
+  ui.element('expression-target').value='both';await ui.element('expression-target').change();await tiles[23].onclick();
+  assert.deepEqual(JSON.parse(ui.requests.filter(r=>r.url==='/api/character').at(-1).body),{expression:entry.id,target:'both',mode:'once'});
+  assert.equal(calls.length,2);
 });
 test('Watch-only expression does not change desktop scene; both reports partial failure',async()=>{
   const scenes=[];const ui=workbench({}, {robotConnected:true,watchError:'设备忙',desktop:{setAvatarScene:async scene=>scenes.push(scene)}});await settle();

@@ -1,0 +1,21 @@
+{
+  "status": "available",
+  "buckets": {
+    "codex": {
+      "name": "codex",
+      "windows": [
+        {
+          "name": "7 天（10080 分钟）",
+          "duration_minutes": 10080,
+          "remaining_percent": 63,
+          "resets_at": 1792478833
+        }
+      ]
+    }
+  },
+  "sampled_at": "2026-10-13T18:57:13.789897+00:00",
+  "stale": false,
+  "source": "codex_official",
+  "scope": "当前 Codex CLI 登录账号",
+  "bucket_id": ""
+}

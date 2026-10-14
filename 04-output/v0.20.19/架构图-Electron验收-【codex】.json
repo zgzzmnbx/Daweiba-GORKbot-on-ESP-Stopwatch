@@ -1,0 +1,30 @@
+{
+  "result": "PASS",
+  "opened": {
+    "open": true,
+    "src": "http://127.0.0.1:64898/static/architecture-landscape.mp4",
+    "ready": 4,
+    "seconds": 2.059506,
+    "muted": true,
+    "loop": true,
+    "controls": false,
+    "videoWidth": 1920,
+    "dialogFits": true,
+    "buttonFits": true,
+    "draft": "preserved draft"
+  },
+  "narrow": {
+    "open": true,
+    "modal": true,
+    "display": "block",
+    "buttonFits": true,
+    "noHeaderOverlap": true,
+    "dialogFits": true,
+    "draft": "preserved draft"
+  },
+  "errors": [],
+  "testOrigin": "http://127.0.0.1:64898/",
+  "realBackend": false,
+  "deviceCommands": false,
+  "cloudRequests": false
+}

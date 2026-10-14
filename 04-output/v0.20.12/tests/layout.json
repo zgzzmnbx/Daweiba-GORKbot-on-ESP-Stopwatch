@@ -1,0 +1,288 @@
+{
+  "result": "PASS",
+  "fixtureOnly": true,
+  "realDeviceConnected": false,
+  "cloudRequests": false,
+  "results": [
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "page": "watch",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "page": "watch",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "page": "dialogue",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "page": "settings",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1480,
+      "height": 960,
+      "page": "dialogue-active",
+      "body": 1480
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "page": "watch",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "page": "watch",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "page": "dialogue",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "page": "settings",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 1180,
+      "height": 820,
+      "page": "dialogue-active",
+      "body": 1180
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "page": "watch",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "page": "watch",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "page": "dialogue",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "page": "settings",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 800,
+      "height": 640,
+      "page": "dialogue-active",
+      "body": 800
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "page": "watch",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "page": "watch",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "page": "dialogue",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "page": "settings",
+      "body": 390
+    },
+    {
+      "theme": "mantine",
+      "width": 390,
+      "height": 760,
+      "page": "dialogue-active",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "page": "watch",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "page": "watch",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "page": "dialogue",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "page": "settings",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1480,
+      "height": 960,
+      "page": "dialogue-active",
+      "body": 1480
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "page": "watch",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "page": "watch",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "page": "dialogue",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "page": "settings",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 1180,
+      "height": 820,
+      "page": "dialogue-active",
+      "body": 1180
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "page": "watch",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "page": "watch",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "page": "dialogue",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "page": "settings",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 800,
+      "height": 640,
+      "page": "dialogue-active",
+      "body": 800
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "page": "watch",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "page": "watch",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "page": "dialogue",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "page": "settings",
+      "body": 390
+    },
+    {
+      "theme": "classic",
+      "width": 390,
+      "height": 760,
+      "page": "dialogue-active",
+      "body": 390
+    }
+  ]
+}

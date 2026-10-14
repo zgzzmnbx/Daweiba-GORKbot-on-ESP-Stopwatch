@@ -36,7 +36,7 @@ test('bubble lifecycle follows avatar visibility, dismiss, new message, clear an
 test('avatar renders scene state without referencing an out-of-scope manual variable',()=>{
   let render;
   const nodes=new Map();const get=id=>{if(!nodes.has(id))nodes.set(id,{dataset:{},addEventListener(){}});return nodes.get(id);};
-  const context={document:{getElementById:get},window:{GorkAvatar:{mount:()=>({set(){}})},gorkDesktop:{getState:()=>Promise.resolve({mode:'idle',scene:{revision:1,expression:'idle'}}),onState:f=>{render=f;}}}};
+  const context={document:{getElementById:get},window:{GorkDesktopSceneAdapter:{mount:()=>({set(){}})},gorkDesktop:{getState:()=>Promise.resolve({mode:'idle',scene:{revision:1,expression:'idle'}}),onState:f=>{render=f;}}}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../avatar.js'),'utf8'),context);
   assert.doesNotThrow(()=>render({mode:'happy',scene:{revision:2,expression:'happy'},character:{bubble:'hi'}}));
   assert.equal(get('status').textContent,'就绪');
@@ -48,13 +48,19 @@ test('avatar quota ring handles one, two and stale windows with keyboard details
     if(!nodes.has(id))nodes.set(id,{hidden:false,dataset:{},style:{values:{},setProperty(key,value){this.values[key]=value;}},setAttribute(key,value){this[key]=value;},addEventListener(){}});
     return nodes.get(id);
   };
-  const context={document:{getElementById:get},window:{GorkAvatar:{mount:()=>({set(){}})},gorkDesktop:{getState:()=>Promise.resolve({mode:'idle'}),onState:f=>{render=f;}}}};
+  const context={document:{getElementById:get},window:{GorkDesktopSceneAdapter:{mount:()=>({set(){}})},gorkDesktop:{getState:()=>Promise.resolve({mode:'idle'}),onState:f=>{render=f;}}}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../avatar.js'),'utf8'),context);
   const window1={name:'5 小时',remaining_percent:75,resets_at:2000000000};
   const window2={name:'7 天',remaining_percent:18,resets_at:2000000000};
   render({mode:'idle',codex:{enabled:false,ring_mode:'hidden',status:'available',bucket:{windows:[window1]}}});
   assert.equal(get('quota-ring-outer').hidden,true);
   assert.equal(get('quota-detail').hidden,true);
+  render({mode:'idle',codex:{enabled:false,ring_mode:'hidden',status:'available',
+    trend:{drop_points:4,window_name:'5 小时',elapsed_minutes:2,remaining:19}}});
+  assert.equal(get('quota-ring-outer').hidden,true);
+  assert.equal(get('quota-trend').hidden,false);
+  assert.equal(get('quota-trend').textContent,'↓4点');
+  assert.match(get('quota-trend')['aria-label'],/剩余 19%/);
   render({mode:'idle',codex:{enabled:true,status:'available',stale:false,bucket:{windows:[window1]}}});
   assert.equal(get('quota-ring-outer').hidden,false);
   assert.equal(get('quota-ring-inner').hidden,true);

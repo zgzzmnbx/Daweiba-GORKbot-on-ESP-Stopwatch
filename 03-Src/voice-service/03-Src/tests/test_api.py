@@ -39,6 +39,7 @@ def test_real_http_contract_with_explicit_fixture(client):
     r = client.post('/v1/tts/synthesize', headers=headers, json=body)
     assert r.status_code == 200 and r.content.startswith(b'RIFF')
     assert r.headers['content-type'] == 'audio/wav'
+    assert r.headers['X-Voice-Mode']=='local' and r.headers['X-Voice-Id']=='3'
     assert 'audio' not in client.get('/v1/requests/b', headers=headers).json()['result']
     with client.websocket_connect('ws://127.0.0.1:8765/v1/events') as ws:
         ws.send_json({'session_id': headers['X-Voice-Session']})

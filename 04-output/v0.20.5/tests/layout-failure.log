@@ -1,0 +1,2 @@
+AssertionError [ERR_ASSERTION]: Watch section below viewport classic/800
+    at D:\Codex-Temp\260529-ESP-32-M5StopWatch\tools\verify_stopwatch_ui.cjs:53:4

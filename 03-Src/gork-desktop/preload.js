@@ -1,6 +1,27 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('gorkDesktop', Object.freeze({
+  setTokenHover: enabled => ipcRenderer.invoke('gork:token-hover', enabled),
+  setTokenHeight: height => ipcRenderer.invoke('gork:token-height', height),
+  hideTokenCard: () => ipcRenderer.invoke('gork:hide-token-card'),
+  onTokenReset: callback => {
+    const listener=()=>callback();ipcRenderer.on('gork:token-reset',listener);
+    return ()=>ipcRenderer.removeListener('gork:token-reset',listener);
+  },
+  onTokenUsage: callback => {
+    const listener=(_event,value)=>callback(value);ipcRenderer.on('gork:token-usage',listener);
+    return ()=>ipcRenderer.removeListener('gork:token-usage',listener);
+  },
+  onPointer: callback => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on('gork:pointer', listener);
+    return () => ipcRenderer.removeListener('gork:pointer', listener);
+  },
+  getPointerFollow: () => ipcRenderer.invoke('gork:pointer-follow'),
+  setPointerFollow: enabled => ipcRenderer.invoke('gork:set-pointer-follow', enabled),
+  playCustomExpression: (itemId, mode) => ipcRenderer.invoke('gork:apply-motion-config', itemId, mode),
+  motionApplied: ack => ipcRenderer.send('gork:motion-applied', ack),
+  onMotionConfig: callback => { const listener = (_event, value) => callback(value); ipcRenderer.on('gork:motion-config', listener); return () => ipcRenderer.removeListener('gork:motion-config', listener); },
   getAppearance: () => ipcRenderer.invoke('gork:get-appearance'),
   setAppearance: value => ipcRenderer.invoke('gork:set-appearance', value),
   getBubblePosition: () => ipcRenderer.invoke('gork:bubble-position'),
@@ -21,6 +42,7 @@ contextBridge.exposeInMainWorld('gorkDesktop', Object.freeze({
   getAvatarAlwaysOnTop: () => ipcRenderer.invoke('gork:avatar-always-on-top'),
   setAvatarAlwaysOnTop: (enabled) => ipcRenderer.invoke('gork:set-avatar-always-on-top', enabled),
   getState: () => ipcRenderer.invoke('gork:get-state'),
+  previewQuotaDrop: (points, animation) => ipcRenderer.invoke('gork:preview-quota-drop', points, animation),
   setAvatarScene: (scene) => ipcRenderer.invoke('gork:set-avatar-scene', scene),
   onState: (callback) => {
     const listener = (_event, state) => callback(state);

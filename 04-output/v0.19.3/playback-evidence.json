@@ -1,0 +1,42 @@
+{
+  "systemReduced": true,
+  "start": {
+    "kind": "scenes",
+    "name": "motion-08d34732dff2",
+    "scene": "question",
+    "phase": "enter",
+    "reason": "switch",
+    "revision": 1,
+    "paused": false,
+    "reducedMotion": false,
+    "hidden": false,
+    "elapsed": 86.10000002384186
+  },
+  "first": {
+    "kind": "scenes",
+    "name": "motion-08d34732dff2",
+    "scene": "question",
+    "phase": "loop",
+    "reason": "switch",
+    "revision": 1,
+    "paused": false,
+    "reducedMotion": false,
+    "hidden": false,
+    "elapsed": 1186.2000000238418
+  },
+  "second": {
+    "kind": "scenes",
+    "name": "motion-08d34732dff2",
+    "scene": "question",
+    "phase": "loop",
+    "reason": "switch",
+    "revision": 1,
+    "paused": false,
+    "reducedMotion": false,
+    "hidden": false,
+    "elapsed": 1719.500000023842
+  },
+  "mounts": 1,
+  "desktopPixelsChanged": true,
+  "consolePixelsChanged": true
+}

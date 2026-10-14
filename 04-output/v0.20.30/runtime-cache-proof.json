@@ -1,0 +1,31 @@
+{
+  "physical_speech_test": false,
+  "warmup": {
+    "state": "ready",
+    "generated": 28
+  },
+  "cache_misses_before": 28,
+  "total": 28,
+  "ready": 28,
+  "watch_stage": "ready",
+  "robot_connected": true,
+  "preview_reads": [
+    {
+      "bytes": 76844,
+      "sha256": "89500065E55E01E9BCD8C6604F066ED5280719B08F7FA974AE66476E02C3FB55",
+      "elapsed_ms": 23.6
+    },
+    {
+      "bytes": 76844,
+      "sha256": "89500065E55E01E9BCD8C6604F066ED5280719B08F7FA974AE66476E02C3FB55",
+      "elapsed_ms": 26.3
+    }
+  ],
+  "cache_misses_after": 28,
+  "version": "0.20.30-dev",
+  "voice": {
+    "speaker_id": 3,
+    "cloud_voice": "Cherry",
+    "speed": 1.0
+  }
+}

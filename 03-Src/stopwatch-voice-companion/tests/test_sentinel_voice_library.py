@@ -8,6 +8,7 @@ from companion.app import create_app
 from companion.control import Controller
 from companion.task_monitor import _fixed_wav
 from companion import sentinel_voice_library as library
+from companion import speech_cache
 from test_companion import FakeRobot, FakeVoice, wav_bytes
 
 
@@ -30,6 +31,7 @@ def test_cached_cherry_phrase_is_reused_and_invalid_audio_is_rejected(tmp_path, 
 
 def test_voice_library_generation_requires_cloud_grant_and_caches_one_phrase(tmp_path, monkeypatch):
     monkeypatch.setattr(library, 'cache_dir', lambda: tmp_path)
+    monkeypatch.setattr(speech_cache, 'cache_dir', lambda: tmp_path / 'current')
 
     class Cost:
         async def monitor_feed(self):
@@ -44,6 +46,8 @@ def test_voice_library_generation_requires_cloud_grant_and_caches_one_phrase(tmp
         async def synthesize(self, *args, **kwargs):
             self.requests.append((args, kwargs))
             return wav_bytes(24000)
+        async def capabilities(self):
+            return {'cloud':{'tts_model':'qwen3-tts-flash','default_voice':'Cherry','request_voice':True}}
 
     async def run():
         owner = str(uuid.uuid4())
@@ -56,6 +60,7 @@ def test_voice_library_generation_requires_cloud_grant_and_caches_one_phrase(tmp
                 control.owner = control.voice_owner = owner
                 control.voice.session = 'private-session'
                 control.turn = 1
+                control.speech={'cloud_voice':'Cherry','speed':1.0,'request_voice':True}
                 response = await client.post('/api/character/voice-library/generate',
                                              json={'item_id': 'conversion_start'})
                 assert response.status_code == 403

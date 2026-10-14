@@ -1,5 +1,11 @@
 # 工具目录
 
+## v0.20.8 启动残留检查
+
+原start-gork-console.cmd在启动Electron前调用gork-startup-preflight.ps1，不需修改已有快捷方式。仅回收具有桌面启动标记、归属核实且祖先已退出的应用端口后台；活跃旧Gork须从托盘退出，独立后台及其他服务保留。默认8766，沿用GORK_BACKEND_PORT；清理后等待进程结束和端口释放，失败停止本次启动。Codex-Temp/gork-startup/preflight-last.json和preflight-history.jsonl保留安全摘要，不记录命令正文、Key、热点密码或启动标记。
+
+可执行只读检查：powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\gork-startup-preflight.ps1 -ProjectRoot . -InspectOnly。只报告start/reuse/clean/block，不终止进程或启动Gork。37桌面测试中的Windows启动专项覆盖16个归属判断及真实cmd的隔离服务三场景。
+
 用于项目维护、构建辅助、设备探测和验证脚本。
 
 v0.6.0 新增电脑语音网页工作台，根目录双击 `start-voice-companion.cmd`；使用说明在 `03-Src/stopwatch-voice-companion/README.md`。语音工作台与旧蓝牙控制台不要同时占用设备。

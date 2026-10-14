@@ -10,11 +10,16 @@
 #include "audio_probe.h"
 #include "sound_control.h"
 #include "speaker_output.h"
+#include "network_control.h"
+#include "network_setup.h"
+#include "connection_announcements.h"
+#include "connection_voice.h"
+#include <esp_heap_caps.h>
 
 namespace {
 
 constexpr uint8_t kDefaultBrightness = 150;
-constexpr char kFirmwareVersion[] = "v0.9.1-dev";
+constexpr char kFirmwareVersion[] = "v0.11.10-dev";
 constexpr uint8_t kMinimumBrightness = 30;
 constexpr uint8_t kBrightnessStep = 15;
 constexpr uint32_t kDiagnosticRefreshIntervalMs = 100;
@@ -49,13 +54,18 @@ struct TextTransfer {
 };
 
 enum class GestureAxis : uint8_t { None, Horizontal, Vertical };
-enum class PanelPage : uint8_t { Settings, Hardware, Bluetooth, Sound, Audio };
+enum class PanelPage : uint8_t { Settings, Hardware, Bluetooth, Sound, Audio, Network };
 
 AvatarEngine avatar;
 Preferences settings;
 BLEControl bleControl;
 AudioProbe audioProbe(bleControl);
+NetworkControl networkControl(bleControl);
+bool forgetNetworkConfirm=false;
 SoundControl soundControl(bleControl);
+ConnectionAnnouncements connectionAnnouncements;
+ConnectionAnnouncements::Cue activeConnectionCue = ConnectionAnnouncements::None;
+uint32_t connectionSoundStopEpoch = 0;
 TextTransfer textTransfer;
 bool vibrationReady = false;
 bool settingsReady = false;
@@ -84,7 +94,10 @@ int8_t previousShakeDirection = 0;
 uint32_t shakeSequenceStartedMs = 0;
 uint32_t lastStrongShakeMs = 0;
 String lastDiagnosticEvent = "Waiting for input";
-String serialCommand;
+char serialLine[gorksetup::MaxLine]{};
+size_t serialUsed=0;
+bool serialOverflow=false;
+uint32_t serialLastByte=0;
 uint8_t brightness = kDefaultBrightness;
 uint8_t pendingSoundVolume = 20;
 uint32_t soundVolumeChangedAtMs = 0;
@@ -170,7 +183,8 @@ void drawSettingsFrame() {
   drawBatteryLine();
   drawBrightnessControls();
   drawDebugControls();
-  drawPanelButton(123, 292, 220, "Sound");
+  drawPanelButton(75, 292, 140, "Sound");
+  drawPanelButton(245,292,140,"Network");
   drawPanelButton(123, 334, 220, "Bluetooth");
   drawPanelButton(123, 376, 220, "Hardware Check");
   drawPanelButton(170, 418, 126, "Audio test");
@@ -609,6 +623,15 @@ void handleBleTextPacket(const uint8_t* packet, uint8_t length,
   snprintf(status, statusCapacity, "ERR:TEXT_SEQ");
 }
 
+void formatBleExpressionReceipt(const AvatarEngine& avatar, char* status,
+                                size_t capacity) {
+  if (!capacity) return;
+  snprintf(status, capacity, "OK:%s", avatar.activeProtocolName());
+  for (char* cursor = status; *cursor; ++cursor) {
+    if (*cursor >= 'a' && *cursor <= 'z') *cursor -= 'a' - 'A';
+  }
+}
+
 void processBleCommands(uint32_t nowMs) {
   char command[BLEControl::kMaxCommandLength + 1] = {};
   uint16_t connectionId = 0;
@@ -635,7 +658,7 @@ void processBleCommands(uint32_t nowMs) {
         dispatchExpressionCommand(String(command), nowMs, "BLE");
     if (accepted) {
       char status[BLEControl::kMaxStatusLength + 1] = {};
-      snprintf(status, sizeof(status), "OK:%s", avatar.activeName());
+      formatBleExpressionReceipt(avatar, status, sizeof(status));
       bleControl.publishResult(connectionId, status);
     } else {
       bleControl.publishResult(connectionId, "ERR:BAD_CMD");
@@ -644,20 +667,66 @@ void processBleCommands(uint32_t nowMs) {
 }
 
 void handleSerialCommands(uint32_t nowMs) {
+  if(serialUsed && nowMs-serialLastByte>2000){memset(serialLine,0,sizeof(serialLine));serialUsed=0;serialOverflow=false;}
   while (Serial.available() > 0) {
     const char character = static_cast<char>(Serial.read());
+    serialLastByte=nowMs;
     if (character == '\n' || character == '\r') {
-      if (serialCommand.length() == 0) continue;
-      if (menuOpen) {
+      if (!serialUsed && !serialOverflow) continue;
+      if(serialOverflow){Serial.println("USB command rejected: too long");}
+      else if(serialUsed>=5 && !memcmp(serialLine,"GWUSB",5)){
+        gorksetup::Packet packet;
+        if(!gorksetup::parse(serialLine,serialUsed,packet)){
+          Serial.printf("GWUSB1 %08lx {\"error\":\"invalid request\"}\n",static_cast<unsigned long>(packet.request));
+        }else if(packet.op==gorksetup::Op::Set){
+          const bool idle=!audioProbe.busy()&&!soundControl.isPlaying();
+          const bool saved=idle&&networkControl.configureUsb(packet.data,packet.size);
+          Serial.printf("GWUSB1 %08lx {\"accepted\":%s}\n",static_cast<unsigned long>(packet.request),saved?"true":"false");
+        }else{
+          const auto status=networkControl.publicStatus();
+          Serial.printf("GWUSB1 %08lx {\"device\":\"StopWatch-Gork\",\"protocol\":1,\"firmware\":\"%s\",\"network\":%s}\n",static_cast<unsigned long>(packet.request),kFirmwareVersion,status.c_str());
+        }
+        gorksetup::wipe(&packet,sizeof(packet));
+      }else if(serialUsed>32){Serial.println("USB command rejected: too long");}
+      else if (menuOpen) {
         Serial.println("USB command rejected: settings menu is open");
       } else {
-        dispatchExpressionCommand(serialCommand, nowMs, "USB");
+        dispatchExpressionCommand(String(serialLine), nowMs, "USB");
       }
-      serialCommand = "";
-    } else if (serialCommand.length() < 32) {
-      serialCommand += character;
+      memset(serialLine,0,sizeof(serialLine));serialUsed=0;serialOverflow=false;
+    } else if (serialUsed+1 < sizeof(serialLine)) {
+      serialLine[serialUsed++]=character;
+    } else {
+      serialOverflow=true;
     }
   }
+}
+
+void renderAvatarWithAudioHint(uint32_t nowMs) {
+  static uint32_t lastAudioHint=0;
+  static bool hintVisible=false;
+  static uint8_t lastHintKind=0;
+  const uint8_t left=audioProbe.recordSecondsLeft(nowMs);
+  const bool preparing=audioProbe.preparing(nowMs);
+  const bool showHint=left||preparing||audioProbe.busy();
+  const uint8_t hintKind=left?1:preparing?2:3;
+  // Restore the avatar once when an actual hint ends. Idle frames must not
+  // paint a blank black rectangle over the avatar's partial refresh.
+  if(!showHint&&hintVisible){avatar.invalidate();hintVisible=false;}
+  avatar.update(nowMs);
+  if(!showHint||(hintVisible&&hintKind==lastHintKind&&nowMs-lastAudioHint<200))return;
+  lastAudioHint=nowMs;
+  lastHintKind=hintKind;
+  char hint[72];
+  if(left)snprintf(hint,sizeof(hint),"REC %us / click A to send / B cancel",left);
+  else if(preparing)snprintf(hint,sizeof(hint),"Preparing / click A to cancel");
+  else snprintf(hint,sizeof(hint),"%.54s",audioProbe.message());
+  M5.Display.setTextDatum(middle_center);
+  M5.Display.setTextColor(left?TFT_RED:TFT_LIGHTGREY,TFT_BLACK);
+  M5.Display.fillRect(60,420,346,20,TFT_BLACK);
+  M5.Display.drawString(hint,233,430);
+  M5.Display.setTextDatum(top_left);
+  hintVisible=true;
 }
 
 void refreshDiagnosticSensors() {
@@ -688,7 +757,7 @@ void setMenuOpen(bool enabled) {
   menuOpen = enabled;
   stopVibration();
   if (menuOpen) {
-    serialCommand = "";
+    memset(serialLine,0,sizeof(serialLine));serialUsed=0;serialOverflow=false;
     panelPage = PanelPage::Settings;
     drawSettingsFrame();
     Serial.println("Settings mode entered");
@@ -697,6 +766,63 @@ void setMenuOpen(bool enabled) {
     avatar.invalidate();
     Serial.println("Expression mode entered");
   }
+}
+
+void drawNetworkFrame(){
+  drawPanelFrame("Network");
+  drawDiagnosticLine(102,"State",networkControl.state(),TFT_WHITE);
+  drawDiagnosticLine(140,"IP",networkControl.address(),TFT_LIGHTGREY);
+  drawDiagnosticLine(178,"Power source",networkControl.source(),TFT_YELLOW);
+  const char* modes[]={"Auto WiFi first","BLE only","WiFi only"};
+  const char* power[]={"Power: Auto (unknown/eco)","Power: Performance","Power: Eco"};
+  drawPanelButton(70,212,326,modes[networkControl.policy()]);
+  drawPanelButton(70,256,326,power[networkControl.power()]);
+  drawPanelButton(105,300,256,"Reconnect");
+  drawPanelButton(105,344,256,forgetNetworkConfirm?"Confirm forget hotspot":"Forget hotspot");
+  drawPanelButton(170,396,126,"Back");
+}
+void handleNetworkInput(uint32_t now){
+  const auto touch=M5.Touch.getDetail(0);
+  if(touch.wasPressed()){
+    if(touch.y>=212&&touch.y<254)networkControl.options((networkControl.policy()+1)%3,networkControl.power());
+    else if(touch.y>=256&&touch.y<298)networkControl.options(networkControl.policy(),(networkControl.power()+1)%3);
+    else if(touch.y>=300&&touch.y<342)networkControl.reconnect();
+    else if(touch.y>=344&&touch.y<386){if(forgetNetworkConfirm){networkControl.forget();forgetNetworkConfirm=false;}else forgetNetworkConfirm=true;}
+    else if(touch.y>=396&&touch.y<438){panelPage=PanelPage::Settings;drawSettingsFrame();return;}
+    drawNetworkFrame();
+  }
+  static uint32_t last=0;if(now-last>=1000){last=now;drawNetworkFrame();}
+}
+
+void processNetworkCommands(uint32_t now){
+  auto* p=networkControl.take();if(!p)return;
+  if(!networkControl.ready()||p->session==0||p->session!=networkControl.session()){heap_caps_free(p);return;}
+  char result[80]="OK";bool failed=false;
+  if(p->kind==0){auto status=networkControl.publicStatus();networkControl.reply(*p,status.c_str());}
+  else if(p->kind==6){
+    if(p->size==0){auto status=networkControl.publicStatus();networkControl.reply(*p,status.c_str());}
+    else if(p->data[0]==1&&p->size==3){if(audioProbe.busy()){networkControl.reply(*p,"audio busy",true);}else{bool ok=networkControl.options(p->data[1],p->data[2]);networkControl.reply(*p,ok?"{}":"invalid options",!ok);}}
+    else if(p->data[0]==2&&p->size==1){audioProbe.cancelLocal();networkControl.reply(*p,"{}");}
+    else if(p->data[0]==3&&p->size==2){networkControl.delegate(p->data[1]!=0,true);networkControl.reply(*p,"{}");}
+    else networkControl.reply(*p,"invalid control",true);
+  }
+  else if(menuOpen){networkControl.reply(*p,"settings open",true);}
+  else if(p->kind==1&&p->size>0&&p->size<=32&&!memchr(p->data,0,p->size)){
+    char command[33]{};memcpy(command,p->data,p->size);bool ok=dispatchExpressionCommand(String(command),now,"WiFi");networkControl.reply(*p,ok?"OK:APPLIED":"invalid expression",!ok);
+  }
+  else if(p->kind==2&&p->size<=72&&p->size&&validBubbleUtf8(p->data,p->size)){
+    avatar.setBubbleText(reinterpret_cast<const char*>(p->data),p->size,now);networkControl.reply(*p,"OK:TEXT");
+  }
+  else if(p->kind==3&&p->size==0){avatar.clearBubbleText();networkControl.reply(*p,"OK:CLEAR");}
+  else if(p->kind==4&&p->size==2){
+    if(p->data[0]==0){soundControl.stopNow();networkControl.reply(*p,"OK:STOPPED");}
+    else if(p->data[0]==1&&!audioProbe.busy()){bool ok=soundControl.preview(p->data[1]);networkControl.reply(*p,ok?"OK:ACCEPTED":"sound unavailable",!ok);}
+    else if(p->data[0]==2){soundControl.setLocalVolume(p->data[1]);networkControl.reply(*p,"OK:VOLUME");}
+    else networkControl.reply(*p,"audio busy",true);
+  }
+  else if(p->kind==5){audioProbe.networkInput(p->data,p->size,networkControl.link());networkControl.reply(*p,"accepted");}
+  else networkControl.reply(*p,"invalid request",true);
+  memset(p,0,sizeof(*p));heap_caps_free(p);
 }
 
 void handleSettingsInput(uint32_t nowMs) {
@@ -709,9 +835,9 @@ void handleSettingsInput(uint32_t nowMs) {
                touch.x >= 250 && touch.x < 390) {
       toggleDebugMode();
     } else if (touch.y >= 288 && touch.y < 330 &&
-               touch.x >= 110 && touch.x < 356) {
-      panelPage = PanelPage::Sound;
-      drawSoundFrame();
+               touch.x >= 75 && touch.x < 390) {
+      if(touch.x>=240){panelPage=PanelPage::Network;forgetNetworkConfirm=false;drawNetworkFrame();}
+      else {panelPage = PanelPage::Sound;drawSoundFrame();}
     } else if (touch.y >= 330 && touch.y < 372 &&
                touch.x >= 110 && touch.x < 356) {
       panelPage = PanelPage::Bluetooth;
@@ -889,6 +1015,9 @@ void setup() {
   bleControl.setAudioProbe(&audioProbe);
   bleControl.setSoundControl(&soundControl);
   audioProbe.setSoundControl(&soundControl);
+  networkControl.begin();
+  bleControl.setNetworkControl(&networkControl);
+  audioProbe.setNetworkControl(&networkControl);
   soundControl.setInitialVolume(soundVolume);
   if (!bleControl.begin(bleEnabled, bleBound, blePeer)) {
     Serial.println("BLE control failed to initialize; kept OFF");
@@ -897,6 +1026,7 @@ void setup() {
   audioProbe.enter(false);
 
   Serial.println("Expression device started");
+  Serial.println(kFirmwareVersion);
   Serial.println(
       "Commands: idle listening thinking happy excited curious confused "
       "angry surprised sad sleepy dizzy happy-work");
@@ -913,8 +1043,32 @@ void loop() {
   persistBleBindingIfNeeded();
   handleSerialCommands(nowMs);
   processBleCommands(nowMs);
+  networkControl.update(nowMs,audioProbe.busy());
+  processNetworkCommands(nowMs);
   audioProbe.update(nowMs);
-  soundControl.update(nowMs, (menuOpen && panelPage == PanelPage::Audio) || audioProbe.busy());
+  const bool connectionAudioBlocked = (menuOpen && panelPage == PanelPage::Audio) ||
+      audioProbe.busy() || audioProbe.preparing(nowMs);
+  soundControl.update(nowMs, connectionAudioBlocked);
+  const bool wifiJoined = networkControl.wifiJoined();
+  const bool bleTrusted = bleControl.audioPeerAllowed(bleControl.connectionId());
+  // Drop an announcement whose link vanished; do not stop another audio owner.
+  if (soundControl.isAnnouncing() &&
+      ((activeConnectionCue == ConnectionAnnouncements::Wifi && !wifiJoined) ||
+       (activeConnectionCue == ConnectionAnnouncements::Ble && !bleTrusted))) {
+    soundControl.stopNow();
+  }
+  const bool cancelConnectionCue = soundControl.stopEpoch() != connectionSoundStopEpoch ||
+      M5.BtnA.wasClicked() || M5.BtnB.wasPressed() || menuToggleLatched;
+  connectionSoundStopEpoch = soundControl.stopEpoch();
+  const auto cue = connectionAnnouncements.update(nowMs, wifiJoined, bleTrusted,
+      bleControl.linkEpoch(), connectionAudioBlocked, !soundControl.volume(),
+      soundControl.isPlaying(), cancelConnectionCue);
+  if (cue != ConnectionAnnouncements::None) {
+    using namespace gork_connection_voice;
+    const auto* pcm = cue == ConnectionAnnouncements::Wifi ? kWifi : kBle;
+    const size_t samples = cue == ConnectionAnnouncements::Wifi ? sizeof(kWifi)/sizeof(*kWifi) : sizeof(kBle)/sizeof(*kBle);
+    if (soundControl.announce(pcm, samples)) activeConnectionCue = cue;
+  }
   uint8_t changedVolume = 0;
   if (soundControl.takeVolumeChanged(&changedVolume)) {
     pendingSoundVolume=changedVolume; soundVolumeChangedAtMs=nowMs; soundVolumePending=true;
@@ -928,6 +1082,8 @@ void loop() {
       handleBluetoothInput(nowMs);
     } else if (panelPage == PanelPage::Sound) {
       handleSoundInput();
+    } else if(panelPage==PanelPage::Network){
+      handleNetworkInput(nowMs);
     } else if (panelPage == PanelPage::Audio) {
       const auto touch = M5.Touch.getDetail(0);
       if (touch.wasPressed() && touch.y >= 390 && touch.y < 440 &&
@@ -940,17 +1096,17 @@ void loop() {
       handleDiagnosticInput(nowMs);
     }
   } else {
-    if (M5.BtnA.wasClicked()) {
+    if (M5.BtnA.wasClicked()&&!audioProbe.takeAConsumed()&&!menuToggleLatched) {
       avatar.previous(nowMs);
       startVibration(125, 35);
     }
-    if (M5.BtnB.wasClicked() && !soundControl.takeButtonBConsumed()) {
+    if (M5.BtnB.wasClicked() && !soundControl.takeButtonBConsumed()&&!audioProbe.takeBConsumed()&&!menuToggleLatched) {
       avatar.next(nowMs);
       startVibration(125, 35);
     }
     handleProductTouch(nowMs);
     handleImuInteraction(nowMs);
-    avatar.update(nowMs);
+    renderAvatarWithAudioHint(nowMs);
   }
 
   // A short cooperative yield keeps input responsive without quantizing the

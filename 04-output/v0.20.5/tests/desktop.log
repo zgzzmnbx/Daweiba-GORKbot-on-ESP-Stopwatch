@@ -1,0 +1,44 @@
+
+> gork-robot-console@0.20.5-dev test
+> node --test tests/*.test.js
+
+✔ appearance restricts ids and colors while keeping all ten source presets (0.9438ms)
+✔ all ten source geometries render finite paths without starting static animation loops (934.5625ms)
+✔ avatar visibility IPC accepts only the console sender and boolean state (13.2695ms)
+✔ preload exposes the visibility bridge (1.6855ms)
+✔ avatar restores disabled always-on-top from the saved window state (4.4304ms)
+✔ web and desktop share identical renderer/catalog and pinned Watch poses (5.4494ms)
+✔ all catalog poses project to finite capsule geometry within the body (3.7967ms)
+✔ a late desktop listener draws the same animation position from a shared start time (5.0004ms)
+✔ still thumbnails render distinct real poses without scheduling animation frames (3.7684ms)
+✔ backend identity requires app, instance and pid (0.5102ms)
+✔ only owned backend is stopped (0.1256ms)
+✔ owned Windows launcher stops the verified server pid (0.4699ms)
+✔ readable bubble stays on screen at avatar scales 25 to 150 and negative display coordinates (1.6605ms)
+✔ bubble lifecycle follows avatar visibility, dismiss, new message, clear and topmost (0.8219ms)
+✔ avatar renders scene state without referencing an out-of-scope manual variable (2.5313ms)
+✔ avatar quota ring handles one, two and stale windows with keyboard details (15.3195ms)
+✔ bubble uses literal text and preserves scroll position across state polls (1.5792ms)
+✔ default is above, all four preferred sides work, and top-edge fallback preserves tail alignment (0.2447ms)
+✔ idle look pauses, turns in both directions, holds and smoothly returns within bounds (7.6919ms)
+✔ live idle Gork turns without mutating source poses; explicit states take over smoothly (1.4053ms)
+✔ still thumbnails, Watch previews, other characters and reduced-motion skip idle turns (2.3714ms)
+✔ late listeners share the same idle look from their scene start timestamp (1.962ms)
+✔ one-shot expression returns to idle and resumes occasional turns after the resting pause (0.7395ms)
+✔ custom ACK echo preserves playback; a new command or renderer reload plays once (2.4345ms)
+✔ saved motion delivery validates sender, revision, renderer ACK and failures (36.9877ms)
+✔ tray bitmap has a transparent exterior, visible rim and contrasting eyes (4.8167ms)
+✔ tray uses bitmap input and PNG representations for Windows display scales (2.9929ms)
+✔ keeps visible saved bounds (0.869ms)
+✔ rejects off-screen saved bounds (0.1168ms)
+✔ restores a small avatar without expanding it back to default (0.0907ms)
+✔ old oversized bounds are constrained to supported avatar dimensions (0.0745ms)
+✔ 25 percent avatar remains a valid visible saved window (0.3294ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1016.4254

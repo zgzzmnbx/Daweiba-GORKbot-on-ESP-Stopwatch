@@ -1,0 +1,2 @@
+AssertionError [ERR_ASSERTION]: expression scroll viewport escapes its panel mantine/1480: {"client":791,"scroll":791,"bottom":1281.15625,"panelBottom":935,"overflow":"scroll","width":"auto","gutter":"stable"}
+    at D:\Codex-Temp\260529-ESP-32-M5StopWatch\tools\verify_stopwatch_ui.cjs:62:4

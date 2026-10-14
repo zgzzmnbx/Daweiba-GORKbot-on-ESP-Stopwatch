@@ -1,0 +1,34 @@
+{
+  "result": "PASS actual Windows Electron IPC/renderer/save chain",
+  "proofs": [
+    {
+      "scene": "idle",
+      "label": "已保存 r2，桌面小人已应用"
+    },
+    {
+      "scene": "loading",
+      "label": "已保存 r3，桌面小人已应用"
+    },
+    {
+      "scene": "writing",
+      "label": "已保存 r4，桌面小人已应用"
+    },
+    {
+      "scene": "question",
+      "label": "已保存 r5，桌面小人已应用"
+    }
+  ],
+  "layout": {
+    "width": 804,
+    "scroll": 804,
+    "dpr": 1.5,
+    "iframe": 479
+  },
+  "mobile": {
+    "width": 374,
+    "scroll": 374
+  },
+  "rendererFailure": "已保存 r6，桌面应用失败：Error invoking remote method 'gork:apply-motion-config': Error: 配置已保存，但桌面播放器应用失败：injected renderer failure",
+  "reloadedRevision": 6,
+  "consoleErrors": []
+}

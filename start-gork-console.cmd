@@ -10,6 +10,8 @@ if not exist "%ELECTRON_EXE%" (
   if errorlevel 1 (popd & echo Failed to install desktop dependencies.& pause & exit /b 1)
   popd
 )
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%tools\gork-startup-preflight.ps1" -ProjectRoot "%ROOT%."
+if errorlevel 1 (echo Gork startup check stopped. See the message above.& pause & exit /b 1)
 start "" "%ELECTRON_EXE%" "%APP_DIR%"
 if errorlevel 1 (echo Failed to start Gork Robot Console.& pause & exit /b 1)
 exit /b 0

@@ -24,8 +24,8 @@
 .debug-tools .mantine-InputWrapper-root{width:64px}
 .logs-toolbar .mantine-InputWrapper-root{display:inline-block;width:auto}
 .logs-toolbar label{display:flex;align-items:center;gap:8px}
-#theme-toggle{font-size:11px;white-space:nowrap;padding:7px 10px;flex:none;order:4}
+.theme-preferences #theme-toggle{font-size:11px;white-space:nowrap;padding:7px 10px}
 .companion-stage .debug-console{order:1}
 .companion-stage .robot-console{order:2}
 .companion-stage>.eyebrow,.companion-stage>.companion-portrait,.companion-stage>.expression-menu{order:0}
-@media(max-width:700px){.app-header{gap:8px;padding:0 12px}.global-status{gap:6px}.global-status>span{display:none}#global-stop,#theme-toggle{font-size:10px;padding:7px}#theme-toggle{margin-left:auto}.wordmark{font-size:22px}}
+@media(max-width:700px){.app-header{gap:8px;padding:0 12px}.global-status{gap:6px}.global-status>span{display:none}#global-stop{font-size:10px;padding:7px}.wordmark{font-size:22px}}

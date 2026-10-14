@@ -1,0 +1,9 @@
+{
+  "version": "0.19.3-dev",
+  "phase": "idle",
+  "expression": "idle",
+  "mode": "loop",
+  "hasCustomMotion": false,
+  "libraryRevision": 7,
+  "libraryCount": 1
+}

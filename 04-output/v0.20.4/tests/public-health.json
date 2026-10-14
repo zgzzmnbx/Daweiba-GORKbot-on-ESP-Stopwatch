@@ -1,0 +1,20 @@
+{
+  "time": "2026-10-04T14:40:54.395336",
+  "version": "0.20.3-dev",
+  "connected": true,
+  "error": "BLE 连接或服务发现失败：[WinError -2147024874] 设备不识别此命令。；请确认设备 BLE、首次 Pair 窗口和绑定状态",
+  "operation_error": null,
+  "ble_error": null,
+  "receipt": "OK:TEXT",
+  "route": "wifi",
+  "wifi_connected": true,
+  "ble_connected": false,
+  "network_error": "",
+  "audio": {
+    "stage": "played",
+    "bytes": 4776,
+    "total": 4776,
+    "error": "",
+    "running": false
+  }
+}

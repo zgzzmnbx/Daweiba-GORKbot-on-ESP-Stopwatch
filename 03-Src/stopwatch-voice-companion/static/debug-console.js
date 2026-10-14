@@ -48,9 +48,10 @@ export function createDebugConsole(doc, storage, copyText) {
       await copyText(text); get('logs-feedback').textContent = '已复制当前筛选的日志。';
     } catch { get('logs-feedback').textContent = '复制失败，请选中日志文字后手动复制。'; }
   };
-  function push(channel, text, error = false) {
-    if (!text || last.get(channel) === text) return;
-    last.set(channel, text);
+  function push(channel, text, error = false, stateKey = 'status') {
+    const key = `${channel}:${stateKey}`, value = `${Boolean(error)}:${text}`;
+    if (!text || last.get(key) === value) return;
+    last.set(key, value);
     const bottom = log.scrollHeight - log.scrollTop - log.clientHeight < 32;
     const level = error ? 'error' : /未连接|离线|等待|取消|加载中/.test(text) ? 'warning'
       : /已连接|就绪|完成|成功/.test(text) ? 'success' : 'info';

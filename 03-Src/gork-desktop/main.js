@@ -1,9 +1,16 @@
-const { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, session, Tray } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, session, Tray, dialog } = require('electron');
 const fs = require('node:fs');
+const MotionConfig = require('./motion/gork-config.js');
+const avatarSceneNames = new Set(require('./motion/legacy-scene-names.json'));
+const { createMotionBridge } = require('./motion-bridge');
+if (process.env.GORK_TEST_USER_DATA) app.setPath('userData', process.env.GORK_TEST_USER_DATA);
 const path = require('node:path');
 const { ensureBackend, stopOwnedBackend } = require('./backend-manager');
+const { registerQuitCleanup } = require('./quit-manager');
 const { visibleBounds, avatarBoundsForScale } = require('./window-state');
 const { createTrayIcon } = require('./tray-icon');
+const { createCursorTracker } = require('./cursor-tracker');
+const { createTokenWindow } = require('./token-window');
 const { createBubbleWindow, BUBBLE_POSITIONS } = require('./bubble-window');
 const { normalize:normalizeAppearance } = require('./gork-appearance');
 
@@ -15,6 +22,7 @@ let backend;
 let avatarWindow;
 let consoleWindow;
 let bubbleWindow;
+let tokenWindow;
 let bubblePosition = 'above';
 let tray;
 let quitting = false;
@@ -22,6 +30,10 @@ let sharedState = { mode: 'idle', label: '正在启动', robotConnected: false, 
 let avatarScene = null;
 let appearance = normalizeAppearance(null);
 let stateTimer;
+let cursorTracker;
+let pointerFollow = true;
+let quotaPreview = null;
+let quotaPreviewRevision = 0;
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) app.quit();
@@ -34,7 +46,7 @@ function readState() {
 }
 function saveState() {
   if (avatarWindow && !avatarWindow.isDestroyed())
-    fs.writeFileSync(statePath(), JSON.stringify({ ...avatarWindow.getBounds(), alwaysOnTop: avatarWindow.isAlwaysOnTop(), bubblePosition, appearance }));
+    fs.writeFileSync(statePath(), JSON.stringify({ ...avatarWindow.getBounds(), alwaysOnTop: avatarWindow.isAlwaysOnTop(), bubblePosition, appearance, pointerFollow }));
 }
 
 function securePreferences() {
@@ -43,6 +55,7 @@ function securePreferences() {
 
 function createAvatar() {
   const saved = readState();
+  pointerFollow = saved.pointerFollow !== false; sharedState.pointerFollow = pointerFollow;
   appearance = normalizeAppearance(saved.appearance);sharedState.appearance=appearance;
   bubblePosition = BUBBLE_POSITIONS.includes(saved.bubblePosition) ? saved.bubblePosition : 'above';
   const restored = visibleBounds(saved, screen.getAllDisplays());
@@ -52,8 +65,14 @@ function createAvatar() {
     webPreferences: securePreferences(),
   });
   avatarWindow.loadFile(path.join(__dirname, 'avatar.html'));
+  cursorTracker = createCursorTracker(avatarWindow, screen, {enabled:pointerFollow});
   avatarWindow.once('ready-to-show', () => avatarWindow.showInactive());
   bubbleWindow = createBubbleWindow({BrowserWindow, screen, avatar:avatarWindow, preferences:securePreferences(), getPosition:() => bubblePosition});
+  tokenWindow = createTokenWindow({BrowserWindow,screen,avatar:avatarWindow,preferences:securePreferences(),
+    async readUsage(){const response=await fetch(`${BACKEND_URL}/api/desktop/token-usage`,{signal:AbortSignal.timeout(4000)});
+      if(!response.ok)throw Error('Token usage unavailable');return response.json();},
+    async readQuota(){const response=await fetch(`${BACKEND_URL}/api/desktop/quota-usage`,{signal:AbortSignal.timeout(15000)});
+      if(!response.ok)throw Error('Quota unavailable');return response.json();}});
   avatarWindow.on('move', () => bubbleWindow.sync());
   avatarWindow.on('resize', () => bubbleWindow.sync());
   avatarWindow.on('show', () => bubbleWindow.sync());
@@ -80,7 +99,15 @@ function showConsole() { const win = createConsole(); win.show(); win.focus(); }
 function showAvatar() { if (avatarWindow) avatarWindow.showInactive(); }
 async function stopAll() {
   if (consoleWindow && !consoleWindow.isDestroyed()) consoleWindow.webContents.send('gork:stop-local');
-  try { await fetch(`${BACKEND_URL}/api/desktop/stop`, { method: 'POST' }); } catch {}
+  try { await fetch(`${BACKEND_URL}/api/desktop/stop`, { method: 'POST', signal: AbortSignal.timeout(3000) }); } catch {}
+}
+async function fetchMotionRecord(itemId) {
+  const response = await fetch(`${BACKEND_URL}/api/motion/expressions/${encodeURIComponent(itemId)}`, {signal:AbortSignal.timeout(2000)});
+  if (!response.ok) throw new Error('动效配置读取失败');
+  const record = await response.json();
+  if (!Number.isSafeInteger(record.revision) || record.revision < 1) throw new Error('动效修订号无效');
+  record.config = MotionConfig.parse(JSON.stringify(record.config));
+  return record;
 }
 async function pollState() {
   try {
@@ -88,10 +115,24 @@ async function pollState() {
     const data = await response.json();
     const modes = { listening: 'listening', processing: 'thinking', generating: 'thinking', speaking: 'happy', error: 'confused' };
     const character = data.character || { revision: 0, bubble: '' };
-    const autoScene = character.auto ? {expression:character.expression, mode:'loop', startedAt:Date.now(), revision:1000000 + character.revision} : null;
+    const autoRevision=1000000+character.revision;
+    const autoScene = character.auto ? {expression:character.expression, mode:character.mode||'loop', custom:character.custom_motion,
+      startedAt:sharedState.scene?.revision===autoRevision?sharedState.scene.startedAt:Date.now(), revision:autoRevision} : null;
     sharedState = { mode: modes[data.phase] || 'idle', label: data.phase === 'idle' ? '就绪' : ({listening:'正在聆听',processing:'处理中',generating:'正在回答',speaking:'正在说话',error:'需要检查'}[data.phase] || data.phase), robotConnected: Boolean(data.robot?.connected), character, codex:data.codex || {enabled:false}, scene: autoScene || avatarScene };
+    if (data.phase === 'idle' && data.codex?.trend) sharedState.label = '额度下降';
   } catch { sharedState = { mode: 'confused', label: '后端未就绪', robotConnected: false, character: { revision: 0, bubble: '' }, scene: avatarScene }; }
+  if (quotaPreview && quotaPreview.until > Date.now()) {
+    const preview = quotaPreview;
+    sharedState = {...sharedState, label:preview.animation ? '额度下降预览' : sharedState.label,
+      character:{...sharedState.character, revision:preview.revision,
+        bubble:`预览：Codex 额度下降 ${preview.points} 个百分点，现剩余 42%。`},
+      codex:{...sharedState.codex, trend:preview.animation ? {
+        drop_points:preview.points, window_name:'预览窗口', remaining:42} : null},
+      scene:preview.animation ? {expression:'curious', mode:'loop',
+        startedAt:preview.startedAt, revision:preview.revision} : sharedState.scene};
+  } else quotaPreview = null;
   sharedState.appearance=appearance;
+  sharedState.pointerFollow=pointerFollow;
   if (avatarWindow && !avatarWindow.isDestroyed()) avatarWindow.webContents.send('gork:state', sharedState);
   bubbleWindow?.update(sharedState.character);
   updateTrayMenu();
@@ -115,6 +156,35 @@ function createTray() {
 }
 
 if (hasSingleInstanceLock) {
+  ipcMain.handle('gork:token-hover',(event,enabled)=>{
+    const fromCard=tokenWindow?.owns(event.sender);
+    if((event.sender!==avatarWindow?.webContents&&!fromCard)||typeof enabled!=='boolean')throw Error('Invalid token hover request');
+    tokenWindow?.setHover(enabled,fromCard?'card':'avatar');return true;
+  });
+  ipcMain.handle('gork:token-height',(event,height)=>{
+    if(!tokenWindow?.owns(event.sender)||!Number.isInteger(height)||height<180||height>900)throw Error('Invalid token height request');
+    tokenWindow.setHeight(height);return true;
+  });
+  ipcMain.handle('gork:hide-token-card',event=>{
+    if(event.sender!==avatarWindow?.webContents&&!tokenWindow?.owns(event.sender))throw Error('Invalid token dismiss request');
+    tokenWindow?.hide();return true;
+  });
+  ipcMain.handle('gork:pointer-follow', event => {
+    if (event.sender !== consoleWindow?.webContents) throw new Error('Only the console can inspect pointer follow');
+    return pointerFollow;
+  });
+  ipcMain.handle('gork:set-pointer-follow', (event, enabled) => {
+    if (event.sender !== consoleWindow?.webContents || typeof enabled !== 'boolean') throw new Error('Invalid pointer follow request');
+    if (!avatarWindow || avatarWindow.isDestroyed()) throw new Error('Avatar window unavailable');
+    const previous = pointerFollow; pointerFollow = enabled;
+    try {saveState();} catch(error) {pointerFollow=previous;throw error;}
+    sharedState.pointerFollow=pointerFollow;
+    avatarWindow.webContents.send('gork:state', sharedState);
+    cursorTracker?.setEnabled(enabled);
+    return pointerFollow;
+  });
+  createMotionBridge({ipcMain,getConsole:()=>consoleWindow,getAvatar:()=>avatarWindow,fetchRecord:fetchMotionRecord,
+    onApplied(record,scene){avatarScene={...scene,custom:record,revision:(avatarScene?.revision||0)+1};sharedState.scene=avatarScene;}});
   ipcMain.handle('gork:get-appearance',event=>{
     if(event.sender!==consoleWindow?.webContents)throw new Error('Only the console can inspect appearance');
     return appearance;
@@ -132,6 +202,16 @@ if (hasSingleInstanceLock) {
   ipcMain.handle('gork:hide-avatar', () => avatarWindow.hide());
   ipcMain.handle('gork:stop-all', () => stopAll());
   ipcMain.handle('gork:get-state', () => sharedState);
+  ipcMain.handle('gork:preview-quota-drop', (event, points, animation) => {
+    if (event.sender !== consoleWindow?.webContents) throw new Error('Only the console can preview quota alerts');
+    if (!Number.isInteger(points) || points < 1 || points > 20 || typeof animation !== 'boolean')
+      throw new Error('Invalid quota preview settings');
+    quotaPreview = {points, animation, startedAt:Date.now(), until:Date.now()+10000,
+      revision:++quotaPreviewRevision+2000000};
+    showAvatar();
+    void pollState();
+    return {preview:true};
+  });
   ipcMain.handle('gork:bubble-position', event => {
     if (event.sender !== consoleWindow?.webContents) throw new Error('Only the console can inspect bubble position');
     return bubblePosition;
@@ -148,7 +228,7 @@ if (hasSingleInstanceLock) {
   });
   ipcMain.handle('gork:set-avatar-scene', (event, scene) => {
     if (event.sender !== consoleWindow?.webContents) throw new Error('Only the console can set the avatar scene');
-    if (!scene || typeof scene.expression !== 'string' || !['once', 'loop'].includes(scene.mode)) throw new Error('Invalid avatar scene');
+    if (!scene || !avatarSceneNames.has(scene.expression) || Object.keys(scene).some(k=>!['expression','mode','startedAt'].includes(k)) || !['once', 'loop'].includes(scene.mode)) throw new Error('Invalid avatar scene');
     const now = Date.now();
     const startedAt = Number.isFinite(scene.startedAt) && Math.abs(now - scene.startedAt) < 10000 ? scene.startedAt : now;
     avatarScene = { expression: scene.expression, mode: scene.mode, startedAt, revision: (avatarScene?.revision || 0) + 1 };
@@ -190,6 +270,7 @@ if (hasSingleInstanceLock) {
     if (!avatarWindow || avatarWindow.isDestroyed()) throw new Error('Avatar window unavailable');
     avatarWindow.setAlwaysOnTop(enabled);
     bubbleWindow?.sync();
+    tokenWindow?.sync();
     saveState();
     return avatarWindow.isAlwaysOnTop();
   });
@@ -206,6 +287,7 @@ if (hasSingleInstanceLock) {
     const python = path.join(ROOT, 'Codex-Temp', '.venv-companion', 'Scripts', 'python.exe');
     const backendConfig = process.env.GORK_BACKEND_CONFIG;
     backend = await ensureBackend({ baseUrl: BACKEND_URL, python,
+      expectedVersion: app.getVersion(),
       script: path.join(ROOT, '03-Src', 'stopwatch-voice-companion', 'run_companion.py'), cwd: ROOT,
       args: backendConfig ? ['--config', backendConfig] : [] });
     createAvatar(); createConsole(); createTray();
@@ -214,8 +296,15 @@ if (hasSingleInstanceLock) {
       console.log(`GORK_DESKTOP_READY backend=${backend.ownership}`);
       setTimeout(() => { quitting = true; app.quit(); }, 500);
     }
-  }).catch((error) => { console.error(error); quitting = true; app.quit(); });
+  }).catch((error) => {
+    if (error.code === 'GORK_BACKEND_VERSION') dialog.showErrorBox('Gork后台版本未更新', error.message);
+    else console.error(error);
+    quitting = true; app.quit();
+  });
 
-  app.on('before-quit', async () => { quitting = true; clearInterval(stateTimer); bubbleWindow?.destroy(); saveState(); await stopAll(); await stopOwnedBackend(backend); });
+  registerQuitCleanup(app, {
+    prepare: () => { quitting = true; clearInterval(stateTimer); cursorTracker?.dispose(); tokenWindow?.destroy(); bubbleWindow?.destroy(); saveState(); },
+    stopAll, stopBackend: () => stopOwnedBackend(backend),
+  });
   app.on('window-all-closed', (event) => event.preventDefault());
 }

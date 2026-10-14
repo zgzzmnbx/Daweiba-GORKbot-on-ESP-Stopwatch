@@ -1,0 +1,55 @@
+{
+  "version": "0.20.31-dev",
+  "simulated": true,
+  "new_business_task": false,
+  "results": [
+    {
+      "sequence": 1,
+      "risk_count": 2,
+      "status": "completed",
+      "delivery": {
+        "desktop": "not_requested",
+        "watch": "not_requested",
+        "speech": "device_playback_completed"
+      },
+      "elapsed_ms": 11081,
+      "hits_delta": 0,
+      "misses_delta": 1,
+      "cache_hit": false
+    },
+    {
+      "sequence": 2,
+      "risk_count": 2,
+      "status": "completed",
+      "delivery": {
+        "desktop": "not_requested",
+        "watch": "not_requested",
+        "speech": "device_playback_completed"
+      },
+      "elapsed_ms": 9002,
+      "hits_delta": 1,
+      "misses_delta": 0,
+      "cache_hit": true
+    },
+    {
+      "sequence": 3,
+      "risk_count": 3,
+      "status": "completed",
+      "delivery": {
+        "desktop": "not_requested",
+        "watch": "not_requested",
+        "speech": "device_playback_completed"
+      },
+      "elapsed_ms": 10750,
+      "hits_delta": 0,
+      "misses_delta": 1,
+      "cache_hit": false
+    }
+  ],
+  "voice": {
+    "speaker_id": 3,
+    "cloud_voice": "Cherry",
+    "speed": 1.0
+  },
+  "watch_final": "ready"
+}

@@ -1,0 +1,53 @@
+{
+  "result": "PASS",
+  "backup": "Codex-Temp\\pre-custom-expressions-20261003-232430",
+  "bytePreservedFiles": 144,
+  "intentionalBaselineChanges": [
+    "00-docs/00-PRD/02-当前版本计划.md",
+    "00-docs/00-PRD/33-v0.19.2-自定义表情库与编辑保存-【codex】.md",
+    "03-Src/gork-desktop/README.md",
+    "03-Src/gork-desktop/avatar.js",
+    "03-Src/gork-desktop/motion-bridge.js",
+    "03-Src/gork-desktop/motion/desktop-adapter.js",
+    "03-Src/gork-desktop/package-lock.json",
+    "03-Src/gork-desktop/package.json",
+    "03-Src/stopwatch-voice-companion/README.md",
+    "03-Src/stopwatch-voice-companion/companion/__init__.py",
+    "03-Src/stopwatch-voice-companion/package-lock.json",
+    "03-Src/stopwatch-voice-companion/package.json",
+    "03-Src/stopwatch-voice-companion/static/index.html",
+    "03-Src/stopwatch-voice-companion/static/motion/INTEGRATION.md",
+    "03-Src/stopwatch-voice-companion/static/motion/desktop-adapter.js",
+    "03-Src/stopwatch-voice-companion/static/motion/editor.js",
+    "03-Src/stopwatch-voice-companion/static/motion/index.html",
+    "03-Src/stopwatch-voice-companion/static/motion/source.zip",
+    "03-Src/stopwatch-voice-companion/tests/motion/editor-ui.test.cjs",
+    "03-Src/stopwatch-voice-companion/tests/motion/integrated.test.cjs",
+    "03-Src/stopwatch-voice-companion/tests/test_console_theme.mjs",
+    "AGENTS.md",
+    "CHANGELOG-历史归档.md",
+    "CHANGELOG.md",
+    "README.md",
+    "tools/export_motion_source.py",
+    "tools/verify_custom_expression_electron.cjs"
+  ],
+  "repos": [
+    {
+      "repo": "root",
+      "headUnchanged": true,
+      "stagingUnchanged": true,
+      "whitespace": "PASS"
+    },
+    {
+      "repo": "firmware",
+      "headUnchanged": true,
+      "stagingUnchanged": true,
+      "whitespace": "PASS"
+    }
+  ],
+  "userLocalConfigurationFilesBytePreserved": 4,
+  "firmwareBaselineFilesBytePreserved": 36,
+  "defaultCatalogAndUserMotionLibrary": "byte preserved",
+  "statusLabelCss": "byte preserved",
+  "sharedAdapterAndCorrespondingSource": "PASS"
+}

@@ -1,0 +1,46 @@
+{
+  "result": "PASS",
+  "version": "0.20.34-dev",
+  "total": "32,343,666 tokens",
+  "quotaText": "7 天\n剩余 63%\n\n重置 10/20 14:47 · 北京时间",
+  "layouts": [
+    {
+      "scale": 25,
+      "width": 328,
+      "height": 480,
+      "scrollWidth": 328,
+      "scrollHeight": 483,
+      "bottom": 472.76043701171875
+    },
+    {
+      "scale": 100,
+      "width": 328,
+      "height": 480,
+      "scrollWidth": 328,
+      "scrollHeight": 483,
+      "bottom": 472.76043701171875
+    },
+    {
+      "scale": 150,
+      "width": 328,
+      "height": 480,
+      "scrollWidth": 328,
+      "scrollHeight": 483,
+      "bottom": 472.76043701171875
+    }
+  ],
+  "errors": [],
+  "checks": [
+    "live official single window exactly shown",
+    "two-window layout at all avatar sizes",
+    "quota stale/API Key handling",
+    "Chromium mouse input enters/leaves actual avatar",
+    "live CC Switch snapshot displayed exactly",
+    "independent card at 25/100/150 percent",
+    "no focus stealing",
+    "stale/missing do not fake zero",
+    "hide/show and Escape/focus",
+    "hover-only fetch",
+    "no voice/device requests"
+  ]
+}

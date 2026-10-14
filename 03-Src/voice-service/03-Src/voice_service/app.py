@@ -219,8 +219,11 @@ def create_app(config=None, broker=None):
         payload = {"text": text, "speaker_id": body.speaker_id, "speed": body.speed, "sample_rate": body.sample_rate}
         payload['cloud_voice'] = body.cloud_voice or config.cloud_voice
         job = await await_job(broker.submit(token, body.turn_id, body.request_id, "tts", payload))
+        selected_voice=payload['cloud_voice'] if job.mode=='cloud' else str(payload['speaker_id'])
+        rendered_voice=str(job.value.get('result',{}).get('voice' if job.mode=='cloud' else 'speaker_id',selected_voice))
         return Response(job.value["result"]["audio"], media_type="audio/wav", headers={
             "X-Request-Id": job.request_id, "X-Provider":job.public()['provider'],
+            "X-Voice-Id":rendered_voice,"X-Voice-Mode":job.mode,
             "X-Provider-Elapsed-Ms":str(job.metrics.get('provider_elapsed_ms',job.metrics.get('inference_ms',0))),
             **({'X-Inference-Ms':str(job.metrics['inference_ms'])} if 'inference_ms' in job.metrics else {}),
             "X-Server-Total-Ms": str(job.metrics["server_total_ms"]), "X-Audio-Sample-Rate": str(body.sample_rate),

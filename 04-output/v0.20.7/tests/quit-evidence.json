@@ -1,0 +1,12 @@
+{
+  "fixtureOnly": true,
+  "events": [
+    "owned-server-ready",
+    "prepare",
+    "cancel",
+    "cancel-complete",
+    "owned-server-stopped"
+  ],
+  "launcherPid": 30772,
+  "serverPid": 40344
+}

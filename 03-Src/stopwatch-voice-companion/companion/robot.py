@@ -2,6 +2,7 @@
 import asyncio
 import contextlib
 import math
+import time
 from pathlib import Path
 import sys
 import uuid
@@ -11,9 +12,10 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools"))
 from stopwatch_ble import (BleExpressionClient, BleConsoleError,
                            EXPRESSIONS as BLE_EXPRESSIONS, known_bond_target,
-                           scan_targets)
+                           scan_targets, is_custom_command)
 from stopwatch_sound import SoundClient
 from stopwatch_audio import AudioClient, make_wav, read_wav
+from .network_manager import NetworkManager
 
 EXPRESSIONS = {"idle": "idle", "listening": "loop listening",
     "processing": "loop thinking", "speaking": "loop happy", "error": "confused"}
@@ -59,7 +61,10 @@ class Robot:
         self.revision = 0
         self.flushed_revision = -1
         self.state, self.text = "idle", ""
+        self.expression=None
+        self.applied_loop=None
         self.receipt, self.error = "", ""
+        self.ble_error = ""
         self.reconnects = 0
         self.changed = asyncio.Event()
         self.lock = asyncio.Lock()
@@ -70,6 +75,10 @@ class Robot:
         self.reconnect_enabled = False
         self.preferred_address = ""
         self.audio = None
+        self.prepared_audio = None
+        self.prepared_identity = None
+        self.recording_started=None
+        self.capture_stopped=None
         self.audio_task = None
         self.audio_job = ""
         self.audio_mode = ""
@@ -77,9 +86,39 @@ class Robot:
         self.audio_result = None
         self.audio_error = ""
         self.audio_gain_db = 0.0
+        self.network = NetworkManager(self)
+        self.dialogue_pinned = False
+
+    def device_client(self):
+        if not self.network.wifi.connected and self.network.router.active!='wifi' and not self.network.router.manual and self.network.router.policy!='wifi_only':return self.client
+        try:return self.network.selected()
+        except ConnectionError as exc:raise BleConsoleError(str(exc)) from exc
+
+    async def send_expression(self, command, *, restart=False):
+        """Preserve an acknowledged custom loop across speech-stage updates.
+
+        All callers hold the device writer lock. A new session/route/generation,
+        another expression, failed write or explicit manual click must resend.
+        """
+        client=self.device_client()
+        transport=getattr(client,'writer',None) or getattr(client,'client',None) or client
+        identity=(client,transport,getattr(client,'boot',None),getattr(client,'session',None),self.operation_epoch,self.generation)
+        custom_loop=command.startswith('loop ') and is_custom_command(command[5:])
+        if custom_loop and not restart and self.applied_loop and self.applied_loop[:2]==(identity,command):
+            return self.applied_loop[2]
+        self.applied_loop=None
+        receipt=await client.send_command(command)
+        if custom_loop:self.applied_loop=(identity,command,receipt)
+        return receipt
+
+    @property
+    def device_connected(self):
+        try:return self.device_client().connected
+        except BleConsoleError:return False
 
     def start(self):
         self.worker = asyncio.create_task(self.run())
+        self.network.start()
 
     def start_auto_connect(self, preferred_address=""):
         """Start the background connection supervisor for this StopWatch."""
@@ -139,7 +178,7 @@ class Robot:
                         # advertising, so scanning alone cannot recover it.
                         candidates = [self.known_target_factory(last_address)]
                     if not candidates:
-                        self.error = ("未发现已配置的 StopWatch，等待设备广播后重试"
+                        self.ble_error = ("未发现已配置的 StopWatch，等待设备广播后重试"
                                       if last_address else "未发现唯一 StopWatch，等待设备广播后重试")
                         delay = min(delay * 2, RECONNECT_MAX_DELAY)
                         continue
@@ -150,10 +189,10 @@ class Robot:
             except asyncio.CancelledError:
                 raise
             except (asyncio.TimeoutError, BleConsoleError) as exc:
-                self.error = str(exc) if isinstance(exc, BleConsoleError) else "蓝牙重连超时，稍后重试"
+                self.ble_error = str(exc) if isinstance(exc, BleConsoleError) else "蓝牙重连超时，稍后重试"
                 delay = min(delay * 2, RECONNECT_MAX_DELAY)
             except Exception:
-                self.error = "蓝牙重连失败，稍后重试"
+                self.ble_error = "蓝牙重连失败，稍后重试"
                 delay = min(delay * 2, RECONNECT_MAX_DELAY)
 
     async def _auto_connect(self, preferred_address, epoch):
@@ -174,10 +213,10 @@ class Robot:
                 elif len(values) == 1:
                     candidates = values
                 elif not values:
-                    self.error = "未发现 StopWatch，请确认设备蓝牙已开启"
+                    self.ble_error = "未发现 StopWatch，请确认设备蓝牙已开启"
                     return
                 else:
-                    self.error = "发现多台 StopWatch，请手动选择设备"
+                    self.ble_error = "发现多台 StopWatch，请手动选择设备"
                     return
                 await asyncio.wait_for(self._connect_locked(candidates[0]), 75)
                 if epoch != self.operation_epoch:
@@ -189,10 +228,10 @@ class Robot:
             raise
         except (asyncio.TimeoutError, BleConsoleError) as exc:
             if epoch == self.operation_epoch:
-                self.error = str(exc) if isinstance(exc, BleConsoleError) else "蓝牙扫描或连接超时，请手动重试"
+                self.ble_error = str(exc) if isinstance(exc, BleConsoleError) else "蓝牙扫描或连接超时，请手动重试"
         except Exception:
             if epoch == self.operation_epoch:
-                self.error = "蓝牙自动连接失败，请手动扫描连接"
+                self.ble_error = "蓝牙自动连接失败，请手动扫描连接"
 
     async def _connect_locked(self, target):
         self.enabled = False
@@ -213,14 +252,16 @@ class Robot:
             raise
         self.enabled, self.reconnects = True, 0
         self.flushed_revision = -1
-        self.error = ""
+        self.ble_error = ""
         self.text = ""
         self.changed.set()
 
     def snapshot(self):
-        return {"connected": self.client.connected, "enabled": self.enabled,
-            "state": self.state, "error": self.error, "receipt": self.receipt,
-            "reconnects": self.reconnects, "audio": self.audio_snapshot()}
+        connected = self.device_connected
+        return {"connected": connected, "enabled": self.enabled or self.network.wifi.connected,
+            "state": self.state, "error": self.error or (self.ble_error if not connected else ""),
+            "operation_error": self.error, "ble_error": self.ble_error, "receipt": self.receipt,
+            "reconnects": self.reconnects, "audio": self.audio_snapshot(),"network":self.network.snapshot()}
 
     def audio_snapshot(self):
         return {"job_id": self.audio_job, "mode": self.audio_mode, **self.audio_progress,
@@ -244,6 +285,7 @@ class Robot:
         return [{"name": x.name, "address": x.address} for x in values]
 
     async def connect(self, address):
+        self.network.router.manual=False
         self.operation_epoch += 1
         await self._stop_auto_connect()
         async with self.lock:
@@ -257,12 +299,15 @@ class Robot:
                 self._start_maintain(address)
 
     async def disconnect(self):
+        self.network.router.manual=True
+        await self.network.wifi.disconnect()
         self.operation_epoch += 1
         self.reconnect_enabled = False
         self.enabled = False
         await self._stop_auto_connect()
         await self.cancel_audio()
         async with self.lock:
+            await self._close_prepared_locked()
             self.enabled = False
             self.target = None
             self.reconnects = 0
@@ -270,16 +315,28 @@ class Robot:
             await self.client.disconnect()
         self.receipt = ""
 
-    def show(self, state, generation, text=""):
+    def show(self, state, generation, text="", *, expression=None):
         if generation < self.generation:
             return
         self.generation = generation
         self.state, self.text = state, short_bubble(text)
+        self.expression=expression
         self.revision += 1
         self.changed.set()
 
     async def flush(self):
         async with self.lock:
+            if self.network.wifi.connected:
+                selected=self.device_client()
+                if selected is self.network.wifi:
+                    if self.revision<=self.flushed_revision:return
+                    revision=self.revision
+                    self.receipt=await self.send_expression(self.expression or EXPRESSIONS[self.state])
+                    await selected.clear_text()
+                    if self.text:await selected.send_text(self.text)
+                    if revision==self.revision:self.flushed_revision=revision
+                    self.error = ""
+                    return
             if not self.enabled or self.target is None:
                 return
             if self.client.connected and self.revision <= self.flushed_revision:
@@ -299,12 +356,12 @@ class Robot:
                 reconnected = True
             revision = self.revision
             state, text = self.state, "" if reconnected else self.text
-            self.receipt = await self.client.send_command(EXPRESSIONS[state])
+            self.receipt = await self.send_expression(self.expression or EXPRESSIONS[state])
             if revision != self.revision:
                 return
-            await self.client.clear_text()
+            await self.device_client().clear_text()
             if text and revision == self.revision:
-                self.receipt = await self.client.send_text(text)
+                self.receipt = await self.device_client().send_text(text)
             if revision == self.revision:
                 self.flushed_revision = revision
             self.error = ""
@@ -323,9 +380,12 @@ class Robot:
             except BleConsoleError as exc:
                 self.error, self.receipt = str(exc), ""
             except Exception:
-                self.error, self.receipt = "蓝牙连接失败，可重新扫描连接", ""
+                self.error, self.receipt = "设备命令失败，请查看连接状态后重试", ""
 
     async def close(self):
+        await self.cancel_audio()
+        await self.close_prepared_audio()
+        await self.network.close()
         await self._stop_auto_connect()
         if self.worker:
             self.worker.cancel()
@@ -335,41 +395,94 @@ class Robot:
 
     def _audio_changed(self, value):
         self.audio_progress = value
+        if value.get('stage')=='recording':self.recording_started=time.monotonic()
+        if value.get('stage')=='receiving' and value.get('bytes')==0:self.capture_stopped=time.monotonic()
 
     def _require_audio_idle(self):
         if self.audio_task and not self.audio_task.done():
             raise BleConsoleError("延迟音频任务正在进行，请先取消")
-        if not self.enabled or not self.client.connected:
+        if not (self.enabled or self.network.wifi.connected) or not self.device_connected:
             raise BleConsoleError("StopWatch 未连接")
+
+    @staticmethod
+    def _audio_identity(raw):
+        wifi=getattr(raw,'wifi',None)
+        return ('wifi',id(wifi),wifi.boot,wifi.session) if wifi is not None else ('ble',id(raw))
+
+    async def _close_prepared_locked(self):
+        audio,self.prepared_audio=self.prepared_audio,None
+        self.prepared_identity=None
+        if audio is not None:await audio.close()
+
+    async def close_prepared_audio(self):
+        async with self.lock:await self._close_prepared_locked()
+
+    async def prepare_audio(self):
+        """Negotiate with mic OFF; PRODUCT_ARM still requires a fresh device click."""
+        async with self.lock:
+            self._require_audio_idle()
+            if self.dialogue_pinned:return False
+            raw=self.network.audio()
+            try:
+                if raw is None or not raw.is_connected:raise BleConsoleError('StopWatch 未连接')
+                identity=self._audio_identity(raw)
+                audio=self.prepared_audio
+                if audio and self.prepared_identity==identity and not audio.closed and audio.failure is None:return True
+                await self._close_prepared_locked()
+                audio=AudioClient(raw,packet_bytes=4096) if self.network.router.active=='wifi' else AudioClient(raw)
+                try:await audio.open()
+                except BaseException:
+                    await audio.close();raise
+                self.prepared_audio,self.prepared_identity=audio,identity
+                return True
+            finally:
+                # A physical click may pin its route while HELLO is in flight.
+                # Preparation must not release that new conversation's route.
+                if not self.dialogue_pinned:self.network.router.end()
 
     async def _run_audio(self, mode, pcm=None, rate=None, speech_text=None, speech_expression=None):
         async with self.lock:
-            raw = getattr(self.client, "client", None)
+            raw = self.network.audio()
             if raw is None or not getattr(raw, "is_connected", False):
+                if not self.dialogue_pinned:self.network.router.end()
                 raise BleConsoleError("StopWatch 未连接")
-            self.audio = AudioClient(raw)
+            prepared=self.prepared_audio
+            reuse=(mode=='productrecord' and self.dialogue_pinned and prepared is not None and
+                   self.prepared_identity==self._audio_identity(raw) and not prepared.closed and prepared.failure is None)
+            if reuse:
+                self.audio,self.prepared_audio=prepared,None;self.prepared_identity=None
+            else:
+                await self._close_prepared_locked()
+                self.audio = AudioClient(raw,packet_bytes=4096) if self.network.router.active=='wifi' else AudioClient(raw)
             bubble = short_bubble(speech_text) if speech_text else ""
             bubble_started = False
             async def reveal_after_transfer():
                 nonlocal bubble_started
-                self.receipt = await self.client.send_command(speech_expression or EXPRESSIONS["idle"])
+                self.receipt = await self.send_expression(speech_expression or EXPRESSIONS["idle"])
                 bubble_started = True
-                self.receipt = await self.client.send_text(bubble)
-                self.state, self.text = "idle", bubble
+                self.receipt = await self.device_client().send_text(bubble)
+                self.state, self.text, self.expression = "idle", bubble, speech_expression
                 self.revision += 1
                 self.flushed_revision = self.revision
             try:
-                await self.audio.open()
+                if not reuse:await self.audio.open()
                 if bubble:
                     # A queued idle/processing flush must not show an older
                     # bubble after the audio task releases the BLE writer.
-                    self.receipt = await self.client.clear_text()
+                    self.receipt = await self.device_client().clear_text()
                     self.text = ""
                     self.revision += 1
                     self.flushed_revision = self.revision
-                if mode in ("record", "echo"):
-                    captured, captured_rate = await self.audio.record(self._audio_changed)
-                    if mode == "record":
+                if mode in ("record", "echo", "productrecord"):
+                    record_face_sent=False
+                    async def record_progress(value):
+                        nonlocal record_face_sent
+                        self._audio_changed(value)
+                        if value.get('stage')=='recording' and speech_expression and not record_face_sent:
+                            record_face_sent=True
+                            self.receipt=await self.send_expression(speech_expression)
+                    captured, captured_rate = await self.audio.record(record_progress,product=True) if mode=='productrecord' else await self.audio.record(self._audio_changed)
+                    if mode in ("record","productrecord"):
                         self.audio_result = make_wav(captured, captured_rate)
                     else:
                         await self.audio.play(captured, captured_rate, self._audio_changed)
@@ -380,7 +493,7 @@ class Robot:
                 if bubble_started:
                     cleared = False
                     try:
-                        self.receipt = await self.client.clear_text()
+                        self.receipt = await self.device_client().clear_text()
                         cleared = True
                     except Exception:
                         pass
@@ -394,10 +507,13 @@ class Robot:
             finally:
                 await self.audio.close()
                 self.audio = None
+                if not self.dialogue_pinned:self.network.router.end()
 
     def _start_audio(self, mode, pcm=None, rate=None, gain_db=0.0, speech_text=None, speech_expression=None):
+        if mode in ('record','echo','productrecord'):self.capture_stopped=None
         self._require_audio_idle()
         self.audio_job, self.audio_mode = str(uuid.uuid4()), mode
+        self.recording_started=None
         self.audio_result, self.audio_error = None, ""
         self.audio_gain_db = gain_db
         self.audio_progress = {"stage": "starting", "bytes": 0, "total": len(pcm or b""), "elapsed": 0, "rate": 0}
@@ -444,66 +560,73 @@ class Robot:
     async def play_sound(self, sound_id):
         self._require_audio_idle()
         async with self.lock:
+            if self.device_client() is self.network.wifi:return (await self.network.wifi.request(4,bytes([1,sound_id]))).decode()
             return await self.sound.play(sound_id)
 
     async def stop_sound(self):
+        if self.network.wifi.connected:
+            return (await self.network.wifi.request(4,b'\0\0')).decode()
         async with self.lock:
             return await self.sound.stop()
 
     async def set_sound_volume(self, volume):
         self._require_audio_idle()
         async with self.lock:
+            if self.device_client() is self.network.wifi:return (await self.network.wifi.request(4,bytes([2,volume]))).decode()
             return await self.sound.set_volume(volume)
 
     async def play_expression(self, expression, mode="once"):
         """Send one validated manual expression over the existing BLE writer."""
-        if expression not in BLE_EXPRESSIONS:
+        if expression not in BLE_EXPRESSIONS and not is_custom_command(expression):
             raise BleConsoleError("未知 StopWatch 表情")
         if mode not in ("once", "loop"):
             raise BleConsoleError("播放方式只能是 once 或 loop")
         self._require_audio_idle()
         async with self.lock:
             command = expression if mode == "once" else f"loop {expression}"
-            self.receipt = await self.client.send_command(command)
+            self.receipt = await self.send_expression(command,restart=True)
             self.state, self.text, self.error = expression, "", ""
             return {"receipt": self.receipt, "expression": expression, "mode": mode}
 
     async def auto_expression(self, expression, guard):
         """Use the existing BLE writer; recheck cancellation after waiting for it."""
-        if not self.client.connected or not self.enabled:
+        if not self.device_connected or not (self.enabled or self.network.wifi.connected):
             return "offline"
         async with self.lock:
             if not guard():
                 return "suppressed"
             self._require_audio_idle()
-            self.receipt = await self.client.send_command(f"loop {expression}")
+            self.receipt = await self.send_expression(f"loop {expression}")
             return "accepted"
 
     async def auto_notify(self, expression, text, guard):
-        if not self.client.connected or not self.enabled:
+        if not self.device_connected or not (self.enabled or self.network.wifi.connected):
             return "offline"
         async with self.lock:
             if not guard():
                 return "suppressed"
             self._require_audio_idle()
-            self.receipt = await self.client.send_command(expression)
+            self.receipt = await self.send_expression(expression)
             if not guard():
                 return "suppressed"
-            self.receipt = await self.client.send_text(text)
+            self.receipt = await self.device_client().send_text(text)
             return "accepted"
 
     async def auto_sound(self, sound_id, guard):
-        if not self.client.connected or not self.enabled:
+        if not self.device_connected or not (self.enabled or self.network.wifi.connected):
             return "offline"
         async with self.lock:
             if not guard():
                 return "suppressed"
             self._require_audio_idle()
-            await self.sound.play(sound_id)
+            if self.device_client() is self.network.wifi:
+                await self.network.wifi.request(4,bytes([1,sound_id]))
+            else:
+                await self.sound.play(sound_id)
             return "device_acknowledged"
 
     async def auto_speech(self, wav, phrase, guard, expression=None):
-        if not self.client.connected or not self.enabled:
+        if not self.device_connected or not (self.enabled or self.network.wifi.connected):
             return "offline"
         if not guard():
             return "suppressed"
@@ -514,13 +637,13 @@ class Robot:
     async def set_bubble(self, text):
         self._require_audio_idle()
         async with self.lock:
-            self.receipt = await self.client.send_text(text)
+            self.receipt = await self.device_client().send_text(text)
             self.text, self.error = text, ""
             return {"receipt": self.receipt, "text": text}
 
     async def clear_bubble(self):
         self._require_audio_idle()
         async with self.lock:
-            self.receipt = await self.client.clear_text()
+            self.receipt = await self.device_client().clear_text()
             self.text, self.error = "", ""
             return {"receipt": self.receipt}

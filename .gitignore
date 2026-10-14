@@ -16,6 +16,10 @@ Codex-Temp/
 # project repository and is not committed as an embedded Git repository.
 03-Src/stopwatch-grok-avatar/.git/
 
+# Local saved motion parameters and recent valid backup
+03-Src/stopwatch-voice-companion/motion.local.json*
+03-Src/stopwatch-voice-companion/motion-library.local.json*
+
 # Computer companion local routing/device preferences and test caches
 03-Src/stopwatch-voice-companion/config.local.toml
 03-Src/stopwatch-voice-companion/sentinel.local.json
@@ -39,3 +43,20 @@ Codex-Temp/
 03-Src/voice-service/03-Src/config/voice.local.toml
 03-Src/voice-service/**/.env
 03-Src/voice-service/**/.env.*
+# Wi-Fi identity is Windows DPAPI-protected and stays local.
+**/network.local.json*
+**/answer.local.json*
+**/external-clients.local.json*
+**/external-notifications.local.sqlite3*
+**/*.external.local.json*
+
+# Machine-specific shortcuts and raw hardware identity diagnostics stay local.
+*.lnk
+04-output/**/tests/chip.log
+04-output/**/tests/flash-id.log
+04-output/**/tests/ota-read.log
+04-output/**/tests/partition-read.log
+04-output/**/tests/verify-new.log
+04-output/**/tests/verify-old.log
+04-output/**/tests/write.log
+04-output/**/tests/flash-*.log

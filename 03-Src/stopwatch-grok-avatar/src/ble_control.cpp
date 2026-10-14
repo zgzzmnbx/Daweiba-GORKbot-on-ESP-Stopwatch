@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 #include "ble_control.h"
+#include "network_control.h"
 #include "audio_probe.h"
 #include "sound_control.h"
 
@@ -72,6 +73,7 @@ bool BLEControl::begin(bool enabled, bool hasBoundPeer,
 bool BLEControl::initializeStack() {
   if (initialized_) return true;
 
+  if(networkControl_)networkControl_->prepareBluetooth();
   BLEDevice::init(std::string(kDeviceName));
   BLEDevice::setMTU(247);
   BLEDevice::setCustomGattsHandler(captureGattInterface);
@@ -131,6 +133,12 @@ bool BLEControl::initializeStack() {
     return false;
   }
   if (soundControl_ && !soundControl_->attach(server_)) {
+    BLEDevice::deinit(false);
+    return false;
+  }
+  // Append new services after the established ones so upgrades preserve the
+  // expression/audio/sound handle ranges held by an existing bonded client.
+  if (networkControl_ && !networkControl_->attach(server_)) {
     BLEDevice::deinit(false);
     return false;
   }

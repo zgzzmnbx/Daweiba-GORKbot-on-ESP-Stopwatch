@@ -1,0 +1,98 @@
+{
+  "events": [
+    {
+      "event_id": "f09954dc278b4a0eb48962d0fa431885",
+      "task_id": "debug-1a3f5002793546f1a12ed8a1261546bb",
+      "attempt": "debug-a9cacee64fc54917a6ea7e800acba879",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "f09954dc278b4a0eb48962d0fa431885",
+        "task_id": "debug-1a3f5002793546f1a12ed8a1261546bb",
+        "attempt": "debug-a9cacee64fc54917a6ea7e800acba879",
+        "stage": "match_completed",
+        "sequence": 13,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T18:23:03.789556+08:00",
+        "expression": "happy",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】匹配完成，表内含税总额12元。公式重算未确认。1项待复核。",
+        "speech": {
+          "text": "调试消息，模拟数据。匹配完成，表内含税总额12元。公式重算未确认。1项待复核。",
+          "mode": "auto",
+          "target": "watch"
+        },
+        "display_target": "both",
+        "duration_ms": 2000,
+        "ttl_ms": 90000,
+        "priority": 2,
+        "lease_ms": 30000,
+        "amount_summary": {
+          "value": "12.00",
+          "currency": "CNY",
+          "unit": "yuan",
+          "basis": "tax_included",
+          "attempt": "debug-a9cacee64fc54917a6ea7e800acba879",
+          "calculation_status": "unconfirmed"
+        }
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "device_playback_completed"
+      },
+      "error": ""
+    },
+    {
+      "event_id": "49f8181eec724b0b883e96db26ec02c3",
+      "task_id": "debug-1a3f5002793546f1a12ed8a1261546bb",
+      "attempt": "debug-a9cacee64fc54917a6ea7e800acba879",
+      "status": "completed",
+      "request": {
+        "protocol_version": "1.0",
+        "source": "astra",
+        "event_id": "49f8181eec724b0b883e96db26ec02c3",
+        "task_id": "debug-1a3f5002793546f1a12ed8a1261546bb",
+        "attempt": "debug-a9cacee64fc54917a6ea7e800acba879",
+        "stage": "match_completed",
+        "sequence": 14,
+        "kind": "notice",
+        "occurred_at": "2026-10-08T18:24:12.853837+08:00",
+        "expression": "happy",
+        "expression_mode": "once",
+        "text": "【调试·模拟数据】匹配完成，表内含税总额12元。公式重算未确认。1项待复核。",
+        "speech": {
+          "text": "调试消息，模拟数据。匹配完成，表内含税总额12元。公式重算未确认。1项待复核。",
+          "mode": "auto",
+          "target": "watch"
+        },
+        "display_target": "both",
+        "duration_ms": 2000,
+        "ttl_ms": 90000,
+        "priority": 2,
+        "lease_ms": 30000,
+        "amount_summary": {
+          "value": "12.00",
+          "currency": "CNY",
+          "unit": "yuan",
+          "basis": "tax_included",
+          "attempt": "debug-a9cacee64fc54917a6ea7e800acba879",
+          "calculation_status": "unconfirmed"
+        }
+      },
+      "delivery": {
+        "desktop": "displayed",
+        "watch": "accepted",
+        "speech": "device_playback_completed"
+      },
+      "error": ""
+    }
+  ],
+  "second_cache_hit": true,
+  "misses_delta": 0,
+  "simulated": true,
+  "version": "0.20.31-dev",
+  "producer": "running-astra-5189",
+  "hits_delta": 1
+}

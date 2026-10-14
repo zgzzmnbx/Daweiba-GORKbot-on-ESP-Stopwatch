@@ -1,0 +1,16 @@
+{
+  "pc_version": "0.20.24-dev",
+  "asr": "cloud",
+  "tts": "cloud",
+  "audio_upload": true,
+  "text_upload": true,
+  "cloud_state": "configured",
+  "asr_live_verified": true,
+  "watch_enabled": true,
+  "watch_stage": "ready",
+  "speech_applied": {
+    "speaker_id": 3,
+    "cloud_voice": "Ethan",
+    "speed": 1.0
+  }
+}

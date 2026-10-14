@@ -1,0 +1,33 @@
+{
+  "result": "PASS",
+  "version": "0.19.2-dev",
+  "checks": [
+    "original defaults preserved",
+    "create named expression in menu",
+    "explicit click playback ACK",
+    "edit existing expression saves without active snapshot change",
+    "explicit replay uses saved edit",
+    "save-as-new retains both entries",
+    "select existing entry restores parameters",
+    "built-in idle returns to original renderer",
+    "renderer reload and editor reopen",
+    "150 percent DPI and 820x650 layout"
+  ],
+  "layout": {
+    "width": 1164,
+    "scroll": 1164,
+    "dpr": 1.5,
+    "iframe": 769
+  },
+  "narrow": {
+    "width": 804,
+    "scroll": 804,
+    "iframeWidth": 479,
+    "iframeScroll": 464
+  },
+  "itemIds": [
+    "motion-8dcf16fd7854",
+    "motion-6ea9dc3b6817"
+  ],
+  "consoleErrors": []
+}

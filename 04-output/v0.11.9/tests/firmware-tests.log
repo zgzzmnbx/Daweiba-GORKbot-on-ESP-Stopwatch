@@ -1,0 +1,4 @@
+PASS production AvatarEngine: original idle raster parity, three independent snapshots, once/loop/cancel, swipe and button browsing, unknown token, original restart
+
+PASS production AudioProbe: REC waits for 500ms completed PCM, all prefix samples retained, two-slot sample continuity and drain, cold-task delay/failure/cancel, click/start, released capture, click/send, pending cancel/expiry and late Arm, blue/combo/settings, drop/revoke, watchdog, 10s limit, short audio, mic failure, diagnostic hold/release, warm HELLO
+

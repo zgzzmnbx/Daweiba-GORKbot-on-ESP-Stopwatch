@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "state": {
+    "passwordType": "password",
+    "policy": "auto_wifi_first",
+    "source": "尚未配网 · 供电：未知 · 当前响应档：省电",
+    "voiceDefault": false,
+    "networkState": "当前通道：离线 · Wi-Fi 未就绪 · 蓝牙 未连接",
+    "version": "v0.20.0-dev"
+  },
+  "errors": [],
+  "realWindow": true,
+  "classicAndMantine": true,
+  "narrowWindow": true,
+  "deviceConnected": false,
+  "cloudRequests": false
+}

@@ -1,0 +1,952 @@
+{
+  "meta": {
+    "title": "Gork × StopWatch | 动态系统架构",
+    "lang": "zh-CN"
+  },
+  "canvas": {
+    "preset": "4:5",
+    "width": 1200,
+    "height": 1500,
+    "duration": 24,
+    "fps": 24,
+    "preroll": 8
+  },
+  "theme": {
+    "preset": "terminal-dark",
+    "font": "\"Cascadia Code\",\"Microsoft YaHei\",\"Noto Sans Mono CJK SC\",monospace",
+    "fontSize": 22,
+    "lineHeight": 32,
+    "colors": {
+      "bg": "#101821",
+      "bar": "#1a2833",
+      "line": "#3a5362",
+      "line2": "#304656",
+      "dim": "#8ca2af",
+      "fg": "#eaf3f2",
+      "wh": "#ffffff",
+      "cy": "#58d4d7",
+      "gr": "#78dda8",
+      "bl": "#8cb9fa",
+      "pu": "#c2a6ef",
+      "ye": "#f2c675",
+      "hl": "#25384a",
+      "row": "#183d49",
+      "dots": "#587483"
+    }
+  },
+  "clock": {
+    "start": "00:00:00",
+    "rate": 1
+  },
+  "titlebar": {
+    "text": "~/gork-watch — live architecture — simulation"
+  },
+  "credit": {
+    "text": "依据项目 README / PRD 34–36 / v0.20.18 验收 · 2026-10-05 · 动画状态与计数均为模拟",
+    "y": 1483,
+    "size": 15,
+    "c": "dim"
+  },
+  "machines": {
+    "events": {
+      "type": "triggers",
+      "color": "pu",
+      "period": 6,
+      "on": 3.8,
+      "t0": 0.6,
+      "callsStart": 0,
+      "onText": "事件处理中",
+      "offText": "等待事件",
+      "cps": 9,
+      "items": [
+        {
+          "name": "Watch 短按",
+          "adv": [
+            "REC 音频上传",
+            "完成后进入问答"
+          ],
+          "to": "Gork"
+        },
+        {
+          "name": "桌面提问",
+          "adv": [
+            "本机服务接收问题",
+            "按许可访问模型"
+          ],
+          "to": "Gork"
+        },
+        {
+          "name": "任务节点",
+          "adv": [
+            "只读发现新进度",
+            "按设置提醒两端"
+          ],
+          "to": "Gork"
+        }
+      ],
+      "log": {
+        "who": "EVENT",
+        "c": "pu",
+        "start": {
+          "m": "{name} → 进入本机编排",
+          "g": "处理中"
+        },
+        "end": {
+          "m": "{name} → 本轮已交付",
+          "g": "完成"
+        }
+      }
+    },
+    "queue": {
+      "type": "gauge",
+      "values": [
+        0.91,
+        0.82,
+        0.74,
+        0.48,
+        0.69,
+        0.87,
+        0.42,
+        0.79
+      ],
+      "period": 3.3,
+      "t0": 0.9,
+      "seed": 17,
+      "threshold": 0.6,
+      "decimals": 2,
+      "high": {
+        "label": "畅通",
+        "dest": "继续"
+      },
+      "low": {
+        "label": "排队",
+        "dest": "等待"
+      },
+      "log": {
+        "who": "QUEUE",
+        "c": "gr",
+        "msgs": [
+          "演示队列水位",
+          "演示处理窗口"
+        ],
+        "tail": "p={value}"
+      }
+    },
+    "cycles": {
+      "type": "counter",
+      "start": 0,
+      "rate": 2.5
+    },
+    "audio": {
+      "type": "lane",
+      "period": 9,
+      "run": 6.2,
+      "off": 0.6,
+      "busy": "传输中",
+      "done": [
+        "播放完成"
+      ],
+      "phase": 0,
+      "log": {
+        "who": "AUDIO",
+        "c": "bl",
+        "msgs": [
+          [
+            "Watch 音频段传输",
+            "示意"
+          ]
+        ]
+      }
+    },
+    "observe": {
+      "type": "lane",
+      "period": 8,
+      "run": 5.1,
+      "off": 1.2,
+      "busy": "只读监听",
+      "done": [
+        "已去重"
+      ],
+      "phase": 1,
+      "log": {
+        "who": "SENTRY",
+        "c": "ye",
+        "msgs": [
+          [
+            "任务节点只读去重",
+            "示意"
+          ]
+        ]
+      }
+    },
+    "route": {
+      "type": "cycle",
+      "values": [
+        {
+          "t": "Wi-Fi",
+          "m": "演示选择 Wi-Fi 通道",
+          "g": "模拟"
+        },
+        {
+          "t": "BLE",
+          "m": "演示选择 BLE 通道",
+          "g": "模拟"
+        }
+      ],
+      "period": 6,
+      "t0": 0,
+      "log": {
+        "who": "ROUTE",
+        "c": "cy"
+      }
+    }
+  },
+  "elements": [
+    {
+      "type": "text",
+      "x": 0,
+      "y": 86,
+      "t": "GORK × WATCH  /  动态系统架构",
+      "c": "wh",
+      "size": 34,
+      "w": 1200,
+      "align": "center",
+      "b": 1
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 131,
+      "t": "桌面编排 · 单轮选路 · Watch 呈现",
+      "c": "cy",
+      "size": 21,
+      "w": 1200,
+      "align": "center"
+    },
+    {
+      "type": "rule",
+      "x": 40,
+      "y": 161,
+      "w": 1120
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 192,
+      "t": "● 交互",
+      "c": "cy",
+      "size": 18
+    },
+    {
+      "type": "text",
+      "x": 220,
+      "y": 192,
+      "t": "● 本机服务",
+      "c": "gr",
+      "size": 18
+    },
+    {
+      "type": "text",
+      "x": 430,
+      "y": 192,
+      "t": "● 设备通道",
+      "c": "bl",
+      "size": 18
+    },
+    {
+      "type": "text",
+      "x": 655,
+      "y": 192,
+      "t": "● 按需云问答",
+      "c": "pu",
+      "size": 18
+    },
+    {
+      "type": "text",
+      "x": 895,
+      "y": 192,
+      "t": "● 只读观察",
+      "c": "ye",
+      "size": 18
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          600,
+          368
+        ],
+        [
+          600,
+          464
+        ]
+      ],
+      "color": "line",
+      "width": 2.5,
+      "arrow": true,
+      "head": 11,
+      "then": {
+        "color": "cy",
+        "width": 3.2
+      },
+      "flow": {
+        "period": 1.7,
+        "offsets": [
+          0,
+          0.85
+        ],
+        "color": "cy",
+        "tail": 18
+      }
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          860,
+          561
+        ],
+        [
+          882,
+          561
+        ],
+        [
+          882,
+          550
+        ],
+        [
+          895,
+          550
+        ]
+      ],
+      "color": "line",
+      "width": 2.5,
+      "arrow": true,
+      "head": 11,
+      "when": {
+        "var": "route",
+        "eq": "Wi-Fi"
+      },
+      "then": {
+        "color": "bl",
+        "width": 3.2
+      },
+      "flow": {
+        "period": 2.1,
+        "offsets": [
+          0.2
+        ],
+        "color": "bl",
+        "tail": 18,
+        "when": {
+          "var": "route",
+          "eq": "Wi-Fi"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          860,
+          624
+        ],
+        [
+          882,
+          624
+        ],
+        [
+          882,
+          628
+        ],
+        [
+          895,
+          628
+        ]
+      ],
+      "color": "line",
+      "width": 2.5,
+      "arrow": true,
+      "head": 11,
+      "when": {
+        "var": "route",
+        "eq": "BLE"
+      },
+      "then": {
+        "color": "pu",
+        "width": 3.2
+      },
+      "flow": {
+        "period": 2.3,
+        "offsets": [
+          0.7
+        ],
+        "color": "pu",
+        "tail": 18,
+        "when": {
+          "var": "route",
+          "eq": "BLE"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          600,
+          704
+        ],
+        [
+          600,
+          807
+        ]
+      ],
+      "color": "line",
+      "width": 2.5,
+      "arrow": true,
+      "head": 11,
+      "then": {
+        "color": "pu",
+        "width": 3.2
+      },
+      "flow": {
+        "period": 2.2,
+        "offsets": [
+          0.4,
+          1.4
+        ],
+        "color": "pu",
+        "tail": 18
+      }
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          895,
+          890
+        ],
+        [
+          880,
+          890
+        ],
+        [
+          880,
+          672
+        ],
+        [
+          860,
+          672
+        ]
+      ],
+      "color": "line",
+      "width": 2.5,
+      "arrow": true,
+      "head": 11,
+      "then": {
+        "color": "ye",
+        "width": 3.2
+      },
+      "flow": {
+        "period": 2.8,
+        "offsets": [
+          0.4
+        ],
+        "color": "ye",
+        "tail": 18
+      }
+    },
+    {
+      "type": "tarrow",
+      "machine": "events",
+      "i": 0,
+      "from": [
+        306,
+        551
+      ],
+      "to": [
+        340,
+        551
+      ]
+    },
+    {
+      "type": "tarrow",
+      "machine": "events",
+      "i": 1,
+      "from": [
+        306,
+        603
+      ],
+      "to": [
+        340,
+        603
+      ]
+    },
+    {
+      "type": "tarrow",
+      "machine": "events",
+      "i": 2,
+      "from": [
+        306,
+        655
+      ],
+      "to": [
+        340,
+        655
+      ]
+    },
+    {
+      "type": "box",
+      "x": 340,
+      "y": 224,
+      "w": 520,
+      "h": 144,
+      "color": "cy",
+      "pad": [
+        18,
+        18,
+        18
+      ],
+      "lines": [
+        {
+          "runs": [
+            {
+              "t": "GORK DESKTOP  /  交互工作台",
+              "c": "cy",
+              "b": 1
+            }
+          ]
+        },
+        "对话 · 表情 · 日志 · 设置",
+        "Electron + 本机浏览器控制台",
+        {
+          "runs": [
+            {
+              "t": "PC 源码  v0.20.18-dev",
+              "c": "fg",
+              "b": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "box",
+      "x": 340,
+      "y": 464,
+      "w": 520,
+      "h": 240,
+      "color": "gr",
+      "pad": [
+        18,
+        18,
+        18
+      ],
+      "lines": [
+        {
+          "runs": [
+            {
+              "t": "LOCAL CORE  /  本机控制服务",
+              "c": "gr",
+              "b": 1
+            }
+          ]
+        },
+        "会话编排 · 路由选择 · 任务门禁",
+        "设备控制 + 音频收发 + 提醒去重",
+        {
+          "runs": [
+            {
+              "t": "Watch 通道  ",
+              "c": "dim",
+              "b": 0
+            },
+            {
+              "v": "route",
+              "c": "cy",
+              "b": 1
+            },
+            {
+              "t": "  (演示选路)",
+              "c": "dim",
+              "b": 0
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "w": 200,
+              "runs": [
+                "模拟队列余量"
+              ]
+            },
+            {
+              "w": 160,
+              "bar": {
+                "gauge": "queue",
+                "w": 145,
+                "h": 19,
+                "high": "gr",
+                "low": "ye"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "v": "queue",
+                  "c": "gr",
+                  "b": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "runs": [
+            {
+              "t": "状态  ",
+              "c": "dim",
+              "b": 0
+            },
+            {
+              "v": "queue.label",
+              "c": "ye",
+              "b": 1
+            },
+            {
+              "t": "   /   动画事件 ",
+              "c": "dim",
+              "b": 0
+            },
+            {
+              "v": "cycles",
+              "c": "wh",
+              "b": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "box",
+      "x": 895,
+      "y": 464,
+      "w": 265,
+      "h": 240,
+      "color": "bl",
+      "pad": [
+        18,
+        18,
+        18
+      ],
+      "lines": [
+        {
+          "runs": [
+            {
+              "t": "M5 WATCH",
+              "c": "bl",
+              "b": 1
+            }
+          ]
+        },
+        "Wi-Fi / BLE 单路",
+        "按键录音 / 表情",
+        "文字 + 音频播放",
+        {
+          "runs": [
+            {
+              "t": "音频  ",
+              "c": "dim",
+              "b": 0
+            },
+            {
+              "v": "audio",
+              "c": "bl",
+              "b": 1
+            }
+          ]
+        },
+        "实机 v0.11.7-dev"
+      ]
+    },
+    {
+      "type": "box",
+      "x": 40,
+      "y": 464,
+      "w": 265,
+      "h": 506,
+      "color": "pu",
+      "pad": [
+        18,
+        18,
+        18
+      ],
+      "lines": [
+        {
+          "runs": [
+            {
+              "t": "事件入口",
+              "c": "pu",
+              "b": 1
+            }
+          ]
+        },
+        "触发点依次点亮",
+        {
+          "trigger": [
+            "events",
+            0
+          ]
+        },
+        {
+          "trigger": [
+            "events",
+            1
+          ]
+        },
+        {
+          "trigger": [
+            "events",
+            2
+          ]
+        },
+        "",
+        {
+          "runs": [
+            {
+              "t": "当前 ",
+              "c": "dim",
+              "b": 0
+            },
+            {
+              "v": "events.status",
+              "c": "pu",
+              "b": 1
+            }
+          ]
+        },
+        "",
+        "最近动作",
+        {
+          "runs": [
+            {
+              "v": "events.adv0",
+              "c": "pu",
+              "b": 1
+            }
+          ]
+        },
+        {
+          "runs": [
+            {
+              "v": "events.adv1",
+              "c": "pu",
+              "b": 1
+            }
+          ]
+        },
+        "",
+        {
+          "runs": [
+            {
+              "t": "触发次数 ",
+              "c": "dim",
+              "b": 0
+            },
+            {
+              "v": "events.calls",
+              "c": "wh",
+              "b": 1
+            }
+          ]
+        },
+        "计数为动画模拟"
+      ]
+    },
+    {
+      "type": "box",
+      "x": 340,
+      "y": 807,
+      "w": 520,
+      "h": 163,
+      "color": "pu",
+      "pad": [
+        18,
+        18,
+        18
+      ],
+      "lines": [
+        {
+          "runs": [
+            {
+              "t": "ANSWER  /  按许可访问模型",
+              "c": "pu",
+              "b": 1
+            }
+          ]
+        },
+        "录音转文字 → 生成回答 → 音频输出",
+        "回答可送桌面与 Watch",
+        "完整流式播放：后续路线"
+      ]
+    },
+    {
+      "type": "box",
+      "x": 895,
+      "y": 807,
+      "w": 265,
+      "h": 163,
+      "color": "ye",
+      "pad": [
+        18,
+        18,
+        18
+      ],
+      "lines": [
+        {
+          "runs": [
+            {
+              "t": "READ-ONLY",
+              "c": "ye",
+              "b": 1
+            }
+          ]
+        },
+        "Codex / 造价智算",
+        "事件只读 · 去重",
+        {
+          "runs": [
+            {
+              "v": "observe",
+              "c": "ye",
+              "b": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "x": 666,
+      "y": 421,
+      "t": "控制 / 状态",
+      "c": "dim",
+      "size": 17
+    },
+    {
+      "type": "text",
+      "x": 626,
+      "y": 760,
+      "t": "许可问答",
+      "c": "dim",
+      "size": 17
+    },
+    {
+      "type": "text",
+      "x": 796,
+      "y": 785,
+      "t": "只读事件",
+      "c": "dim",
+      "size": 17
+    },
+    {
+      "type": "text",
+      "x": 40,
+      "y": 1030,
+      "t": "运行轨迹  /  以下日志、选路和计数为动画示意",
+      "c": "dim",
+      "size": 18
+    },
+    {
+      "type": "log",
+      "x": 40,
+      "y": 1055,
+      "w": 1120,
+      "rows": 5,
+      "padTop": 17,
+      "padBottom": 28,
+      "padLeft": 18,
+      "title": "event log · simulated",
+      "titleX": 35,
+      "titleW": 273,
+      "cols": [
+        {
+          "key": "time",
+          "x": 0
+        },
+        {
+          "key": "who",
+          "x": 140
+        },
+        {
+          "key": "m",
+          "x": 290
+        },
+        {
+          "key": "g",
+          "x": 925
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "x": 40,
+      "y": 1395,
+      "t": "~/gork-watch $ ",
+      "c": "gr",
+      "size": 20
+    },
+    {
+      "type": "text",
+      "x": 236,
+      "y": 1395,
+      "t": "watch route  ",
+      "c": "dim",
+      "size": 20
+    },
+    {
+      "type": "text",
+      "x": 401,
+      "y": 1395,
+      "runs": [
+        {
+          "v": "route",
+          "c": "cy",
+          "b": 1
+        },
+        {
+          "t": "   /   ",
+          "c": "dim",
+          "b": 0
+        },
+        {
+          "v": "events.status",
+          "c": "pu",
+          "b": 1
+        },
+        {
+          "cursor": true,
+          "c": "gr"
+        }
+      ],
+      "size": 20
+    },
+    {
+      "type": "text",
+      "x": 40,
+      "y": 1431,
+      "t": "静态事实：PC v0.20.18 源码；Watch v0.11.7 实机；v0.11.8 为待授权候选。",
+      "c": "dim",
+      "size": 16
+    },
+    {
+      "type": "text",
+      "x": 40,
+      "y": 1460,
+      "t": "路径与日志仅演示架构，不代表当前设备连接、模型调用或实测性能。",
+      "c": "dim",
+      "size": 16
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /0.20.0/. Input:
+
+'版本读取中'
+
+    at D:\Codex-Temp\260529-ESP-32-M5StopWatch\tools\verify_network_electron.cjs:17:95

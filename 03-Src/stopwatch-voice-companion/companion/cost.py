@@ -3,6 +3,7 @@ import re
 from urllib.parse import urlsplit
 
 import httpx
+from decimal import Decimal, InvalidOperation
 
 from .voice import VoiceError
 
@@ -61,6 +62,27 @@ MONITOR_STAGES = frozenset({'conversion_start', 'match_start', 'match_result',
                             'review_requested', 'review_sent'})
 
 
+def monitor_amount(value, attempt):
+    """Accept only a producer's bounded CNY/yuan summary for this exact attempt."""
+    if (not isinstance(value, dict) or not attempt or value.get('attempt') != attempt
+            or value.get('currency') != 'CNY' or value.get('unit') != 'yuan'
+            or value.get('basis') not in ('tax_included', 'tax_excluded')
+            or value.get('calculation_status') not in ('recalculated', 'unconfirmed')):
+        return None
+    raw = value.get('value')
+    if not isinstance(raw, str) or not re.fullmatch(r'[0-9]{1,13}(?:\.[0-9]{1,6})?', raw):
+        return None
+    try:
+        amount = Decimal(raw)
+        if not amount.is_finite() or not 0 <= amount <= Decimal('1000000000000'):
+            return None
+    except InvalidOperation:
+        return None
+    return {'value': format(amount, 'f'), 'currency': 'CNY', 'unit': 'yuan',
+            'basis': value['basis'], 'attempt': attempt,
+            'calculation_status': value['calculation_status']}
+
+
 def monitor_events(data):
     values = data.get('events', [])
     if not isinstance(values, list):
@@ -79,11 +101,18 @@ def monitor_events(data):
                        'occurred_at': str(item.get('occurred_at') or '')[:50],
                        'review_rows': item.get('review_rows') if type(item.get('review_rows')) is int else None,
                        'warning_rows': item.get('warning_rows') if type(item.get('warning_rows')) is int else None})
+        if item['stage'] == 'match_result' and item.get('status') == 'completed':
+            amount = monitor_amount(item.get('amount_summary'), result[-1]['attempt'])
+            if amount is not None:
+                result[-1]['amount_summary'] = amount
     return result
 
 
 class CostClient:
-    def __init__(self, base_url='http://127.0.0.1:8000', transport=None):
+    def __init__(self, base_url='http://127.0.0.1:8000', transport=None, *, expected_service='guankanzhisuan'):
+        if expected_service not in ('guankanzhisuan', 'zhisuan-astra'):
+            raise ValueError('不支持的智算服务身份')
+        self.expected_service = expected_service
         parsed = urlsplit(base_url)
         if (parsed.scheme != 'http' or parsed.hostname not in ('127.0.0.1', 'localhost')
                 or parsed.username or parsed.password or parsed.query or parsed.fragment
@@ -113,7 +142,7 @@ class CostClient:
 
     async def health(self):
         data = await self._request('GET', '/api/health', timeout=4)
-        if data.get('service') != 'guankanzhisuan' or data.get('status') != 'ok':
+        if data.get('service') != self.expected_service or data.get('status') != 'ok':
             raise VoiceError(502, 'COST_IDENTITY', '此端口不是可用的造价智算服务')
         return fields(data, ('status', 'service', 'release_version', 'version'))
 

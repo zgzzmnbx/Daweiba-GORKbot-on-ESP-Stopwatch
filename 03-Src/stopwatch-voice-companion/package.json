@@ -4,7 +4,8 @@
   "scripts": {
     "build:ui": "node ui/build.mjs",
     "check:ui": "node ui/build.mjs --check",
-    "test": "node --test tests/test_browser.mjs tests/test_appearance.mjs tests/test_console_theme.mjs"
+    "test": "node --test tests/test_browser.mjs tests/test_appearance.mjs tests/test_console_theme.mjs tests/test_debug_console.mjs tests/test_companion_tabs.mjs tests/test_external_ui.mjs",
+    "test:motion": "node tests/motion/run.cjs"
   },
   "dependencies": {
     "@mantine/core": "9.6.2",
@@ -13,11 +14,12 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.0.10",
     "jsdom": "26.1.0",
     "parse5": "8.0.0"
   },
   "name": "gork-console-ui",
-  "version": "0.18.2-dev",
+  "version": "0.20.38-dev",
   "engines": {
     "node": ">=20.19.0"
   }

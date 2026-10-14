@@ -16,12 +16,15 @@ class SoundControl : public BLECharacteristicCallbacks {
   void setLocalVolume(uint8_t value);
   void toggleMute();
   bool preview(uint8_t soundId);
+  bool announce(const int16_t* pcm, size_t samples);
+  bool isAnnouncing() const { return announcement_; }
+  uint32_t stopEpoch() const { return stopEpoch_; }
   uint8_t volume() const { return volume_; }
   bool isPlaying() const { return playing_; }
   const char* hardwareStatus() const { return hardwareStatus_; }
   bool takeVolumeChanged(uint8_t* value);
   bool takeButtonBConsumed();
-  void stopNow();
+  void stopNow(bool cancelAnnouncements=true);
 
  private:
   static constexpr size_t kFrameSize = 9;
@@ -35,7 +38,7 @@ class SoundControl : public BLECharacteristicCallbacks {
   void reply(uint8_t op, uint16_t id, uint32_t value=0, uint8_t arg=0, bool terminal=false);
   void fail(uint16_t id, Error error);
   bool replayTerminal(uint16_t id);
-  bool startPlayback(const int16_t* pcm, size_t samples);
+  bool startPlayback(const int16_t* pcm, size_t samples, bool speech=false);
   const int16_t* sound(uint8_t id, size_t* samples) const;
   BLEControl& control_;
   BLECharacteristic* events_=nullptr;
@@ -51,5 +54,7 @@ class SoundControl : public BLECharacteristicCallbacks {
   uint8_t activeSound_=0, volume_=20, lastNonZeroVolume_=20;
   bool playing_=false, volumeChanged_=false;
   bool buttonBConsumed_=false;
+  bool announcement_=false;
+  uint32_t stopEpoch_=0;
   const char* hardwareStatus_="not tested";
 };

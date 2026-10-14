@@ -12,7 +12,7 @@ test('avatar visibility IPC accepts only the console sender and boolean state', 
   const electron = {
     app: {isPackaged:false,requestSingleInstanceLock:()=>true,getPath:()=>desktop,on(){},whenReady:()=>new Promise(()=>{})},
     screen: {getDisplayMatching:()=>({workArea:{x:0,y:0,width:1920,height:1080}})},
-    ipcMain: {handle:(name,handler)=>handlers.set(name,handler)},
+    ipcMain: {on(){},handle:(name,handler)=>handlers.set(name,handler)},
   };
   const scope = {module:{exports:{}},exports:{},__dirname:desktop,process,Buffer,URL,console,
     require(name){
@@ -24,7 +24,7 @@ test('avatar visibility IPC accepts only the console sender and boolean state', 
       if(name==='./bubble-window') return {...require('../bubble-window'),createBubbleWindow:()=>({sync(){},hide(){},update(){}})};
       if(name==='./gork-appearance') return require('../gork-appearance');
       if(name==='./tray-icon') return require('../tray-icon');
-      return require(name);
+      return require(name.startsWith('./')?path.join(desktop,name):name);
     },
   };
   const source = fs.readFileSync(path.join(desktop,'main.js'),'utf8');
@@ -34,6 +34,23 @@ test('avatar visibility IPC accepts only the console sender and boolean state', 
   const sent = [];
   const avatar = {getBounds:()=>bounds,setBounds:value=>{bounds=value;},isDestroyed:()=>false,isVisible:()=>visible,showInactive:()=>{visible=true;},hide:()=>{visible=false;},isAlwaysOnTop:()=>alwaysOnTop,setAlwaysOnTop:value=>{alwaysOnTop=value;},webContents:{send:(...args)=>sent.push(args)}};
   scope.module.exports.setWindows({webContents:consoleContents},avatar);
+  const tokenHover = handlers.get('gork:token-hover');
+  assert.throws(()=>tokenHover({sender:outsider},true),/Invalid token hover/);
+  assert.throws(()=>tokenHover({sender:consoleContents},true),/Invalid token hover/);
+  assert.throws(()=>tokenHover({sender:avatar.webContents},'true'),/Invalid token hover/);
+  assert.equal(tokenHover({sender:avatar.webContents},true),true);
+  assert.equal(tokenHover({sender:avatar.webContents},false),true);
+  assert.throws(()=>handlers.get('gork:token-height')({sender:consoleContents},300),/Invalid token height/);
+  assert.throws(()=>handlers.get('gork:hide-token-card')({sender:consoleContents}),/Invalid token dismiss/);
+  const getPointer = handlers.get('gork:pointer-follow'), setPointer = handlers.get('gork:set-pointer-follow');
+  assert.equal(getPointer({sender:consoleContents}),true,'new preference defaults on');
+  assert.throws(()=>getPointer({sender:outsider}),/Only the console/);
+  assert.throws(()=>setPointer({sender:outsider},false),/Invalid pointer/);
+  for(const value of ['false',0,null])assert.throws(()=>setPointer({sender:consoleContents},value),/Invalid pointer/);
+  assert.equal(setPointer({sender:consoleContents},false),false);
+  assert.equal(savedSizes.at(-1).pointerFollow,false);
+  assert.equal(sent.at(-1)[1].pointerFollow,false);
+  assert.equal(setPointer({sender:consoleContents},true),true);
   const getLook=handlers.get('gork:get-appearance'), setLook=handlers.get('gork:set-appearance');
   assert.equal(getLook({sender:consoleContents}).id,'gork');
   assert.throws(()=>getLook({sender:outsider}),/Only the console/);
@@ -114,25 +131,26 @@ test('avatar restores disabled always-on-top from the saved window state', () =>
   const electron = {
     app: {isPackaged:false,requestSingleInstanceLock:()=>true,getPath:()=>desktop,on(){},whenReady:()=>new Promise(()=>{})},
     BrowserWindow, screen: {getAllDisplays:()=>[{workArea:{x:0,y:0,width:1920,height:1080}}]},
-    ipcMain: {handle(){}},
+    ipcMain: {on(){},handle(){}},
   };
   const scope = {module:{exports:{}},exports:{},__dirname:desktop,process,Buffer,URL,console,
     require(name){
       if(name==='electron') return electron;
-      if(name==='node:fs') return {...fs,readFileSync:()=>JSON.stringify({x:100,y:100,width:180,height:210,alwaysOnTop:false,bubblePosition:'below',appearance:{id:'freddy',bodyColor:'#123456'}})};
+      if(name==='node:fs') return {...fs,readFileSync:()=>JSON.stringify({x:100,y:100,width:180,height:210,alwaysOnTop:false,pointerFollow:false,bubblePosition:'below',appearance:{id:'freddy',bodyColor:'#123456'}})};
       if(name==='./backend-manager') return {};
       if(name==='./window-state') return require('../window-state');
       if(name==='./bubble-window') return require('../bubble-window');
       if(name==='./gork-appearance') return require('../gork-appearance');
       if(name==='./tray-icon') return require('../tray-icon');
-      return require(name);
+      return require(name.startsWith('./')?path.join(desktop,name):name);
     },
   };
-  vm.runInNewContext(fs.readFileSync(path.join(desktop,'main.js'),'utf8')+'\nmodule.exports.createAvatar = createAvatar; module.exports.position = () => bubblePosition; module.exports.look = () => appearance;',scope);
+  vm.runInNewContext(fs.readFileSync(path.join(desktop,'main.js'),'utf8')+'\nmodule.exports.createAvatar = createAvatar; module.exports.position = () => bubblePosition; module.exports.look = () => appearance; module.exports.pointer = () => pointerFollow;',scope);
   scope.module.exports.createAvatar();
   assert.equal(options[0].alwaysOnTop,false);
   assert.equal(options[0].width,180);
   assert.equal(scope.module.exports.position(),'below');
   assert.equal(scope.module.exports.look().id,'freddy');
   assert.equal(scope.module.exports.look().bodyColor,'#123456');
+  assert.equal(scope.module.exports.pointer(),false,'explicit off preference survives restart');
 });

@@ -24,6 +24,27 @@ class OptionsVoice(FakeVoice):
         return wav_bytes(24000)
 
 
+def test_revocation_without_voice_draft_keeps_applied_voice_across_turns():
+    async def run():
+        voice=OptionsVoice();control=Controller(voice,FakeRobot())
+        await control.connect('tab')
+        options={'speaker_id':58,'cloud_voice':'Ethan','speed':1.0}
+        cloud=dict(SAFE_ROUTING,tts='cloud',allow_text_upload=True)
+        await control.settings('tab',1,cloud,True,options)
+        expected=dict(options,request_voice=True)
+        for generation in range(2,5):
+            # Permission-only updates deliberately carry no voice draft, even
+            # if catalogue lookup is unavailable. They must not select defaults.
+            async def unavailable():raise VoiceError(503,'OFFLINE','catalogue unavailable')
+            voice.capabilities=unavailable
+            await control.settings('tab',generation,cloud,False,None)
+            await control.perform('tab',generation,'tts','same voice')
+            assert voice.last_synthesis[3]==expected
+            assert not control.answer_upload
+        await control.close()
+    asyncio.run(run())
+
+
 def test_speech_selection_propagates_and_invalid_selection_cannot_leak_old_turn():
     async def run():
         voice = OptionsVoice()
@@ -60,6 +81,28 @@ def test_http_voice_options_and_legacy_compatibility():
     asyncio.run(run())
     assert seen[0]["speaker_id"] == 58 and seen[0]["speed"] == 1.15
     assert "cloud_voice" not in seen[0] and seen[1]["cloud_voice"] == "Ethan"
+
+
+def test_returned_voice_identity_is_checked_without_extra_requests():
+    async def run():
+        seen=[];returned='Ethan'
+        def upstream(request):
+            seen.append(json.loads(request.content))
+            return httpx.Response(200,content=wav_bytes(24000),headers={'content-type':'audio/wav',
+                'X-Voice-Mode':'cloud','X-Voice-Id':returned,'X-Provider':'fixture'})
+        voice=VoiceClient('http://127.0.0.1:8765',transport=httpx.MockTransport(upstream))
+        try:
+            for i in range(3):
+                await voice.synthesize('different reply',i+1,f'reply-{i}',{'cloud_voice':'Ethan','request_voice':True})
+                assert voice.last_voice['requested']==voice.last_voice['rendered']=='Ethan'
+            returned='Cherry'
+            with pytest.raises(VoiceError) as error:
+                await voice.synthesize('reply',4,'mismatch',{'cloud_voice':'Ethan','request_voice':True})
+            assert error.value.code=='VOICE_MISMATCH'
+            assert len(seen)==4 and all(item['cloud_voice']=='Ethan' for item in seen)
+            assert 'different reply' not in json.dumps(voice.last_voice)
+        finally:await voice.close()
+    asyncio.run(run())
 
 
 def test_settings_http_validation():

@@ -39,6 +39,10 @@ async function ensureBackend(options) {
   try {
     const health = await readHealth(baseUrl, fetchImpl);
     if (!isOurBackend(health)) throw new Error('port is occupied by another application');
+    if (options.expectedVersion && health.version !== options.expectedVersion) {
+      const error = new Error('检测到旧版 Gork 后台。请从系统托盘退出 Gork 后重新启动；若退出后仍出现此提示，需要清理旧后台。');
+      error.code = 'GORK_BACKEND_VERSION'; throw error;
+    }
     return { health, process: null, ownership: 'external' };
   } catch (error) {
     if (!/fetch failed|ECONNREFUSED|connect|aborted/i.test(String(error.cause || error))) throw error;
@@ -52,6 +56,11 @@ async function ensureBackend(options) {
     env: { ...process.env, PYTHONUTF8: '1', GORK_LAUNCH_TOKEN: launch },
   });
   const health = await waitForBackend(baseUrl, launch, fetchImpl);
+  if (options.expectedVersion && health.version !== options.expectedVersion) {
+    await stopOwnedBackend({ownership:'owned',process:child,serverPid:health.pid});
+    const error = new Error('新后台版本与启动器不一致，请检查 Gork 的安装目录。');
+    error.code='GORK_BACKEND_VERSION';throw error;
+  }
   return { health, process: child, serverPid: health.pid, ownership: 'owned' };
 }
 

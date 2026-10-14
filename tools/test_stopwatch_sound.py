@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -84,7 +85,7 @@ def test_sound_and_voice_share_the_saved_output_volume():
 def test_firmware_version_is_visible_on_settings_page():
     main = (ROOT / "03-Src/stopwatch-grok-avatar/src/main.cpp").read_text(
         encoding="utf-8")
-    assert 'kFirmwareVersion[] = "v0.9.1-dev"' in main
+    assert re.search(r'kFirmwareVersion\[\] = "v\d+\.\d+\.\d+-dev"', main)
     assert 'drawDiagnosticLine(102, "Firmware", kFirmwareVersion' in main
 
 
