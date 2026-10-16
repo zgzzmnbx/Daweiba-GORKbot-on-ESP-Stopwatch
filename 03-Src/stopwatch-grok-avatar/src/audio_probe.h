@@ -25,6 +25,11 @@ class AudioProbe : public BLECharacteristicCallbacks {
   bool takeBConsumed(){bool v=consumeB_;consumeB_=false;return v;}
   const char* message()const{return message_;}
   bool preparing(uint32_t now)const{return productRecorder_.pending(now);}
+  // product_ may outlive a completed transfer; Ready + no pending intent is idle.
+  bool orientationIdle(uint32_t now){
+    portENTER_CRITICAL(&mux_);const bool queued=count_!=0;portEXIT_CRITICAL(&mux_);
+    return !testPage_&&!preparing(now)&&!cancel_.load()&&!overflow_.load()&&!queued&&(state_==State::Off||state_==State::Ready);
+  }
   uint8_t recordSecondsLeft(uint32_t now)const{return state_==State::Recording&&captureReady_?(now-recordStarted_>=10000?0:(10000-(now-recordStarted_)+999)/1000):0;}
   void cancelLocal(){cancel_.store(true);}
   bool busy() const { return state_ == State::Armed || state_ == State::Recording || state_ == State::Captured || state_ == State::Receiving || state_ == State::Loaded || state_ == State::Playing; }

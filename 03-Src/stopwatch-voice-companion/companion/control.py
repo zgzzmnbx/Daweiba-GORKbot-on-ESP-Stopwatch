@@ -68,6 +68,7 @@ class Controller:
         self.task_monitor = None
         self.external_notifications = None
         self.output_target = "pc"
+        self.pc_voice_volume = 100
         self.codex_monitor = None
         self.codex_spool = Path(__file__).resolve().parents[3] / 'Codex-Temp' / 'codex-sentinel-hook-queue'
         self.notifications = NotificationCoordinator(self)

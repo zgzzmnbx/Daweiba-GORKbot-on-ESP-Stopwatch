@@ -11,8 +11,6 @@ const pointerLook = window.GorkDesktopPointer?.attach(document.getElementById('g
 let characterRevision = -1;
 let sceneRevision = -1;
 let appliedMotionRequestId = null;
-const quotaOuter = document.getElementById('quota-ring-outer');
-const quotaInner = document.getElementById('quota-ring-inner');
 const quotaDetail = document.getElementById('quota-detail');
 const quotaTooltip = document.getElementById('quota-tooltip');
 const quotaTrend = document.getElementById('quota-trend');
@@ -29,16 +27,8 @@ function renderQuota(codex = {}) {
   }
   const windows = codex.enabled ? (codex.bucket?.windows || []) : [];
   const stale = codex.stale || codex.status !== 'available';
-  const display = codex.ring_mode === 'hover' ? 'hover' : 'visible';
-  quotaDetail.hidden = !codex.enabled;
-  quotaDetail.dataset.display = display;
-  [quotaOuter, quotaInner].forEach((ring, index) => {
-    const value = windows[index]?.remaining_percent;
-    ring.hidden = !windows[index];
-    ring.dataset.display = display;
-    ring.style?.setProperty('--ring-fill', Number.isFinite(value) && !stale ? `${Math.max(0, Math.min(100, value))}%` : '0%');
-    ring.style?.setProperty('--ring-color', stale || !Number.isFinite(value) ? '#9b9d98' : value <= 20 ? '#c06a4d' : '#3f9e79');
-  });
+  // The shared token card already includes quota; retain only the legacy fallback.
+  quotaDetail.hidden = !codex.enabled || !!window.gorkDesktop?.setTokenHover;
   const detail = windows.length ? windows.map((item, i) => {
     const remaining = item.remaining_percent == null ? '未知' : `${item.remaining_percent}%`;
     const reset = item.resets_at ? new Date(item.resets_at * 1000).toLocaleString() : '未知';
@@ -51,6 +41,7 @@ function renderQuota(codex = {}) {
 }
 
 function render(state) {
+  avatar.dataset.display = state.indicatorSettings?.mode === 'bubbles' ? 'bubbles' : 'menu';
   const follow = state.pointerFollow !== false;
   if (follow !== pointerFollow) {pointerFollow=follow;pointerLook?.reset();}
   renderQuota(state.codex);
@@ -75,6 +66,7 @@ function render(state) {
   } else if (!manual.manual || characterRevision < 0) face.set(next);
   }
   status.textContent = state.label || '就绪';
+  status.title = `${status.textContent} · 按住此处拖动小人`;
 }
 
 document.getElementById('console').addEventListener('click', () => window.gorkDesktop.openConsole());

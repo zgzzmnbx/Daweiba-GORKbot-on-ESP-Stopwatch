@@ -305,3 +305,10 @@ RAM `29888` bytes；这些是构建期结果，不是真机 FPS 或屏幕观感�
 四段写后读回校验均为 `verify OK (digest matched)`。这证明 Flash 交付正确，
 不等同于真机 FPS、屏幕观感、触摸、IMU、按键、振动或长时间稳定性验收；这些
 仍待设备侧观察。
+
+
+## 2026-10-15 v0.11.11-dev orientation candidate
+
+Display rotation uses 0/2. The pinned M5Unified Touch update calls M5GFX convertRawXY, so touch is transformed once by that library; do not mirror it again. Screen-space acceleration/gyro X/Y change sign together; Z remains unchanged. Reset filtered/neutral/shake state and wait for touch release across a change. Only the independent `inverted` Preferences key is written, and failed persistence keeps the old direction.
+
+Observe B release events after the unchanged AudioProbe cancellation path. Check idle both before and after audio update, reset during activity, and use a 350ms quiet interval after cancellation. Take the existing sound/audio consumed flags only when B was clicked; clearing the sound flag on its press would leak the later release into avatar browsing. Native tests exercise the production setter/settings hitbox and pinned button/touch implementations; physical behavior remains unverified until separately authorized flashing and observation.

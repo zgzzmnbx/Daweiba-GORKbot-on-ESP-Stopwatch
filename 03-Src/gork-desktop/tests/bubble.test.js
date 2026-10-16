@@ -41,7 +41,7 @@ test('avatar renders scene state without referencing an out-of-scope manual vari
   assert.doesNotThrow(()=>render({mode:'happy',scene:{revision:2,expression:'happy'},character:{bubble:'hi'}}));
   assert.equal(get('status').textContent,'就绪');
 });
-test('avatar quota ring handles one, two and stale windows with keyboard details',()=>{
+test('avatar removes quota rings while preserving quota details and drop alerts',()=>{
   let render;
   const nodes=new Map();
   const get=id=>{
@@ -53,32 +53,22 @@ test('avatar quota ring handles one, two and stale windows with keyboard details
   const window1={name:'5 小时',remaining_percent:75,resets_at:2000000000};
   const window2={name:'7 天',remaining_percent:18,resets_at:2000000000};
   render({mode:'idle',codex:{enabled:false,ring_mode:'hidden',status:'available',bucket:{windows:[window1]}}});
-  assert.equal(get('quota-ring-outer').hidden,true);
   assert.equal(get('quota-detail').hidden,true);
   render({mode:'idle',codex:{enabled:false,ring_mode:'hidden',status:'available',
     trend:{drop_points:4,window_name:'5 小时',elapsed_minutes:2,remaining:19}}});
-  assert.equal(get('quota-ring-outer').hidden,true);
   assert.equal(get('quota-trend').hidden,false);
   assert.equal(get('quota-trend').textContent,'↓4点');
   assert.match(get('quota-trend')['aria-label'],/剩余 19%/);
   render({mode:'idle',codex:{enabled:true,status:'available',stale:false,bucket:{windows:[window1]}}});
-  assert.equal(get('quota-ring-outer').hidden,false);
-  assert.equal(get('quota-ring-inner').hidden,true);
-  assert.equal(get('quota-ring-outer').style.values['--ring-fill'],'75%');
   render({mode:'idle',codex:{enabled:true,status:'available',stale:false,bucket:{windows:[window1,window2]}}});
-  assert.equal(get('quota-ring-inner').hidden,false);
-  assert.equal(get('quota-ring-inner').style.values['--ring-fill'],'18%');
   assert.match(get('quota-detail')['aria-label'],/当前监测账号额度/);
   render({mode:'idle',codex:{enabled:true,ring_mode:'hover',status:'available',stale:false,bucket:{windows:[window1,window2]}}});
-  assert.equal(get('quota-ring-outer').dataset.display,'hover');
-  assert.equal(get('quota-ring-inner').dataset.display,'hover');
-  assert.equal(get('quota-detail').dataset.display,'hover');
-  assert.equal(get('quota-ring-outer').hidden,false);
   render({mode:'idle',codex:{enabled:true,status:'unavailable',stale:true,bucket:{windows:[window1,window2]}}});
-  assert.equal(get('quota-ring-outer').style.values['--ring-fill'],'0%');
   assert.match(get('quota-detail')['aria-label'],/数据过期或不可用/);
   render({mode:'idle',codex:{enabled:false}});
   assert.equal(get('quota-detail').hidden,true);
+  assert.equal(nodes.has('quota-ring-outer'),false);
+  assert.doesNotMatch(fs.readFileSync(path.join(__dirname,'../avatar.html'),'utf8'),/quota-ring/);
 });
 test('bubble uses literal text and preserves scroll position across state polls',()=>{
   let render, click, dismissed=0;const speech={textContent:'',scrollTop:0};

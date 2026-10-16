@@ -20,7 +20,7 @@ Gork 是面向 Windows 与 M5Stack StopWatch 的个人机器人项目：电脑�
 
 [快速开始](#快速开始) · [功能](#功能) · [模块与架构](#模块与架构) · [开发与验证](#开发与验证) · [文档](#文档) · [版本记录](CHANGELOG.md)
 
-> 项目处于开发阶段。当前电脑端源码为 **v0.20.38-dev**；功能、构建、设备写入与实际听验分别记录。运行中的版本以控制台页眉、设置页及 `/api/health` 为准。
+> 项目处于开发阶段。当前电脑端源码为 **v0.21.6-dev**；功能、构建、设备写入与实际听验分别记录。运行中的版本以控制台页眉、设置页及 `/api/health` 为准。
 
 ## 界面预览
 
@@ -41,12 +41,13 @@ Gork 是面向 Windows 与 M5Stack StopWatch 的个人机器人项目：电脑�
 | 桌面伙伴 | 独立悬浮窗口、置顶与缩放、聊天气泡、角色与配色、表情预览、待机动作及鼠标跟随 |
 | 对话工作台 | 文字输入、电脑录音与转写、可配置文字 AI、电脑或 Watch 朗读、显示端与声音端独立选择 |
 | 动效编辑器 | 自定义表情与书写场景、参数预览、保存/另存、导入导出，以及 Watch 参数导出 |
-| StopWatch 控制 | 加密 BLE 配对与重连、Wi-Fi/BLE 选路、设备表情与文字、短音、PCM/Opus 音频和实体按键对话 |
-| 通知哨兵 | 本机程序独立授权，统一调度表情、文字和声音；支持幂等回执、状态续期、阶段替换、取消与人工操作优先 |
+| StopWatch 控制 | 加密 BLE 配对与重连、Wi-Fi/BLE 选路、设备表情与文字、短音、PCM/Opus 音频、实体按键对话及保存正向/倒挂方向 |
+| 通知哨兵 | 本机程序独立授权，统一调度表情、文字和声音；回执消息进入聊天页，顶栏可暂停/恢复程序推送，支持幂等与阶段替换 |
 | 造价助手 | 通过本机 HTTP 复用造价智算的知识查询、任务状态和阶段通知；原版与 Astra 来源分别核对 |
-| Codex 哨兵 | 可选任务观察、结束提醒和官方账号额度读取；额度展示可独立于任务哨兵使用 |
+| Codex 哨兵 | 每次启动默认开启任务观察、结束提醒和官方账号额度读取，可手动关闭；保留其余设置，额度展示可独立使用 |
+| 流量监测 | 独立本机采集，物理网卡实时网速、Clash 代理速度与按软件/域名/连接的今日增量，Windows 应用历史补充；标题栏开关与桌面简要速度条 |
 | 今日 token | 只读 CC Switch 已计数的本机 Codex 用量，并与官方账号剩余额度分开显示 |
-| 界面与恢复 | Mantine/经典主题、明暗与配色切换，语音会话自动连接及断线恢复、状态日志与全局停止 |
+| 界面与恢复 | Mantine/经典主题、明暗与配色切换；顶栏模型/连接状态、Phosphor 快捷开关、电脑/Watch双音量弹层和标签翻页箭头、语音自动连接及断线恢复、状态日志 |
 
 固定提示可按当前有效音色预生成；动态文字按完整内容、音色与合成参数匹配语音缓存。云端能力使用会话许可，密钥通过指定环境变量或本机受保护配置保存。
 
@@ -54,8 +55,8 @@ Gork 是面向 Windows 与 M5Stack StopWatch 的个人机器人项目：电脑�
 
 | 组件 | 当前源码 / 候选 | 验证边界 |
 | --- | --- | --- |
-| 控制台与 Electron | v0.20.38-dev | 已有自动回归与隔离 Electron 验收；新补丁须正常退出并重开后加载 |
-| Watch 固件 | v0.11.10-dev 候选 | 最后记录的应用区写入与独立校验为 v0.11.9-dev；连接播报候选 v0.11.10 尚未写入 |
+| 控制台与 Electron | v0.21.6-dev | 已有自动回归与隔离 Electron 验收；新补丁须正常退出并重开后加载 |
+| Watch 固件 | v0.11.11-dev | 应用区写入/独立校验、USB运行版本确认通过；用户确认本轮倒挂与按键功能测试完成，性能/长稳仍延期 |
 | 独立语音服务 | v0.3.3，HTTP 协议 v1 | ASR/TTS 与路由接口独立，当前单活会话；服务版本随实际加载确认 |
 | Android 客户端 | v0.1.7-dev | 已有目标手机配对、基础控制与短句听验记录；后续新增功能暂停 |
 | 通用输出接口 | 协议 1.0 | 本机 HTTP、来源令牌与独立输出授权；提供文档、Schema 和标准库 Python SDK |
@@ -91,6 +92,10 @@ Copy-Item '03-Src/stopwatch-voice-companion/config.example.toml' '03-Src/stopwat
 默认控制台为 `http://127.0.0.1:8766`，语音服务为 `http://127.0.0.1:8765`。启动器检查自身后台与版本，托盘提供退出入口；更新 Electron 或后端后，从托盘正常退出，再用原入口重开。
 
 可以先体验电脑端角色与界面。在本机配置中设置 `auto_connect_device = false` 可关闭设备自动连接；设置 `voice_service_command = []` 可只复用已启动的语音服务。未配置设备、模型或回答服务时，相应能力会显示未就绪。网页入口为根目录 `start-voice-companion.cmd`。
+
+### 流量监测
+
+重开至 v0.21.0-dev 后，点击标题栏 `⇅` 开启，进入「流量监测」查看明细；首次默认关闭，之后保留选择。Windows 应用历史有延迟，不等于实时的未代理进程流量，也不能与 Clash 数字相加。数据保存在本机 `%LOCALAPPDATA%/GorkRobot/traffic`，与原 Clash 工具独立。[口径与验收](04-output/v0.21.0/流量监测迁移与验收-【codex】.md)。
 
 ### 3. 启用语音与 AI
 
@@ -183,6 +188,7 @@ $env:PYTHONPATH = '03-Src/stopwatch-voice-companion'
 - Grok bot 及角色几何来自固定提交的 [Bible Strong Avatar Lab](https://github.com/smontlouis/bible-strong-avatar-lab)，保留[来源说明](03-Src/avatar-library/README.md)和[AGPL 许可](03-Src/avatar-library/LICENSE)。
 - 动效模块保留[上游许可](03-Src/stopwatch-voice-companion/static/motion/LICENSE.upstream)与[笔型参考](03-Src/stopwatch-voice-companion/static/motion/PEN-REFERENCES.md)。
 - Mantine 的本地样式保留[MIT 许可](03-Src/stopwatch-voice-companion/static/mantine/LICENSE)；CC Switch 计数适配保留[来源与 MIT 声明](03-Src/stopwatch-voice-companion/CC_SWITCH_NOTICE.md)。
+- 顶栏图标使用 [Phosphor Icons](https://phosphoricons.com/) regular SVG，本地固定版本与 [MIT 许可](03-Src/stopwatch-voice-companion/static/icons/phosphor/LICENSE)见[来源说明](03-Src/stopwatch-voice-companion/static/icons/phosphor/SOURCE.md)。
 - M5Stack 库、Opus 依赖、历史几何研究及连接播报素材见[第三方声明](03-Src/stopwatch-grok-avatar/THIRD_PARTY_NOTICES.md)。各子模块与素材的来源声明分别适用。
 
 本项目以个人实验与复现为当前使用场景。Gork 为本项目名称；第三方角色参考与服务接入不代表与其作者或品牌存在官方合作。

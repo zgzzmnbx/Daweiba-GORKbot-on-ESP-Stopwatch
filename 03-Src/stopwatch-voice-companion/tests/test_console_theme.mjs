@@ -7,6 +7,7 @@ import {createDebugConsole} from '../static/debug-console.js';
 import {createExpressionMenu} from '../static/expression-menu.js';
 import {createAppearancePicker} from '../static/appearance-picker.js';
 import {createWatchChat} from '../static/watch-chat.js';
+import {createNoticeChat} from '../static/notice-chat.js';
 const answerSetupFixture={prompt_configurable:true,revision:1,key_saved:false,model:'deepseek-flash',system_prompt:'直接回答核心问题。',max_chars:20,default_prompt:'默认简短风格。',default_max_chars:20,effective_prompt:'文字实际提示词。',watch_prompt:'Watch 实际提示词。'};
 const read=file=>fs.readFileSync(new URL('../'+file,import.meta.url),'utf8');
 const html=read('static/index.html'),themeCode=read('static/console-theme.js');
@@ -77,7 +78,7 @@ test('prompt draft survives polls; preview is saved content and reset does not w
 
 test('Watch turns enter current chat safely; polls update rather than duplicate, repeats remain distinct and stale cleared snapshots are ignored',async()=>{
   const dom=new JSDOM(html,{url:'http://127.0.0.1:8879/',runScripts:'outside-only'}),w=dom.window,get=id=>w.document.getElementById(id);
-  Object.assign(w,{Epoch,TextEncoder,AbortController,AbortSignal,createDebugConsole,createExpressionMenu,createAppearancePicker,createWatchChat,
+  Object.assign(w,{Epoch,TextEncoder,AbortController,AbortSignal,createDebugConsole,createExpressionMenu,createAppearancePicker,createWatchChat,createNoticeChat,
     Recorder:class{stop(){}},WavPlayer:class{stop(){}},GorkAvatar:{mount(){return {set(){},dispose(){}};}},setInterval:()=>0,
     fetch:async()=>({ok:true,json:async()=>({auto_connect_voice:false,voice_url:'http://127.0.0.1:8899',robot:{connected:false},answer:{enabled:false},workspace:{owned:false}})})});
   w.eval(read('static/gork-catalog.js'));
@@ -125,7 +126,7 @@ async function startupWatchController({consent=true,busy=false,answer=true}={}){
   let enabled=false;
   w.localStorage.setItem('gork.watch-dialogue','false');
   w.localStorage.setItem('gork.answer-consent',String(consent));
-  Object.assign(w,{Epoch,TextEncoder,AbortController,AbortSignal,createDebugConsole,createExpressionMenu,createAppearancePicker,createWatchChat,
+  Object.assign(w,{Epoch,TextEncoder,AbortController,AbortSignal,createDebugConsole,createExpressionMenu,createAppearancePicker,createWatchChat,createNoticeChat,
     Recorder:class{stop(){}},WavPlayer:class{stop(){}},
     GorkAvatar:{mount(){return {set(){},dispose(){}};}},setInterval:()=>0,
     fetch:async(url,options={})=>{
@@ -316,7 +317,7 @@ test('Mantine shell keeps every legacy control once, with compatible native type
   assert.deepEqual(generatedScripts,sourceScripts,'UI build must preserve the custom player, previews and dependency order');
   assert(sourceScripts.includes('/static/motion/desktop-adapter.js'));
   assert.ok(after.window.document.querySelectorAll('.mantine-Button-root').length>30);
-  assert.equal(after.window.document.querySelectorAll('[data-page]').length,9);
+  assert.equal(after.window.document.querySelectorAll('[data-page]').length,10);
   assert.equal(after.window.document.querySelector('.wordmark #header-version')?.textContent,'版本读取中');
   before.window.close();after.window.close();
 });
@@ -393,7 +394,7 @@ test('palette selection persists, changes classic to Mantine, and preserves the 
 });
 test('real generated DOM works with the shared controller; theme changes never duplicate requests or avatars',async()=>{
   const ui=await setup(),{w,get}=ui,requests=[];let mounts=0,mainMounts=0;
-  Object.assign(w,{Epoch,TextEncoder,AbortController,AbortSignal,createDebugConsole,createExpressionMenu,createAppearancePicker,createWatchChat,
+  Object.assign(w,{Epoch,TextEncoder,AbortController,AbortSignal,createDebugConsole,createExpressionMenu,createAppearancePicker,createWatchChat,createNoticeChat,
     Recorder:class{stop(){}},WavPlayer:class{stop(){}},
     GorkAvatar:{mount(canvas){mounts++;if(canvas.id==='gork-face')mainMounts++;return {set(){},dispose(){}};}},
     setInterval:()=>0,

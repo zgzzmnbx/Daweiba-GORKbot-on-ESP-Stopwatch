@@ -1,0 +1,1226 @@
+{
+  "result": "PASS",
+  "layouts": [
+    {
+      "theme": "mantine-dark",
+      "width": 1181,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 139.953125,
+          "y": 14,
+          "right": 218.953125,
+          "bottom": 48,
+          "w": 79,
+          "h": 34
+        },
+        {
+          "id": "service-watch",
+          "x": 223.953125,
+          "y": 14,
+          "right": 313.203125,
+          "bottom": 48,
+          "w": 89.25,
+          "h": 34
+        },
+        {
+          "id": "service-answer",
+          "x": 318.203125,
+          "y": 14,
+          "right": 397.203125,
+          "bottom": 48,
+          "w": 79,
+          "h": 34
+        },
+        {
+          "id": "service-tts",
+          "x": 402.203125,
+          "y": 14,
+          "right": 481.203125,
+          "bottom": 48,
+          "w": 79,
+          "h": 34
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 991,
+          "y": 13,
+          "right": 1027,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-notifications",
+          "x": 1033,
+          "y": 13,
+          "right": 1069,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 1075,
+          "y": 13,
+          "right": 1111,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-more",
+          "x": 1117,
+          "y": 13,
+          "right": 1153,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 352,
+        "y": 88,
+        "right": 382,
+        "bottom": 134.140625,
+        "w": 30,
+        "h": 46.140625
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 1123,
+        "y": 88,
+        "right": 1153,
+        "bottom": 134.140625,
+        "w": 30,
+        "h": 46.140625
+      },
+      "scroll": 953,
+      "client": 733
+    },
+    {
+      "theme": "mantine-dark",
+      "width": 901,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 121.953125,
+          "y": 14,
+          "right": 169.953125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-watch",
+          "x": 174.953125,
+          "y": 14,
+          "right": 233.203125,
+          "bottom": 48,
+          "w": 58.25,
+          "h": 34
+        },
+        {
+          "id": "service-answer",
+          "x": 238.203125,
+          "y": 14,
+          "right": 286.203125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-tts",
+          "x": 291.203125,
+          "y": 14,
+          "right": 339.203125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 721,
+          "y": 13,
+          "right": 757,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-notifications",
+          "x": 763,
+          "y": 13,
+          "right": 799,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 805,
+          "y": 13,
+          "right": 841,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-more",
+          "x": 847,
+          "y": 13,
+          "right": 883,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 290,
+        "y": 84,
+        "right": 320,
+        "bottom": 126.59375,
+        "w": 30,
+        "h": 42.59375
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 851,
+        "y": 84,
+        "right": 881,
+        "bottom": 126.59375,
+        "w": 30,
+        "h": 42.59375
+      },
+      "scroll": 812,
+      "client": 523
+    },
+    {
+      "theme": "mantine-dark",
+      "width": 701,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 121.953125,
+          "y": 14,
+          "right": 169.953125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-watch",
+          "x": 174.953125,
+          "y": 14,
+          "right": 233.203125,
+          "bottom": 48,
+          "w": 58.25,
+          "h": 34
+        },
+        {
+          "id": "service-answer",
+          "x": 238.203125,
+          "y": 14,
+          "right": 286.203125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-tts",
+          "x": 291.203125,
+          "y": 14,
+          "right": 339.203125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 521,
+          "y": 13,
+          "right": 557,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-notifications",
+          "x": 563,
+          "y": 13,
+          "right": 599,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 605,
+          "y": 13,
+          "right": 641,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-more",
+          "x": 647,
+          "y": 13,
+          "right": 683,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 290,
+        "y": 84,
+        "right": 320,
+        "bottom": 126.59375,
+        "w": 30,
+        "h": 42.59375
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 651,
+        "y": 84,
+        "right": 681,
+        "bottom": 126.59375,
+        "w": 30,
+        "h": 42.59375
+      },
+      "scroll": 812,
+      "client": 323
+    },
+    {
+      "theme": "mantine-dark",
+      "width": 392,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 14,
+          "y": 55.59375,
+          "right": 100.5,
+          "bottom": 83.59375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "service-watch",
+          "x": 106.5,
+          "y": 55.59375,
+          "right": 193,
+          "bottom": 83.59375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "service-answer",
+          "x": 199,
+          "y": 55.59375,
+          "right": 285.5,
+          "bottom": 83.59375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "service-tts",
+          "x": 291.5,
+          "y": 55.59375,
+          "right": 378,
+          "bottom": 83.59375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 240,
+          "y": 14,
+          "right": 270,
+          "bottom": 44,
+          "w": 30,
+          "h": 30
+        },
+        {
+          "id": "header-notifications",
+          "x": 276,
+          "y": 14,
+          "right": 306,
+          "bottom": 44,
+          "w": 30,
+          "h": 30
+        },
+        {
+          "id": "header-codex",
+          "x": 312,
+          "y": 14,
+          "right": 342,
+          "bottom": 44,
+          "w": 30,
+          "h": 30
+        },
+        {
+          "id": "header-more",
+          "x": 348,
+          "y": 14,
+          "right": 378,
+          "bottom": 44,
+          "w": 30,
+          "h": 30
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 12,
+        "y": 309,
+        "right": 40,
+        "bottom": 345.59375,
+        "w": 28,
+        "h": 36.59375
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 352,
+        "y": 309,
+        "right": 380,
+        "bottom": 345.59375,
+        "w": 28,
+        "h": 36.59375
+      },
+      "scroll": 610,
+      "client": 308
+    },
+    {
+      "theme": "mantine-light",
+      "width": 1181,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 139.953125,
+          "y": 14,
+          "right": 218.953125,
+          "bottom": 48,
+          "w": 79,
+          "h": 34
+        },
+        {
+          "id": "service-watch",
+          "x": 223.953125,
+          "y": 14,
+          "right": 313.203125,
+          "bottom": 48,
+          "w": 89.25,
+          "h": 34
+        },
+        {
+          "id": "service-answer",
+          "x": 318.203125,
+          "y": 14,
+          "right": 397.203125,
+          "bottom": 48,
+          "w": 79,
+          "h": 34
+        },
+        {
+          "id": "service-tts",
+          "x": 402.203125,
+          "y": 14,
+          "right": 481.203125,
+          "bottom": 48,
+          "w": 79,
+          "h": 34
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 991,
+          "y": 13,
+          "right": 1027,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-notifications",
+          "x": 1033,
+          "y": 13,
+          "right": 1069,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 1075,
+          "y": 13,
+          "right": 1111,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-more",
+          "x": 1117,
+          "y": 13,
+          "right": 1153,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 352,
+        "y": 88,
+        "right": 382,
+        "bottom": 134.140625,
+        "w": 30,
+        "h": 46.140625
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 1123,
+        "y": 88,
+        "right": 1153,
+        "bottom": 134.140625,
+        "w": 30,
+        "h": 46.140625
+      },
+      "scroll": 953,
+      "client": 733
+    },
+    {
+      "theme": "mantine-light",
+      "width": 901,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 121.953125,
+          "y": 14,
+          "right": 169.953125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-watch",
+          "x": 174.953125,
+          "y": 14,
+          "right": 233.203125,
+          "bottom": 48,
+          "w": 58.25,
+          "h": 34
+        },
+        {
+          "id": "service-answer",
+          "x": 238.203125,
+          "y": 14,
+          "right": 286.203125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-tts",
+          "x": 291.203125,
+          "y": 14,
+          "right": 339.203125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 721,
+          "y": 13,
+          "right": 757,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-notifications",
+          "x": 763,
+          "y": 13,
+          "right": 799,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 805,
+          "y": 13,
+          "right": 841,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-more",
+          "x": 847,
+          "y": 13,
+          "right": 883,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 290,
+        "y": 84,
+        "right": 320,
+        "bottom": 126.59375,
+        "w": 30,
+        "h": 42.59375
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 851,
+        "y": 84,
+        "right": 881,
+        "bottom": 126.59375,
+        "w": 30,
+        "h": 42.59375
+      },
+      "scroll": 812,
+      "client": 523
+    },
+    {
+      "theme": "mantine-light",
+      "width": 701,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 121.953125,
+          "y": 14,
+          "right": 169.953125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-watch",
+          "x": 174.953125,
+          "y": 14,
+          "right": 233.203125,
+          "bottom": 48,
+          "w": 58.25,
+          "h": 34
+        },
+        {
+          "id": "service-answer",
+          "x": 238.203125,
+          "y": 14,
+          "right": 286.203125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-tts",
+          "x": 291.203125,
+          "y": 14,
+          "right": 339.203125,
+          "bottom": 48,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 521,
+          "y": 13,
+          "right": 557,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-notifications",
+          "x": 563,
+          "y": 13,
+          "right": 599,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 605,
+          "y": 13,
+          "right": 641,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-more",
+          "x": 647,
+          "y": 13,
+          "right": 683,
+          "bottom": 49,
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 290,
+        "y": 84,
+        "right": 320,
+        "bottom": 126.59375,
+        "w": 30,
+        "h": 42.59375
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 651,
+        "y": 84,
+        "right": 681,
+        "bottom": 126.59375,
+        "w": 30,
+        "h": 42.59375
+      },
+      "scroll": 812,
+      "client": 323
+    },
+    {
+      "theme": "mantine-light",
+      "width": 392,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 14,
+          "y": 55.59375,
+          "right": 100.5,
+          "bottom": 83.59375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "service-watch",
+          "x": 106.5,
+          "y": 55.59375,
+          "right": 193,
+          "bottom": 83.59375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "service-answer",
+          "x": 199,
+          "y": 55.59375,
+          "right": 285.5,
+          "bottom": 83.59375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "service-tts",
+          "x": 291.5,
+          "y": 55.59375,
+          "right": 378,
+          "bottom": 83.59375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 240,
+          "y": 14,
+          "right": 270,
+          "bottom": 44,
+          "w": 30,
+          "h": 30
+        },
+        {
+          "id": "header-notifications",
+          "x": 276,
+          "y": 14,
+          "right": 306,
+          "bottom": 44,
+          "w": 30,
+          "h": 30
+        },
+        {
+          "id": "header-codex",
+          "x": 312,
+          "y": 14,
+          "right": 342,
+          "bottom": 44,
+          "w": 30,
+          "h": 30
+        },
+        {
+          "id": "header-more",
+          "x": 348,
+          "y": 14,
+          "right": 378,
+          "bottom": 44,
+          "w": 30,
+          "h": 30
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 12,
+        "y": 309,
+        "right": 40,
+        "bottom": 345.59375,
+        "w": 28,
+        "h": 36.59375
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 352,
+        "y": 309,
+        "right": 380,
+        "bottom": 345.59375,
+        "w": 28,
+        "h": 36.59375
+      },
+      "scroll": 610,
+      "client": 308
+    },
+    {
+      "theme": "classic",
+      "width": 1181,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 127.03125,
+          "y": 10.5,
+          "right": 206.03125,
+          "bottom": 44.5,
+          "w": 79,
+          "h": 34
+        },
+        {
+          "id": "service-watch",
+          "x": 211.03125,
+          "y": 10.5,
+          "right": 300.28125,
+          "bottom": 44.5,
+          "w": 89.25,
+          "h": 34
+        },
+        {
+          "id": "service-answer",
+          "x": 305.28125,
+          "y": 10.5,
+          "right": 384.28125,
+          "bottom": 44.5,
+          "w": 79,
+          "h": 34
+        },
+        {
+          "id": "service-tts",
+          "x": 389.28125,
+          "y": 10.5,
+          "right": 468.28125,
+          "bottom": 44.5,
+          "w": 79,
+          "h": 34
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 995,
+          "y": 9.5,
+          "right": 1031,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-notifications",
+          "x": 1037,
+          "y": 9.5,
+          "right": 1073,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 1079,
+          "y": 9.5,
+          "right": 1115,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-more",
+          "x": 1121,
+          "y": 9.5,
+          "right": 1157,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 374.5,
+        "y": 82,
+        "right": 404.5,
+        "bottom": 127,
+        "w": 30,
+        "h": 45
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 1120.5,
+        "y": 82,
+        "right": 1150.5,
+        "bottom": 127,
+        "w": 30,
+        "h": 45
+      },
+      "scroll": 842,
+      "client": 708
+    },
+    {
+      "theme": "classic",
+      "width": 901,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 113.03125,
+          "y": 10.5,
+          "right": 161.03125,
+          "bottom": 44.5,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-watch",
+          "x": 166.03125,
+          "y": 10.5,
+          "right": 224.28125,
+          "bottom": 44.5,
+          "w": 58.25,
+          "h": 34
+        },
+        {
+          "id": "service-answer",
+          "x": 229.28125,
+          "y": 10.5,
+          "right": 277.28125,
+          "bottom": 44.5,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-tts",
+          "x": 282.28125,
+          "y": 10.5,
+          "right": 330.28125,
+          "bottom": 44.5,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 721,
+          "y": 9.5,
+          "right": 757,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-notifications",
+          "x": 763,
+          "y": 9.5,
+          "right": 799,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 805,
+          "y": 9.5,
+          "right": 841,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-more",
+          "x": 847,
+          "y": 9.5,
+          "right": 883,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 374,
+        "y": 82,
+        "right": 404,
+        "bottom": 127,
+        "w": 30,
+        "h": 45
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 841,
+        "y": 82,
+        "right": 871,
+        "bottom": 127,
+        "w": 30,
+        "h": 45
+      },
+      "scroll": 842,
+      "client": 429
+    },
+    {
+      "theme": "classic",
+      "width": 701,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 113.03125,
+          "y": 10.5,
+          "right": 161.03125,
+          "bottom": 44.5,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-watch",
+          "x": 166.03125,
+          "y": 10.5,
+          "right": 224.28125,
+          "bottom": 44.5,
+          "w": 58.25,
+          "h": 34
+        },
+        {
+          "id": "service-answer",
+          "x": 229.28125,
+          "y": 10.5,
+          "right": 277.28125,
+          "bottom": 44.5,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "service-tts",
+          "x": 282.28125,
+          "y": 10.5,
+          "right": 330.28125,
+          "bottom": 44.5,
+          "w": 48,
+          "h": 34
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 521,
+          "y": 9.5,
+          "right": 557,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-notifications",
+          "x": 563,
+          "y": 9.5,
+          "right": 599,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 605,
+          "y": 9.5,
+          "right": 641,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        },
+        {
+          "id": "header-more",
+          "x": 647,
+          "y": 9.5,
+          "right": 683,
+          "bottom": 45.5,
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 314,
+        "y": 72,
+        "right": 344,
+        "bottom": 113,
+        "w": 30,
+        "h": 41
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 655,
+        "y": 72,
+        "right": 685,
+        "bottom": 113,
+        "w": 30,
+        "h": 41
+      },
+      "scroll": 716,
+      "client": 303
+    },
+    {
+      "theme": "classic",
+      "width": 392,
+      "height": 821,
+      "overflow": false,
+      "vertical": false,
+      "header": [
+        {
+          "id": "service-voice",
+          "x": 14,
+          "y": 56.09375,
+          "right": 100.5,
+          "bottom": 84.09375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "service-watch",
+          "x": 106.5,
+          "y": 56.09375,
+          "right": 193,
+          "bottom": 84.09375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "service-answer",
+          "x": 199,
+          "y": 56.09375,
+          "right": 285.5,
+          "bottom": 84.09375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "service-tts",
+          "x": 291.5,
+          "y": 56.09375,
+          "right": 378,
+          "bottom": 84.09375,
+          "w": 86.5,
+          "h": 28
+        },
+        {
+          "id": "header-volume-menu",
+          "x": 240,
+          "y": 14.5,
+          "right": 270,
+          "bottom": 44.5,
+          "w": 30,
+          "h": 30
+        },
+        {
+          "id": "header-notifications",
+          "x": 276,
+          "y": 14.5,
+          "right": 306,
+          "bottom": 44.5,
+          "w": 30,
+          "h": 30
+        },
+        {
+          "id": "header-codex",
+          "x": 312,
+          "y": 14.5,
+          "right": 342,
+          "bottom": 44.5,
+          "w": 30,
+          "h": 30
+        },
+        {
+          "id": "header-more",
+          "x": 348,
+          "y": 14.5,
+          "right": 378,
+          "bottom": 44.5,
+          "w": 30,
+          "h": 30
+        }
+      ],
+      "prev": {
+        "id": "tabs-prev",
+        "x": 10,
+        "y": 303,
+        "right": 38,
+        "bottom": 340,
+        "w": 28,
+        "h": 37
+      },
+      "next": {
+        "id": "tabs-next",
+        "x": 354,
+        "y": 303,
+        "right": 382,
+        "bottom": 340,
+        "w": 28,
+        "h": 37
+      },
+      "scroll": 500,
+      "client": 312
+    }
+  ],
+  "errors": [],
+  "checks": [
+    "12 layouts, no document overflow or overlapping header actions",
+    "all last tabs reachable using visible arrows; return to active tab",
+    "48 popover bounds",
+    "live generated application and strict CSP",
+    "volume remains operable",
+    "no synthetic model, speech or device requests"
+  ]
+}

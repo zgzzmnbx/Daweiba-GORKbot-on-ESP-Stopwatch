@@ -70,6 +70,9 @@ struct ProbeStub {
  bool busy(){return active;}
  const char* message(){return "sending audio";}
 } audioProbe;
+uint32_t orientationHintUntil=0;bool orientationSaveFailed=false;
+struct DirectionStub{bool inverted(){return false;}}orientation;
+bool reached(uint32_t now,uint32_t deadline){return deadline&&int32_t(now-deadline)>=0;}
 void renderAvatarWithAudioHint(uint32_t nowMs) HINT
 int main(){
  AvatarEngine engine;engine.requiresFullClear_=true;engine.motion_.configure(gork_motion_config::scenes,1,2,1);engine.motion_.set(0,0);

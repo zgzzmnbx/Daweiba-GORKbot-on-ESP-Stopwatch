@@ -3,6 +3,7 @@ import io
 import re
 import uuid
 import wave
+import time
 
 import httpx
 
@@ -33,6 +34,8 @@ class VoiceClient:
         self.http = httpx.AsyncClient(base_url=base_url, timeout=timeout, transport=transport, trust_env=False)
         self.session = None
         self.last_voice=None
+        self.tts_observation=None
+        self.tts_route="unknown"
 
     async def call(self, method, path, *, session=None, **kwargs):
         token = session if session is not None else self.session
@@ -68,7 +71,9 @@ class VoiceClient:
         return value
 
     async def routing(self, value):
-        return (await self.call("PATCH", "/v1/settings", json=value)).json()["routing"]
+        routing = (await self.call("PATCH", "/v1/settings", json=value)).json()["routing"]
+        self.tts_route = routing.get("tts", "unknown")
+        return routing
 
     async def turn(self):
         return (await self.call("POST", f"/v1/sessions/{self.session}/turns")).json()["turn_id"]
@@ -84,6 +89,17 @@ class VoiceClient:
         return result["result"]["text"]
 
     async def synthesize(self, text, turn, request_id, speech=None):
+        route = self.tts_route
+        try:
+            result = await self._synthesize(text, turn, request_id, speech)
+        except VoiceError:
+            self.tts_observation = {"state": "error", "at": time.time(), "route": route}
+            raise
+        self.tts_observation = {"state": "success", "at": time.time(),
+                                "route": (self.last_voice or {}).get("mode", route)}
+        return result
+
+    async def _synthesize(self, text, turn, request_id, speech=None):
         speech = speech or {}
         payload = {
             "request_id": request_id, "turn_id": turn, "text": text,

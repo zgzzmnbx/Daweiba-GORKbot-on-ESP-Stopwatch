@@ -1,0 +1,205 @@
+{
+  "result": "PASS",
+  "checks": [
+    "6 Windows desktop layouts only, no phone validation",
+    "header and Watch page share submitted state",
+    "no write on drag alone, one write on release",
+    "computer volume unchanged by Watch slider",
+    "failure clears unconfirmed value; disconnect disables",
+    "production generated DOM and strict CSP; isolated device API, no real playback"
+  ],
+  "layouts": [
+    {
+      "theme": "mantine-dark",
+      "width": 1181,
+      "overflow": false,
+      "panel": {
+        "x": 767,
+        "y": 59,
+        "right": 1027,
+        "bottom": 313.8125
+      },
+      "height": 821,
+      "inputs": [
+        {
+          "id": "voice-volume",
+          "x": 810,
+          "right": 955,
+          "y": 137.984375,
+          "bottom": 161.984375,
+          "width": 145,
+          "height": 24
+        },
+        {
+          "id": "header-watch-volume",
+          "x": 810,
+          "right": 955,
+          "y": 216.171875,
+          "bottom": 240.171875,
+          "width": 145,
+          "height": 24
+        }
+      ]
+    },
+    {
+      "theme": "mantine-dark",
+      "width": 801,
+      "overflow": false,
+      "panel": {
+        "x": 397,
+        "y": 59,
+        "right": 657,
+        "bottom": 313.8125
+      },
+      "height": 821,
+      "inputs": [
+        {
+          "id": "voice-volume",
+          "x": 440,
+          "right": 585,
+          "y": 137.984375,
+          "bottom": 161.984375,
+          "width": 145,
+          "height": 24
+        },
+        {
+          "id": "header-watch-volume",
+          "x": 440,
+          "right": 585,
+          "y": 216.171875,
+          "bottom": 240.171875,
+          "width": 145,
+          "height": 24
+        }
+      ]
+    },
+    {
+      "theme": "mantine-light",
+      "width": 1181,
+      "overflow": false,
+      "panel": {
+        "x": 767,
+        "y": 59,
+        "right": 1027,
+        "bottom": 313.8125
+      },
+      "height": 821,
+      "inputs": [
+        {
+          "id": "voice-volume",
+          "x": 810,
+          "right": 955,
+          "y": 137.984375,
+          "bottom": 161.984375,
+          "width": 145,
+          "height": 24
+        },
+        {
+          "id": "header-watch-volume",
+          "x": 810,
+          "right": 955,
+          "y": 216.171875,
+          "bottom": 240.171875,
+          "width": 145,
+          "height": 24
+        }
+      ]
+    },
+    {
+      "theme": "mantine-light",
+      "width": 801,
+      "overflow": false,
+      "panel": {
+        "x": 397,
+        "y": 59,
+        "right": 657,
+        "bottom": 313.8125
+      },
+      "height": 821,
+      "inputs": [
+        {
+          "id": "voice-volume",
+          "x": 440,
+          "right": 585,
+          "y": 137.984375,
+          "bottom": 161.984375,
+          "width": 145,
+          "height": 24
+        },
+        {
+          "id": "header-watch-volume",
+          "x": 440,
+          "right": 585,
+          "y": 216.171875,
+          "bottom": 240.171875,
+          "width": 145,
+          "height": 24
+        }
+      ]
+    },
+    {
+      "theme": "classic",
+      "width": 1181,
+      "overflow": false,
+      "panel": {
+        "x": 771,
+        "y": 55.5,
+        "right": 1031,
+        "bottom": 321.90625
+      },
+      "height": 821,
+      "inputs": [
+        {
+          "id": "voice-volume",
+          "x": 814,
+          "right": 959,
+          "y": 134.484375,
+          "bottom": 158.484375,
+          "width": 145,
+          "height": 24
+        },
+        {
+          "id": "header-watch-volume",
+          "x": 814,
+          "right": 959,
+          "y": 218.46875,
+          "bottom": 242.46875,
+          "width": 145,
+          "height": 24
+        }
+      ]
+    },
+    {
+      "theme": "classic",
+      "width": 801,
+      "overflow": false,
+      "panel": {
+        "x": 397,
+        "y": 55.5,
+        "right": 657,
+        "bottom": 321.90625
+      },
+      "height": 821,
+      "inputs": [
+        {
+          "id": "voice-volume",
+          "x": 440,
+          "right": 585,
+          "y": 134.484375,
+          "bottom": 158.484375,
+          "width": 145,
+          "height": 24
+        },
+        {
+          "id": "header-watch-volume",
+          "x": 440,
+          "right": 585,
+          "y": 218.46875,
+          "bottom": 242.46875,
+          "width": 145,
+          "height": 24
+        }
+      ]
+    }
+  ]
+}

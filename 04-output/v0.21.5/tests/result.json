@@ -1,0 +1,84 @@
+{
+  "result": "PASS",
+  "before": {
+    "x": 878,
+    "y": 593,
+    "width": 229,
+    "height": 37
+  },
+  "checks": [
+    {
+      "hover": 0,
+      "after": {
+        "x": 878,
+        "y": 593,
+        "width": 229,
+        "height": 37
+      },
+      "detail": {
+        "x": 1115,
+        "y": 399,
+        "width": 277,
+        "height": 221
+      }
+    },
+    {
+      "hover": 1,
+      "after": {
+        "x": 878,
+        "y": 593,
+        "width": 229,
+        "height": 37
+      },
+      "detail": {
+        "x": 1115,
+        "y": 282,
+        "width": 277,
+        "height": 454
+      }
+    },
+    {
+      "hover": 2,
+      "after": {
+        "x": 878,
+        "y": 593,
+        "width": 229,
+        "height": 37
+      },
+      "detail": {
+        "x": 1115,
+        "y": 399,
+        "width": 277,
+        "height": 221
+      }
+    }
+  ],
+  "spoken": {
+    "x": 828,
+    "y": 636,
+    "width": 328,
+    "height": 161
+  },
+  "dragged": {
+    "x": 978,
+    "y": 528,
+    "width": 229,
+    "height": 37
+  },
+  "avatarBefore": {
+    "x": 900,
+    "y": 400,
+    "width": 184,
+    "height": 216
+  },
+  "avatarAfter": {
+    "x": 1000,
+    "y": 335,
+    "width": 184,
+    "height": 216
+  },
+  "saves": 1,
+  "opens": 1,
+  "errors": [],
+  "acceptance": "native Electron hover/speech keep strip fixed; ten pointer moves preserve native size; drag moves avatar and saves once without console click; normal click opens console; traffic toggle filters pills; no quota ring"
+}

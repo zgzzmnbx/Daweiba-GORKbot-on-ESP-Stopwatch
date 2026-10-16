@@ -7,6 +7,7 @@ import sys
 import wave
 
 from .voice import VoiceError
+from .voice_volume import scale_speech_wav
 from .sentinel_voice_library import cached_path
 from .cost import monitor_amount
 
@@ -384,7 +385,7 @@ class TaskMonitor:
                              else await self.control.synthesize_auto_speech(speech, valid))
                     if not valid():
                         return 'suppressed'
-                    return await asyncio.to_thread(_pc_dynamic_speech, audio, valid)
+                    return await asyncio.to_thread(lambda: _pc_dynamic_speech(scale_speech_wav(audio, getattr(self.control, 'pc_voice_volume', 100)), valid))
                 else:
                     duration = 0.5
                     result = _pc_beep(valid)

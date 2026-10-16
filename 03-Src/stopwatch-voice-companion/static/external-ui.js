@@ -1,7 +1,7 @@
 const states={queued:'排队中',dispatching:'输出中',active:'显示中',completed:'已完成',partial:'部分完成',failed:'失败',cancelled:'已取消',superseded:'已替换',expired:'已过期',interrupted:'重启中断'};
 const targets={desktop:'桌面',watch:'Watch',pc:'电脑'};
 const deliveries={displayed:'已显示',accepted:'已接收',offline:'未连接',failed:'失败',suppressed:'已让出',not_requested:'未请求',completed_by_os:'播放已结束',device_playback_completed:'设备回报播放结束'};
-export function createExternalUI({document,api,acquireWorkspace,hasWorkspace=()=>true,clipboard=()=>Promise.resolve()}) {
+export function createExternalUI({document,api,acquireWorkspace,hasWorkspace=()=>true,clipboard=()=>Promise.resolve(),onSnapshot=()=>{}}) {
   const $=id=>document.getElementById(id),feedback=$('external-feedback');
   if(!feedback)return {refresh:async()=>{}};
   let clients=[],editing=null,busy=false,refreshing=false,tokenTimer=null;
@@ -9,6 +9,7 @@ export function createExternalUI({document,api,acquireWorkspace,hasWorkspace=()=
   function note(text,error=false){feedback.textContent=text;feedback.dataset.error=String(error);}
   function clearToken(){clearTimeout(tokenTimer);$('external-token').value='';$('external-token-panel').hidden=true;}
   function paint(data){
+    onSnapshot(data);
     clients=data.clients||[];$('external-resume').hidden=!data.paused;
     $('external-queue').textContent=data.paused?'已暂停':data.pending?`${data.pending} 条排队 / 输出中`:'等待通知';
     $('external-output-note').textContent=`当前声音：${targets[data.current_sound_target]||'电脑'} · 沿用已应用音色`;

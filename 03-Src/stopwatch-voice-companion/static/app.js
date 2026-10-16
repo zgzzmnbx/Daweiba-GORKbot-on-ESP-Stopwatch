@@ -5,6 +5,11 @@ import {createExpressionMenu} from './expression-menu.js';
 import {createAppearancePicker} from './appearance-picker.js';
 import {createExternalUI} from './external-ui.js';
 import {createWatchChat} from './watch-chat.js';
+import {createNoticeChat} from './notice-chat.js';
+import {createHeaderTools} from './header-tools.js';
+import {createVoiceVolume} from './voice-volume.js';
+import {createTrafficUI} from './traffic-ui.js';
+import {createWatchVolume} from './watch-volume.js';
 
 const $ = id => document.getElementById(id);
 let debugStorage;
@@ -45,9 +50,9 @@ for (const id of consentIds) {
 const epoch = new Epoch();
 let client = crypto.randomUUID(), connected = false, workspace = false, dirty = false, phase = 'idle';
 let turnReady = false;
-let context, playback, deadline;
+let context, playback, deadline, playbackGain, pcVoiceVolume = 100;
 let previewContext, previewPlayback, robotConnected = false, robotRoute = '';
-let watchSpeechSync = false;
+let watchSpeechSync = false, robotAudioRunning = false;
 let answerSpeechContinuity=false;
 const previewPlayer = new WavPlayer();
 const recorder = new Recorder();
@@ -80,20 +85,29 @@ function message(text, error = false) {
 }
 const watchRows = new Map();
 const watchChat = createWatchChat(addMessage);
+const noticeChat = createNoticeChat(addMessage);
+let headerTools = null, watchVolume = null;
 function addMessage(role, text, metadata = {}) {
   if (!document.createElement) return;
+  const speaker = metadata.kind === 'notice' ? '通知' : role === 'user' ? '你' : 'Gork';
+  const log = $('chat-log');
+  const follow = log.scrollHeight - log.scrollTop - log.clientHeight < 64;
   const previous = metadata.id && watchRows.get(metadata.id);
   if (previous) {
     previous.content.textContent = text;
-    previous.label.textContent = `${role === 'user' ? '你' : 'Gork'} · ${metadata.source}${metadata.timing ? ' · '+metadata.timing : ''}`;
+    previous.label.textContent = `${speaker} · ${metadata.source}${metadata.timing ? ' · '+metadata.timing : ''}`;
     return;
   }
   $('empty-chat')?.remove();
-  const row = document.createElement('article'); row.className = 'chat-message ' + role;
-  const label = document.createElement('small'); label.textContent = (role === 'user' ? '你' : 'Gork') +
+  const row = document.createElement('article'); row.className = 'chat-message ' + role + (metadata.kind === 'notice' ? ' notification' : '');
+  const label = document.createElement('small'); label.textContent = speaker +
     (metadata.source ? ` · ${metadata.source}${metadata.timing ? ' · '+metadata.timing : ''}` : '');
   const content = document.createElement('div'); content.textContent = text;
-  row.append(label, content);
+  if (metadata.tag) {
+    const heading=document.createElement('div');heading.className='message-heading';
+    const tag=document.createElement('span');tag.className='message-source-tag';tag.textContent=metadata.tag;
+    heading.append(tag,label);row.append(heading,content);
+  } else row.append(label, content);
   if (role === 'assistant') {
     const actions = document.createElement('div'); actions.className = 'actions compact';
     const read = document.createElement('button'); read.textContent = '朗读';
@@ -102,12 +116,12 @@ function addMessage(role, text, metadata = {}) {
     copy.onclick = async () => { try { await navigator.clipboard.writeText(content.textContent); message('已复制。'); } catch { message('无法访问剪贴板，请选择文字复制。', true); } };
     actions.append(read, copy); row.append(actions);
   }
-  $('chat-log').append(row); $('chat-log').scrollTop = $('chat-log').scrollHeight;
+  log.append(row); if (metadata.kind !== 'notice' || follow) log.scrollTop = log.scrollHeight;
   if (metadata.id) watchRows.set(metadata.id,{content,label,row});
 }
 function navigate() {
   if (!globalThis.location) return;
-  const page = ['dialogue', 'cost', 'external', 'codex', 'motion', 'character', 'watch', 'settings', 'logs'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dialogue';
+  const page = ['dialogue', 'cost', 'external', 'traffic', 'codex', 'motion', 'character', 'watch', 'settings', 'logs'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dialogue';
   const motionFrame = $('motion-editor-frame');
   if (motionFrame) { if (page === 'motion' && !motionFrame.getAttribute('src')) motionFrame.src = '/static/motion/index.html'; else if (page !== 'motion' && motionFrame.getAttribute('src')) motionFrame.removeAttribute('src'); }
   if (location.hash !== `#${page}`) history.replaceState(null, '', `#${page}`);
@@ -183,6 +197,7 @@ function render(next = phase) {
   $('sound-play').disabled = busy || !workspace || !robotConnected;
   $('sound-stop').disabled = !robotConnected && !previewPlayer.playing;
   $('sound-volume').disabled = busy || !workspace || !robotConnected;
+  watchVolume?.update({connected:robotConnected,owned:workspace,busy:busy||delayBusy||robotAudioRunning,route:robotRoute});
   $('delay-start').disabled = busy || delayBusy || !connected || !robotConnected;
   $('delay-cancel').disabled = !delayBusy;
   $('count').textContent = output === 'bubble' && bubbleTarget==='watch' && !answerMode ?
@@ -193,7 +208,7 @@ function render(next = phase) {
   $('global-watch').textContent = `Watch：${robotConnected ? `${watchLink}已连接` : '未连接'}`;
   $('global-voice').dataset.state = connected ? 'ready' : 'offline';
   $('global-watch').dataset.state = robotConnected ? 'ready' : 'offline';
-  $('global-operation').textContent = delayBusy ? '设备音频任务进行中' : labels[phase] || '待机';
+  window.GorkShell?.session({connected,voiceLabel,robotConnected,watchLink});
   $('workspace-acquire').textContent = workspace ? '已取得控制权' : '取得控制权';
   $('character-play').disabled = !workspace || busy || delayBusy || expressionPending;
   expressionMenu?.update({watchConnected:robotConnected, blocked:busy || delayBusy || outputPending ? '请先结束当前录音、朗读或设备音频任务。' : ''});
@@ -214,6 +229,7 @@ async function api(path, method = 'GET', body, options = {}) {
 function localStop() {
   clearTimeout(deadline); clearInterval(tick); tick = false;
   if (playback) { playback.onended = null; try { playback.stop(); } catch {} playback.disconnect(); playback = null; }
+  playbackGain = null;
   recorder.stop();
   const oldContext = context; context = null;
   if (oldContext && oldContext.state !== 'closed') { oldContext.suspend().catch(() => {}); oldContext.close().catch(() => {}); }
@@ -368,7 +384,8 @@ async function speak(preview = false, explicitText = null) {
     if (!epoch.valid(gen)) return;
     const buffer = await audio.decodeAudioData(bytes);
     if (!epoch.valid(gen)) return;
-    playback = audio.createBufferSource(); playback.buffer = buffer; playback.connect(audio.destination);
+    playback = audio.createBufferSource(); playback.buffer = buffer; playbackGain = audio.createGain(); playbackGain.gain.value = pcVoiceVolume / 100;
+    playback.connect(playbackGain); playbackGain.connect(audio.destination);
     playback.onended = () => {
       if (!epoch.valid(gen)) return;
       localStop(); answerMotion=null; render('ready'); message('回读完成。可以修改文字，或开始新一轮。');
@@ -483,6 +500,7 @@ async function refresh() {
     startupVoice.enabled = data.auto_connect_voice !== false;
     if (!startupVoice.enabled) clearStartupVoiceTimer();
     $('service-url').textContent = data.voice_url;
+    window.GorkShell?.health(data);
     const service = data.voice_service || {};
     voiceHealthFailures = data.voice_error ? voiceHealthFailures + 1 : 0;
     const errorCode = /^[A-Z][A-Z0-9_]{0,39}$/.test(data.voice_error?.code || '') ? data.voice_error.code : '检查失败';
@@ -522,6 +540,7 @@ async function refresh() {
   } catch (error) {
     $('desktop-version').textContent = '无法读取';
     $('header-version').textContent = '版本无法读取';
+    window.GorkShell?.unavailable();
     $('voice-status').textContent = '工作台断开'; failed(error);
     scheduleStartupVoice(1000);
   } finally { healthPolling = false; }
@@ -553,6 +572,7 @@ function speechSettings() {
 }
 function paintRobot(robot) {
   robotConnected = Boolean(robot.connected);
+  robotAudioRunning = Boolean(robot.audio?.running);
   robotRoute = robotConnected ? robot.network?.route || '' : '';
   const bleConnected = robot.network ? Boolean(robot.network.ble_connected) : robotConnected;
   const operationError = robot.operation_error ?? robot.error;
@@ -622,7 +642,8 @@ async function waitAudio(jobId, gen, expectedStage) {
 async function playOnPc(bytes, gen) {
   const audio = new AudioContext(); context = audio; await audio.resume();
   const buffer = await audio.decodeAudioData(bytes); if (!epoch.valid(gen)) return;
-  playback = audio.createBufferSource(); playback.buffer = buffer; playback.connect(audio.destination);
+  playback = audio.createBufferSource(); playback.buffer = buffer; playbackGain = audio.createGain(); playbackGain.gain.value = pcVoiceVolume / 100;
+  playback.connect(playbackGain); playbackGain.connect(audio.destination);
   const active = playback; active.onended = () => { if (playback === active) playback = null; };
   active.start(); render('speaking'); message('电脑正在播放设备录音；“停止”会立即静音。');
   while (epoch.valid(gen) && playback === active) await new Promise(resolve => setTimeout(resolve, 100));
@@ -738,6 +759,7 @@ function codexText(parent, lines, empty) {
   for (const line of lines) { const row = document.createElement('p'); row.textContent = line; parent.append(row); }
 }
 function paintCodex(data) {
+  headerTools?.paintCodex(data);
   codexEnabled = data.enabled === true;
   if (!codexLoaded) {
     $('codex-mode').value = data.mode;
@@ -745,13 +767,12 @@ function paintCodex(data) {
     $('codex-sound').checked = data.sound;
     $('codex-sound-target').value = data.sound_target;
     $('codex-threshold').value = data.threshold;
-    $('codex-ring-mode').value = data.ring_mode;
     $('codex-drop-step').value = data.drop_step ?? 2;
     $('codex-drop-animation').checked = data.drop_animation !== false;
     codexLoaded = true;
   }
   if (!codexPending) $('codex-enable').checked = data.enabled;
-  $('codex-status').textContent = !data.enabled ? '监测已关闭；下次启动仍默认关闭。' :
+  $('codex-status').textContent = !data.enabled ? '本次运行已关闭监测；下次启动默认开启。' :
     `任务通道：${codexLabel(data.task_status)} · 额度通道：${codexLabel(data.quota_status)}${data.quota_error ? ' · ' + data.quota_error : ''}`;
   if (codexFailure) $('codex-status').textContent = `设置未保存：${codexFailure}`;
   $('codex-capability').textContent = '本机会话日志：明确的轮次开始/结束；只读有界尾部无法重建开启前较早开始的长轮次，等待下一轮。审批状态需已审核信任的 hook。';
@@ -798,7 +819,7 @@ async function applyCodex() {
       thread_id:$('codex-mode').value === 'specific' ? $('codex-thread').value : '',
       target:$('codex-target').value, sound:$('codex-sound').checked,
       sound_target:$('codex-sound-target').value, threshold:Number($('codex-threshold').value),
-      bucket_id:$('codex-bucket').value, ring_mode:$('codex-ring-mode').value,
+      bucket_id:$('codex-bucket').value, ring_mode:'hidden',
       drop_step:Number($('codex-drop-step').value), drop_animation:$('codex-drop-animation').checked};
     let data;
     try { data = await api('/codex/sentinel', 'PUT', values); }
@@ -1188,18 +1209,16 @@ $('interaction-mode').onchange = () => { render(); message($('interaction-mode')
 $('clear-answer').onclick = async () => { try {
   if (!connected) { message('请先连接语音会话，再开始新会话。',true); return; }
   const cleared = await api('/answer/history', 'DELETE');
-  watchChat.clear(cleared);watchRows.clear();
+  watchChat.clear(cleared);noticeChat.clear();watchRows.clear();
   if (Number.isInteger(cleared.generation)) epoch.value=Math.max(epoch.value,cleared.generation);
   $('chat-log').replaceChildren();message('会话记录与回答上下文已清空。');
 } catch (error) { message(error.message, true); } };
 $('sound-preview').onclick = previewSound;
 $('sound-play').onclick = () => deviceSound('POST', '/device/sound', {sound_id: Number($('sound-select').value)});
 $('sound-stop').onclick = () => { stopPreview(); if (workspace && robotConnected) return deviceSound('DELETE', '/device/sound'); };
-$('sound-volume').oninput = () => { $('sound-volume-label').textContent = `${$('sound-volume').value}%`; };
-$('sound-volume').onchange = () => deviceSound('PUT', '/device/sound/volume', {volume: Number($('sound-volume').value)});
+// Both Watch volume controls share one acknowledged state and writer.
 $('delay-start').onclick = delayedAudio;
 $('delay-cancel').onclick = stop;
-$('global-stop').onclick = stopAll;
 $('character-preview').onclick = previewCharacter; $('character-play').onclick = playCharacter;
 $('character-idle').onclick = async () => { try { if (workspace) await api('/character', 'DELETE'); manualPreview = false; lastFaceState = ''; render(); $('character-status').textContent = '已返回自动联动'; } catch (error) { message(error.message, true); } };
 $('character-expression').onchange = previewCharacter;
@@ -1349,5 +1368,10 @@ $('desktop-bubble-position').onchange = async () => {
 };
 refreshBubblePosition(); setInterval(refreshBubblePosition, 2000);
 
-const externalUI = typeof createExternalUI === 'function' ? createExternalUI({document, api, acquireWorkspace, hasWorkspace:()=>workspace, clipboard:text=>navigator.clipboard.writeText(text)}) : {refresh:async()=>{}};
-setInterval(()=>{if(location.hash==='#external'&&workspace)externalUI.refresh();},2500);
+const externalUI = typeof createExternalUI === 'function' ? createExternalUI({document, api, acquireWorkspace, hasWorkspace:()=>workspace, clipboard:text=>navigator.clipboard.writeText(text), onSnapshot:data=>{noticeChat.consume(data);headerTools?.paintExternal(data);}}) : {refresh:async()=>{}};
+if (typeof createTrafficUI === 'function') createTrafficUI({document,api,acquireWorkspace,hasWorkspace:()=>workspace,report:message});
+if (typeof createVoiceVolume === 'function') createVoiceVolume({document,api,acquireWorkspace,hasWorkspace:()=>workspace,report:message,apply:value=>{pcVoiceVolume=value;if(playbackGain)playbackGain.gain.value=value/100;previewPlayer.setVolume?.(value);}});
+watchVolume = typeof createWatchVolume === 'function' ? createWatchVolume({document,api,report:message}) : null;
+watchVolume?.update({connected:robotConnected,owned:workspace,busy:['listening','processing','speaking'].includes(phase)||delayBusy,route:robotRoute});
+headerTools = typeof createHeaderTools === 'function' ? createHeaderTools({document,api,acquireWorkspace,hasWorkspace:()=>workspace,onCodex:paintCodex,refreshExternal:()=>externalUI.refresh(),report:message}) : null;
+setInterval(()=>{if(workspace&&externalProtocol&&!document.hidden)externalUI.refresh();},2500);

@@ -1,0 +1,423 @@
+{
+  "result": "PASS",
+  "layouts": [
+    {
+      "enabled": false,
+      "width": 60,
+      "height": 71,
+      "head": {
+        "x": 3,
+        "y": 8.5,
+        "right": 57,
+        "bottom": 62.5,
+        "width": 54,
+        "height": 54
+      },
+      "dock": {
+        "x": 0,
+        "y": 0,
+        "right": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0
+      },
+      "buttons": [
+        {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        }
+      ],
+      "duplicate": false,
+      "overflow": false
+    },
+    {
+      "enabled": true,
+      "width": 60,
+      "height": 71,
+      "head": {
+        "x": 3,
+        "y": 8.5,
+        "right": 57,
+        "bottom": 62.5,
+        "width": 54,
+        "height": 54
+      },
+      "dock": {
+        "x": 0,
+        "y": 0,
+        "right": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0
+      },
+      "buttons": [
+        {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        }
+      ],
+      "duplicate": false,
+      "overflow": false
+    },
+    {
+      "enabled": false,
+      "width": 144,
+      "height": 168,
+      "head": {
+        "x": 7.203125,
+        "y": 19.203125,
+        "right": 136.796875,
+        "bottom": 148.796875,
+        "width": 129.59375,
+        "height": 129.59375
+      },
+      "dock": {
+        "x": 0,
+        "y": 0,
+        "right": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0
+      },
+      "buttons": [
+        {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        }
+      ],
+      "duplicate": false,
+      "overflow": false
+    },
+    {
+      "enabled": true,
+      "width": 144,
+      "height": 168,
+      "head": {
+        "x": 7.203125,
+        "y": 19.203125,
+        "right": 136.796875,
+        "bottom": 148.796875,
+        "width": 129.59375,
+        "height": 129.59375
+      },
+      "dock": {
+        "x": 0,
+        "y": 0,
+        "right": 0,
+        "bottom": 0,
+        "width": 0,
+        "height": 0
+      },
+      "buttons": [
+        {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0
+        }
+      ],
+      "duplicate": false,
+      "overflow": false
+    },
+    {
+      "enabled": false,
+      "width": 183,
+      "height": 214,
+      "head": {
+        "x": 10.984375,
+        "y": 6.484375,
+        "right": 172.015625,
+        "bottom": 167.515625,
+        "width": 161.03125,
+        "height": 161.03125
+      },
+      "dock": {
+        "x": 6,
+        "y": 175.515625,
+        "right": 177,
+        "bottom": 207.515625,
+        "width": 171,
+        "height": 32
+      },
+      "buttons": [
+        {
+          "x": 94,
+          "y": 180.515625,
+          "right": 137,
+          "bottom": 202.515625,
+          "width": 43,
+          "height": 22
+        },
+        {
+          "x": 138,
+          "y": 180.515625,
+          "right": 170,
+          "bottom": 202.515625,
+          "width": 32,
+          "height": 22
+        }
+      ],
+      "duplicate": false,
+      "overflow": false
+    },
+    {
+      "enabled": true,
+      "width": 183,
+      "height": 214,
+      "head": {
+        "x": 40.5,
+        "y": 6.5,
+        "right": 142.5,
+        "bottom": 108.5,
+        "width": 102,
+        "height": 102
+      },
+      "dock": {
+        "x": 6,
+        "y": 116.5,
+        "right": 177,
+        "bottom": 207.5,
+        "width": 171,
+        "height": 91
+      },
+      "buttons": [
+        {
+          "x": 94,
+          "y": 121.5,
+          "right": 137,
+          "bottom": 143.5,
+          "width": 43,
+          "height": 22
+        },
+        {
+          "x": 138,
+          "y": 121.5,
+          "right": 170,
+          "bottom": 143.5,
+          "width": 32,
+          "height": 22
+        }
+      ],
+      "duplicate": false,
+      "overflow": false
+    },
+    {
+      "enabled": false,
+      "width": 240,
+      "height": 280,
+      "head": {
+        "x": 14.40625,
+        "y": 14.40625,
+        "right": 225.59375,
+        "bottom": 225.59375,
+        "width": 211.1875,
+        "height": 211.1875
+      },
+      "dock": {
+        "x": 8,
+        "y": 233.59375,
+        "right": 232,
+        "bottom": 265.59375,
+        "width": 224,
+        "height": 32
+      },
+      "buttons": [
+        {
+          "x": 149,
+          "y": 238.59375,
+          "right": 192,
+          "bottom": 260.59375,
+          "width": 43,
+          "height": 22
+        },
+        {
+          "x": 193,
+          "y": 238.59375,
+          "right": 225,
+          "bottom": 260.59375,
+          "width": 32,
+          "height": 22
+        }
+      ],
+      "duplicate": false,
+      "overflow": false
+    },
+    {
+      "enabled": true,
+      "width": 240,
+      "height": 280,
+      "head": {
+        "x": 36,
+        "y": 6.5,
+        "right": 204,
+        "bottom": 174.5,
+        "width": 168,
+        "height": 168
+      },
+      "dock": {
+        "x": 8,
+        "y": 182.5,
+        "right": 232,
+        "bottom": 273.5,
+        "width": 224,
+        "height": 91
+      },
+      "buttons": [
+        {
+          "x": 149,
+          "y": 187.5,
+          "right": 192,
+          "bottom": 209.5,
+          "width": 43,
+          "height": 22
+        },
+        {
+          "x": 193,
+          "y": 187.5,
+          "right": 225,
+          "bottom": 209.5,
+          "width": 32,
+          "height": 22
+        }
+      ],
+      "duplicate": false,
+      "overflow": false
+    },
+    {
+      "enabled": false,
+      "width": 360,
+      "height": 420,
+      "head": {
+        "x": 21.59375,
+        "y": 31.59375,
+        "right": 338.390625,
+        "bottom": 348.390625,
+        "width": 316.796875,
+        "height": 316.796875
+      },
+      "dock": {
+        "x": 68,
+        "y": 356.390625,
+        "right": 292,
+        "bottom": 388.390625,
+        "width": 224,
+        "height": 32
+      },
+      "buttons": [
+        {
+          "x": 209,
+          "y": 361.390625,
+          "right": 252,
+          "bottom": 383.390625,
+          "width": 43,
+          "height": 22
+        },
+        {
+          "x": 253,
+          "y": 361.390625,
+          "right": 285,
+          "bottom": 383.390625,
+          "width": 32,
+          "height": 22
+        }
+      ],
+      "duplicate": false,
+      "overflow": false
+    },
+    {
+      "enabled": true,
+      "width": 360,
+      "height": 420,
+      "head": {
+        "x": 26,
+        "y": 6.5,
+        "right": 334,
+        "bottom": 314.5,
+        "width": 308,
+        "height": 308
+      },
+      "dock": {
+        "x": 68,
+        "y": 322.5,
+        "right": 292,
+        "bottom": 413.5,
+        "width": 224,
+        "height": 91
+      },
+      "buttons": [
+        {
+          "x": 209,
+          "y": 327.5,
+          "right": 252,
+          "bottom": 349.5,
+          "width": 43,
+          "height": 22
+        },
+        {
+          "x": 253,
+          "y": 327.5,
+          "right": 285,
+          "bottom": 349.5,
+          "width": 32,
+          "height": 22
+        }
+      ],
+      "duplicate": false,
+      "overflow": false
+    }
+  ],
+  "errors": [],
+  "checks": [
+    "five desktop avatar scales, traffic on/off",
+    "no overlap or overflow; tiny scales retain silhouette",
+    "no duplicate quota bubble",
+    "console/hide/traffic actions and token hover IPC",
+    "long status truncates; status remains draggable"
+  ]
+}

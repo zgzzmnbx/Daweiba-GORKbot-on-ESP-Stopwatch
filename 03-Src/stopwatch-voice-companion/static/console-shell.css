@@ -1,0 +1,63 @@
+/* Compact service indicators and overflow navigation, shared by both themes. */
+.app-header{position:relative;z-index:20;gap:18px}
+.app-header .global-status{display:flex;gap:5px;flex:1;min-width:0;margin:0}
+.app-header .header-tools{display:flex;gap:6px;margin-left:auto}
+.service-chip,.header-menu{position:relative;margin:0;flex:none}
+.service-chip>summary{display:flex;align-items:center;gap:6px;height:34px;padding:0 9px;border:1px solid transparent;border-radius:8px;cursor:pointer;list-style:none;color:var(--header-ink,var(--ink))}
+.service-chip summary::-webkit-details-marker{display:none}
+.service-chip>summary:hover,.service-chip[open]>summary{background:color-mix(in srgb,currentColor 7%,transparent);border-color:var(--header-control-border,var(--line))}
+.service-chip .ph-icon{display:block;width:17px;height:17px;background:currentColor;mask:var(--ph-icon) center/contain no-repeat}
+.service-name{font-size:12px;font-weight:550;white-space:nowrap}
+.service-dot{width:6px;height:6px;flex:none;border-radius:50%;background:#85939f}
+.service-chip[data-state=ready] .service-dot{background:#32b57a}
+.service-chip[data-state=configured] .service-dot{background:#e4b14d}
+.service-chip[data-state=paused] .service-dot{background:#e4b14d}
+.service-chip[data-state=error] .service-dot{background:#ef7068}
+.header-popover{position:absolute;top:calc(100% + 10px);right:0;width:260px;padding:16px;border:1px solid var(--line,#ddd);border-radius:12px;background:var(--paper,#fff);color:var(--ink,#253530);box-shadow:0 12px 36px #0002;font-size:13px;line-height:1.6;z-index:110}
+.header-popover strong{display:block;font-size:13px;overflow-wrap:anywhere}
+.header-popover p{margin:8px 0 12px;font-size:12px;color:var(--muted,#6c7772);white-space:normal}
+.header-popover a{display:block;color:var(--accent,#16876a);font-size:12px;padding:5px 0}
+.service-panel{left:0;right:auto}
+.service-panel #global-voice::before,.service-panel #global-watch::before{display:none}
+.app-header .service-panel #global-voice,.app-header .service-panel #global-watch{background:none;border:0;padding:0;color:inherit;display:block}
+.app-header .volume-panel .header-volume{width:100%;margin:10px 0;display:flex}
+.app-header .volume-panel input[type=range]{width:145px}
+.volume-panel small{font-size:11px;color:var(--muted,#6c7772)}
+.volume-target-name{font-size:12px;font-weight:550;margin-top:12px}
+.watch-volume-heading{border-top:1px solid var(--line,#ddd);padding-top:12px}
+.header-popover .watch-volume-hint{font-size:11px;line-height:1.5;margin:4px 0 12px}
+.watch-volume-hint{font-size:12px;color:var(--muted,#6c7772)}
+.more-dots{font-size:25px;line-height:1;letter-spacing:1px;margin-top:-8px}
+.app-header .more-panel{width:200px;display:flex;flex-direction:column;gap:6px}
+.app-header .more-panel>strong{padding-bottom:6px}
+.app-header .more-panel button,.app-header .more-panel summary{width:100%;height:34px;justify-content:flex-start;gap:10px;padding:0 9px;border:0;border-radius:6px;order:initial}
+.more-panel .mantine-Button-label{gap:10px;justify-content:flex-start}
+.header-tools .more-panel .tool-label{position:static;width:auto;height:auto;clip-path:none;margin:0;overflow:visible}
+.more-panel .theme-color-panel{position:static!important;width:100%;max-width:none;padding:8px;box-shadow:none;border-radius:8px;margin:5px 0;background:var(--bg,#f4f7f6)}
+.more-panel>a{padding:5px 9px;border-top:1px solid var(--line,#ddd)}
+.nav-strip{display:flex;align-items:stretch;gap:4px;flex:none;min-width:0;margin-bottom:16px;border-bottom:1px solid var(--line,#ddd)}
+.nav-strip .primary-nav{flex:1;min-width:0;min-height:40px;margin:0;border:0;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
+.nav-strip .primary-nav a{flex:0 0 auto;scroll-margin-inline:8px}
+.nav-strip .nav-scroll{flex:0 0 30px;width:30px;min-width:30px;height:auto;min-height:38px;padding:0;font-size:26px;font-family:Arial,sans-serif;border:0;border-radius:6px;background:var(--soft,#edf2ef);color:var(--accent,#16876a);cursor:pointer;box-shadow:none}
+.nav-strip .nav-scroll:disabled{opacity:.3;cursor:default}
+.nav-strip .nav-scroll:focus-visible,.service-chip summary:focus-visible{outline:2px solid var(--accent,#16876a);outline-offset:-2px}
+@media(max-width:950px) and (min-width:701px){.app-header{gap:10px;padding-left:18px;padding-right:18px}.service-chip>summary{padding:0 6px;gap:4px}.service-chip .ph-icon{display:none}}
+@media(max-width:700px){
+ .app-header{height:94px!important;min-height:94px;display:flex;flex-wrap:wrap;align-content:center;gap:6px 10px;padding:7px 14px}
+ .app-header .wordmark{margin-right:auto}
+ .app-header .header-tools{display:flex;order:2;gap:6px;align-items:center}
+ .app-header .global-status{display:flex;order:3;flex:1 0 100%;justify-content:flex-start;gap:6px}
+ .service-chip{position:static;flex:1}
+ .service-chip>summary{justify-content:center;height:28px;padding:0 5px;border-color:var(--header-control-border,var(--line));gap:5px}
+ .service-chip .ph-icon{width:14px;height:14px}
+ .service-name{font-size:11px}
+ .service-panel{left:12px;right:12px;top:90px;width:auto}
+ .header-popover{max-width:calc(100vw - 24px)}
+ .header-menu>.header-popover{position:fixed;right:12px;top:54px}
+ .app-header .more-panel{max-height:calc(100dvh - 110px);overflow:auto}
+ .nav-strip{margin-bottom:10px;gap:2px}
+ .nav-strip .nav-scroll{flex-basis:28px;min-width:28px;width:28px;min-height:34px}
+ .nav-strip .primary-nav{min-height:34px}
+}
+
+.service-transport{font-size:10px;line-height:18px;padding:0 5px;border-radius:4px;background:color-mix(in srgb,currentColor 10%,transparent);font-weight:500;white-space:nowrap;flex:none}

@@ -1,0 +1,29 @@
+{
+  "result": "PASS",
+  "layouts": [
+    {
+      "theme": "mantine-dark",
+      "border": "0px",
+      "tag": "造价智算信息",
+      "overflow": false
+    },
+    {
+      "theme": "mantine-light",
+      "border": "0px",
+      "tag": "造价智算信息",
+      "overflow": false
+    },
+    {
+      "theme": "classic",
+      "border": "0px",
+      "tag": "造价智算信息",
+      "overflow": false
+    }
+  ],
+  "checks": [
+    "no left border",
+    "single cost tag survives receipt updates",
+    "time/source/status preserved",
+    "desktop only, isolated receipt; no playback"
+  ]
+}

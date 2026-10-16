@@ -1,0 +1,15 @@
+{
+  "version": "v0.11.11-dev",
+  "date": "2026-10-15",
+  "candidate_only": false,
+  "flashed": true,
+  "firmware_bytes": 2324320,
+  "sha256": "bfebe1051fc13fabc11d91f948c8a802545e3f9313bc9cb5095b6e7d74b958ce",
+  "ram_bytes": 118592,
+  "program_bytes": 2323957,
+  "inherits_unflashed_v0_11_10_connection_cues": true,
+  "independently_verified": true,
+  "boot_observed": true,
+  "user_acceptance_confirmed": true,
+  "flash_result": "flash-result.json"
+}

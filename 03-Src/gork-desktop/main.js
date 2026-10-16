@@ -10,6 +10,10 @@ const { registerQuitCleanup } = require('./quit-manager');
 const { visibleBounds, avatarBoundsForScale } = require('./window-state');
 const { createTrayIcon } = require('./tray-icon');
 const { createCursorTracker } = require('./cursor-tracker');
+const { createTrafficRelay } = require('./traffic-relay');
+const Indicators=require('./indicator-model');
+const {createIndicatorWindow}=require('./indicator-window');
+let indicatorSettings=Indicators.normalize(null),indicatorWindow;
 const { createTokenWindow } = require('./token-window');
 const { createBubbleWindow, BUBBLE_POSITIONS } = require('./bubble-window');
 const { normalize:normalizeAppearance } = require('./gork-appearance');
@@ -23,6 +27,7 @@ let avatarWindow;
 let consoleWindow;
 let bubbleWindow;
 let tokenWindow;
+let trafficRelay;
 let bubblePosition = 'above';
 let tray;
 let quitting = false;
@@ -46,7 +51,7 @@ function readState() {
 }
 function saveState() {
   if (avatarWindow && !avatarWindow.isDestroyed())
-    fs.writeFileSync(statePath(), JSON.stringify({ ...avatarWindow.getBounds(), alwaysOnTop: avatarWindow.isAlwaysOnTop(), bubblePosition, appearance, pointerFollow }));
+    fs.writeFileSync(statePath(), JSON.stringify({ ...avatarWindow.getBounds(), alwaysOnTop: avatarWindow.isAlwaysOnTop(), bubblePosition, appearance, pointerFollow, indicatorSettings }));
 }
 
 function securePreferences() {
@@ -58,17 +63,25 @@ function createAvatar() {
   pointerFollow = saved.pointerFollow !== false; sharedState.pointerFollow = pointerFollow;
   appearance = normalizeAppearance(saved.appearance);sharedState.appearance=appearance;
   bubblePosition = BUBBLE_POSITIONS.includes(saved.bubblePosition) ? saved.bubblePosition : 'above';
+  indicatorSettings=Indicators.normalize(saved.indicatorSettings);sharedState.indicatorSettings=indicatorSettings;
   const restored = visibleBounds(saved, screen.getAllDisplays());
   avatarWindow = new BrowserWindow({
     width: 240, height: 280, ...(restored || {}), minWidth: 60, minHeight: 70, maxWidth: 360, maxHeight: 420,
     frame: false, transparent: true, alwaysOnTop: saved.alwaysOnTop !== false, resizable: true, show: false, skipTaskbar: true,
     webPreferences: securePreferences(),
   });
+  trafficRelay = createTrafficRelay({avatar:avatarWindow, onValue:value=>indicatorWindow?.traffic(value), async read(){
+    const response=await fetch(`${BACKEND_URL}/api/traffic`,{signal:AbortSignal.timeout(3000)});
+    if(!response.ok)throw Error('Traffic unavailable');return response.json();
+  }});
+  indicatorWindow=createIndicatorWindow({BrowserWindow,screen,avatar:avatarWindow,preferences:securePreferences(),getSettings:()=>indicatorSettings,onDragEnd:saveState,onLayout:()=>{bubbleWindow?.sync();tokenWindow?.sync();},
+    async readUsage(){const r=await fetch(`${BACKEND_URL}/api/desktop/token-usage`,{signal:AbortSignal.timeout(4000)});if(!r.ok)throw Error('Unavailable');return r.json();},
+    async readQuota(){const r=await fetch(`${BACKEND_URL}/api/desktop/quota-usage`,{signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('Unavailable');return r.json();}});
   avatarWindow.loadFile(path.join(__dirname, 'avatar.html'));
   cursorTracker = createCursorTracker(avatarWindow, screen, {enabled:pointerFollow});
   avatarWindow.once('ready-to-show', () => avatarWindow.showInactive());
-  bubbleWindow = createBubbleWindow({BrowserWindow, screen, avatar:avatarWindow, preferences:securePreferences(), getPosition:() => bubblePosition});
-  tokenWindow = createTokenWindow({BrowserWindow,screen,avatar:avatarWindow,preferences:securePreferences(),
+  bubbleWindow = createBubbleWindow({BrowserWindow, screen, avatar:avatarWindow, preferences:securePreferences(), getPosition:() => bubblePosition,getIndicatorBounds:()=>indicatorWindow?.visibleBounds()});
+  tokenWindow = createTokenWindow({BrowserWindow,screen,avatar:avatarWindow,preferences:securePreferences(),getIndicatorBounds:()=>indicatorWindow?.visibleBounds(),
     async readUsage(){const response=await fetch(`${BACKEND_URL}/api/desktop/token-usage`,{signal:AbortSignal.timeout(4000)});
       if(!response.ok)throw Error('Token usage unavailable');return response.json();},
     async readQuota(){const response=await fetch(`${BACKEND_URL}/api/desktop/quota-usage`,{signal:AbortSignal.timeout(15000)});
@@ -77,8 +90,8 @@ function createAvatar() {
   avatarWindow.on('resize', () => bubbleWindow.sync());
   avatarWindow.on('show', () => bubbleWindow.sync());
   avatarWindow.on('hide', () => bubbleWindow.hide());
-  avatarWindow.on('moved', saveState);
-  avatarWindow.on('resized', saveState);
+  avatarWindow.on('moved', () => { if(!indicatorWindow?.isDragging())saveState(); });
+  avatarWindow.on('resized', () => { if(!indicatorWindow?.isDragging())saveState(); });
   avatarWindow.on('close', (event) => { if (!quitting) { event.preventDefault(); avatarWindow.hide(); } });
   avatarWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   avatarWindow.webContents.on('will-navigate', (event) => event.preventDefault());
@@ -133,6 +146,7 @@ async function pollState() {
   } else quotaPreview = null;
   sharedState.appearance=appearance;
   sharedState.pointerFollow=pointerFollow;
+  sharedState.indicatorSettings=indicatorSettings;
   if (avatarWindow && !avatarWindow.isDestroyed()) avatarWindow.webContents.send('gork:state', sharedState);
   bubbleWindow?.update(sharedState.character);
   updateTrayMenu();
@@ -156,6 +170,23 @@ function createTray() {
 }
 
 if (hasSingleInstanceLock) {
+  ipcMain.handle('gork:indicator-drag',(event,value)=>{
+    if(!indicatorWindow?.owns(event.sender))throw Error('Only indicators can drag');
+    return indicatorWindow.dragRequest(value);
+  });
+  ipcMain.handle('gork:indicator-settings',event=>{
+    if(event.sender!==consoleWindow?.webContents)throw Error('Only the console can inspect indicators');
+    return indicatorSettings;
+  });
+  ipcMain.handle('gork:set-indicator-settings',(event,value)=>{
+    if(event.sender!==consoleWindow?.webContents||!Indicators.valid(value))throw Error('Invalid indicator settings');
+    if(!avatarWindow||avatarWindow.isDestroyed())throw Error('Avatar unavailable');
+    const previous=indicatorSettings;indicatorSettings=Indicators.normalize(value);
+    try{saveState();}catch(error){indicatorSettings=previous;throw error;}
+    sharedState.indicatorSettings=indicatorSettings;
+    avatarWindow.webContents.send('gork:state',sharedState);indicatorWindow?.changed();
+    return indicatorSettings;
+  });
   ipcMain.handle('gork:token-hover',(event,enabled)=>{
     const fromCard=tokenWindow?.owns(event.sender);
     if((event.sender!==avatarWindow?.webContents&&!fromCard)||typeof enabled!=='boolean')throw Error('Invalid token hover request');
@@ -270,7 +301,7 @@ if (hasSingleInstanceLock) {
     if (!avatarWindow || avatarWindow.isDestroyed()) throw new Error('Avatar window unavailable');
     avatarWindow.setAlwaysOnTop(enabled);
     bubbleWindow?.sync();
-    tokenWindow?.sync();
+    tokenWindow?.sync();indicatorWindow?.sync();
     saveState();
     return avatarWindow.isAlwaysOnTop();
   });
@@ -303,7 +334,7 @@ if (hasSingleInstanceLock) {
   });
 
   registerQuitCleanup(app, {
-    prepare: () => { quitting = true; clearInterval(stateTimer); cursorTracker?.dispose(); tokenWindow?.destroy(); bubbleWindow?.destroy(); saveState(); },
+    prepare: () => { quitting = true; clearInterval(stateTimer); cursorTracker?.dispose(); trafficRelay?.dispose(); indicatorWindow?.destroy(); tokenWindow?.destroy(); bubbleWindow?.destroy(); saveState(); },
     stopAll, stopBackend: () => stopOwnedBackend(backend),
   });
   app.on('window-all-closed', (event) => event.preventDefault());

@@ -4,23 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
-  <link rel="stylesheet" href="avatar.css">
+  <link rel="stylesheet" href="avatar.css"><link rel="stylesheet" href="traffic-badge.css">
   <title>Gork</title>
 </head>
 <body>
   <main id="avatar" class="avatar idle" tabindex="0" aria-label="Gork 桌面小人，鼠标移入或聚焦查看今日 token">
     <div class="drag-zone" aria-hidden="true"></div>
-    <div class="face-wrap"><div id="quota-ring-outer" class="quota-ring quota-outer" aria-hidden="true"></div><div id="quota-ring-inner" class="quota-ring quota-inner" aria-hidden="true"></div><canvas id="gork-face" class="face" aria-label="Grok bot 黑色圆体白色双眼"></canvas><div id="quota-trend" class="quota-trend" role="status" aria-live="polite" hidden></div></div>
-    <p id="status" title="按住此处拖动小人">就绪</p>
-    <button id="quota-detail" class="quota-detail" type="button" title="Codex 额度未知" aria-label="Codex 额度未知" hidden>额度</button>
-    <div id="quota-tooltip" class="quota-tooltip" role="status" hidden></div>
-    <div class="actions">
-      <button id="console">控制台</button><button id="hide">隐藏</button>
+    <div class="face-wrap"><canvas id="gork-face" class="face" aria-label="Grok bot 黑色圆体白色双眼"></canvas><div id="quota-trend" class="quota-trend" role="status" aria-live="polite" hidden></div></div>
+    <div class="avatar-dock" aria-label="小人状态与快捷操作">
+      <div class="dock-header">
+        <p id="status" title="按住此处拖动小人">就绪</p>
+        <div class="actions">
+          <button id="console" title="打开控制台">控制台</button><button id="hide" title="隐藏小人，可从托盘或控制台再次显示">隐藏</button>
+          <button id="quota-detail" class="quota-detail" type="button" title="Codex 额度未知" aria-label="Codex 额度未知" hidden>额度</button>
+          <div id="quota-tooltip" class="quota-tooltip" role="status" hidden></div>
+        </div>
+      </div>
+      <button id="traffic-badge" class="traffic-badge" type="button" aria-label="流量与网速，点击打开控制台" hidden><span id="traffic-nic">网速 —</span><span id="traffic-proxy">代理 —</span><small id="traffic-today">今日代理 —</small></button>
     </div>
   </main>
   <script src="gork-catalog.js"></script>
   <script src="avatar-engine.js"></script><script src="avatar-presets.js"></script><script src="gork-appearance.js"></script><script src="gork-avatar.js"></script>
   <script src="motion/initial-config.js"></script><script src="motion/gork-config.js"></script><script src="motion/gork-pens.js"></script><script src="motion/scene-controller.js"></script><script src="motion/gork-renderer.js"></script><script src="motion/gork-player.js"></script><script src="motion/desktop-adapter.js"></script>
-  <script src="gork-pointer.js"></script><script src="token-hover.js"></script><script src="avatar.js"></script>
+  <script src="gork-pointer.js"></script><script src="token-hover.js"></script><script src="avatar.js"></script><script src="traffic-badge.js"></script>
 </body>
 </html>

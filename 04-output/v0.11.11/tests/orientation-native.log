@@ -1,0 +1,3 @@
+
+PASS triple/single/double, consumed B, cancel/activity cooldown, slow and wraparound; production settings/persistence failure, rotation, IMU reset, pinned touch transform, held-finger guard and original brightness hitbox
+

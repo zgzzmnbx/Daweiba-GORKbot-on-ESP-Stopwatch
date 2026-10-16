@@ -39,6 +39,35 @@ def system(tmp_path):
     return control,external
 
 
+def test_notification_pause_persists_without_changing_source_permissions_or_shutdown_preference(tmp_path):
+    async def run():
+        c,e=system(tmp_path)
+        original=e.registry.clients()
+        e.registry.set_notifications_paused(True)
+        e.registry.save_client('astra',ClientPolicy(label='智算',enabled=True,display_targets=['desktop','watch'],speech_targets=['pc','watch'],max_priority=5))
+        replacement=ExternalNotifications(c,ClientRegistry(e.registry.path),tmp_path/'next.sqlite3')
+        assert replacement.paused is True
+        assert replacement.registry.clients()==original
+        with pytest.raises(VoiceError):
+            await replacement.accept('astra',notice())
+        replacement.registry.set_notifications_paused(False)
+        replacement.paused=False
+        await replacement.close()
+        # Shutdown's runtime stop must not turn the user's switch off.
+        assert replacement.registry.notifications_paused() is False
+        await e.close()
+    asyncio.run(run())
+
+
+def test_pause_never_overwrites_unreadable_registry(tmp_path):
+    path=tmp_path/'registry.json'
+    path.write_text('{incomplete configuration',encoding='utf-8')
+    with pytest.raises(VoiceError) as caught:
+        ClientRegistry(path).set_notifications_paused(True)
+    assert caught.value.code=='EXTERNAL_SETTINGS_UNAVAILABLE'
+    assert path.read_text(encoding='utf-8')=='{incomplete configuration'
+
+
 async def settled(external):
     tasks=list(external.tasks.values())
     if tasks:await asyncio.wait_for(asyncio.gather(*tasks,return_exceptions=True),3)
@@ -173,6 +202,14 @@ def test_http_registration_scope_host_origin_and_mutual_exclusion(tmp_path):
         assert http.post('/api/external/clients',json={'source':'astra','label':'智算'}).status_code==401
         created=http.post('/api/external/clients',headers=headers,json={'source':'astra','label':'智算','enabled':True,'display_targets':['desktop']}).json()
         token=created['token'];auth={'Authorization':'Bearer '+token}
+        assert http.post('/api/external/pause').status_code==401
+        assert http.post('/api/external/pause',headers=headers).json()=={'paused':True}
+        assert http.get('/api/external/overview',headers=headers).json()['paused'] is True
+        saved=ClientRegistry(tmp_path/'registry.json')
+        assert saved.notifications_paused() is True
+        assert saved.authenticate('Bearer '+token)=='astra'
+        assert http.post('/api/external/resume',headers=headers).json()=={'paused':False}
+        assert saved.notifications_paused() is False
         p=notice().model_dump()
         assert http.post('/api/external/notifications',headers=auth,json=p).status_code==202
         assert http.get('/api/external/notifications/'+p['event_id'],headers=auth).status_code==200

@@ -27,3 +27,19 @@ def isolated_default_external_clients(monkeypatch,tmp_path):
     def initialize(registry,path=None):
         original(registry,path if path is not None else tmp_path/'isolated-external.local.json')
     monkeypatch.setattr(ClientRegistry,'__init__',initialize)
+
+
+@pytest.fixture(autouse=True)
+def isolated_app_codex_defaults(monkeypatch, tmp_path):
+    """Startup monitoring must not touch real sessions/hooks or launch Codex in tests."""
+    import companion.app as app
+    source, hooks, rpc, preferences = app.JsonlSource, app.HookSpool, app.QuotaRPC, app._codex_preferences
+    default_hooks = app.PROJECT_ROOT / 'Codex-Temp' / 'codex-sentinel-hook-queue'
+    monkeypatch.setattr(app, 'JsonlSource', lambda root=None:
+                        source(root if root is not None else tmp_path / 'sessions'))
+    monkeypatch.setattr(app, 'HookSpool', lambda folder:
+                        hooks(tmp_path / 'hooks' if Path(folder) == default_hooks else folder))
+    monkeypatch.setattr(app, 'QuotaRPC', lambda executable='codex':
+                        rpc(str(tmp_path / 'missing-codex.exe') if executable == 'codex' else executable))
+    monkeypatch.setattr(app, '_codex_preferences', lambda path:
+                        preferences(tmp_path / 'codex.json' if path == app.ROOT / 'codex-sentinel.local.json' else path))

@@ -1,0 +1,405 @@
+{
+  "result": "PASS",
+  "version": "0.20.39-dev",
+  "checks": [
+    "production modules and generated console",
+    "Astra receipts in chat on dialogue tab",
+    "status updates deduplicated",
+    "HTML displayed as text",
+    "clear suppresses old receipts, new messages allowed",
+    "notification pause/resume",
+    "Codex shortcut preserves saved settings",
+    "five Phosphor controls fit 1180/390 in classic, Mantine light and dark",
+    "production CSP and local assets",
+    "palette change keeps controls intact",
+    "theme icon survives toggles",
+    "no recording/synthesis/playback"
+  ],
+  "layouts": [
+    {
+      "theme": "mantine-dark",
+      "width": 1167,
+      "items": [
+        {
+          "id": "header-notifications",
+          "x": 935.2000122070312,
+          "right": 971.2000122070312,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 977.2000122070312,
+          "right": 1013.2000122070312,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "theme-color-menu",
+          "x": 1019.2000122070312,
+          "right": 1055.2000122070312,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "color-scheme-toggle",
+          "x": 1061.2000732421875,
+          "right": 1097.2000732421875,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "architecture-open",
+          "x": 1103.2000732421875,
+          "right": 1139.2000732421875,
+          "width": 36,
+          "height": 36
+        }
+      ],
+      "overflow": false,
+      "icons": [
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/bell.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/robot.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/palette.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/sun.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/graph.svg\")",
+          "width": 19
+        }
+      ]
+    },
+    {
+      "theme": "mantine-dark",
+      "width": 376,
+      "items": [
+        {
+          "id": "header-notifications",
+          "x": 196,
+          "right": 226,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "header-codex",
+          "x": 230,
+          "right": 260,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "theme-color-menu",
+          "x": 264,
+          "right": 294,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "color-scheme-toggle",
+          "x": 298,
+          "right": 328,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "architecture-open",
+          "x": 332,
+          "right": 362,
+          "width": 30,
+          "height": 30
+        }
+      ],
+      "overflow": false,
+      "icons": [
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/bell.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/robot.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/palette.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/sun.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/graph.svg\")",
+          "width": 17
+        }
+      ]
+    },
+    {
+      "theme": "mantine-light",
+      "width": 1167,
+      "items": [
+        {
+          "id": "header-notifications",
+          "x": 935.2000122070312,
+          "right": 971.2000122070312,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 977.2000122070312,
+          "right": 1013.2000122070312,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "theme-color-menu",
+          "x": 1019.2000122070312,
+          "right": 1055.2000122070312,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "color-scheme-toggle",
+          "x": 1061.2000732421875,
+          "right": 1097.2000732421875,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "architecture-open",
+          "x": 1103.2000732421875,
+          "right": 1139.2000732421875,
+          "width": 36,
+          "height": 36
+        }
+      ],
+      "overflow": false,
+      "icons": [
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/bell.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/robot.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/palette.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/moon.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/graph.svg\")",
+          "width": 19
+        }
+      ]
+    },
+    {
+      "theme": "mantine-light",
+      "width": 376,
+      "items": [
+        {
+          "id": "header-notifications",
+          "x": 196,
+          "right": 226,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "header-codex",
+          "x": 230,
+          "right": 260,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "theme-color-menu",
+          "x": 264,
+          "right": 294,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "color-scheme-toggle",
+          "x": 298,
+          "right": 328,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "architecture-open",
+          "x": 332,
+          "right": 362,
+          "width": 30,
+          "height": 30
+        }
+      ],
+      "overflow": false,
+      "icons": [
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/bell.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/robot.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/palette.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/moon.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/graph.svg\")",
+          "width": 17
+        }
+      ]
+    },
+    {
+      "theme": "classic",
+      "width": 1167,
+      "items": [
+        {
+          "id": "header-notifications",
+          "x": 939.2000122070312,
+          "right": 975.2000122070312,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "header-codex",
+          "x": 981.2000122070312,
+          "right": 1017.2000122070312,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "theme-color-menu",
+          "x": 1023.2000122070312,
+          "right": 1059.2000122070312,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "color-scheme-toggle",
+          "x": 1065.2000732421875,
+          "right": 1101.2000732421875,
+          "width": 36,
+          "height": 36
+        },
+        {
+          "id": "architecture-open",
+          "x": 1107.2000732421875,
+          "right": 1143.2000732421875,
+          "width": 36,
+          "height": 36
+        }
+      ],
+      "overflow": false,
+      "icons": [
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/bell.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/robot.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/palette.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/moon.svg\")",
+          "width": 19
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/graph.svg\")",
+          "width": 19
+        }
+      ]
+    },
+    {
+      "theme": "classic",
+      "width": 376,
+      "items": [
+        {
+          "id": "header-notifications",
+          "x": 198,
+          "right": 228,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "header-codex",
+          "x": 232,
+          "right": 262,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "theme-color-menu",
+          "x": 266,
+          "right": 296,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "color-scheme-toggle",
+          "x": 300,
+          "right": 330,
+          "width": 30,
+          "height": 30
+        },
+        {
+          "id": "architecture-open",
+          "x": 334,
+          "right": 364,
+          "width": 30,
+          "height": 30
+        }
+      ],
+      "overflow": false,
+      "icons": [
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/bell.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/robot.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/palette.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/moon.svg\")",
+          "width": 17
+        },
+        {
+          "mask": "url(\"http://127.0.0.1:58044/static/icons/phosphor/graph.svg\")",
+          "width": 17
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

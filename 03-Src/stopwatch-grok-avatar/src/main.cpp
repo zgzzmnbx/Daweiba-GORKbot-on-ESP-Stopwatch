@@ -14,12 +14,13 @@
 #include "network_setup.h"
 #include "connection_announcements.h"
 #include "connection_voice.h"
+#include "watch_orientation.h"
 #include <esp_heap_caps.h>
 
 namespace {
 
 constexpr uint8_t kDefaultBrightness = 150;
-constexpr char kFirmwareVersion[] = "v0.11.10-dev";
+constexpr char kFirmwareVersion[] = "v0.11.11-dev";
 constexpr uint8_t kMinimumBrightness = 30;
 constexpr uint8_t kBrightnessStep = 15;
 constexpr uint32_t kDiagnosticRefreshIntervalMs = 100;
@@ -40,6 +41,7 @@ constexpr char kBleEnabledKey[] = "ble";
 constexpr char kBleBoundKey[] = "ble_bound";
 constexpr char kBlePeerKey[] = "ble_peer";
 constexpr char kSoundVolumeKey[] = "sound_vol";
+constexpr char kInvertedKey[] = "inverted";
 constexpr uint8_t kBubbleMaxBytes = 72;
 constexpr uint8_t kBubbleMaxCharacters = 24;
 constexpr uint32_t kTextTransferTimeoutMs = 5000;
@@ -102,6 +104,10 @@ uint8_t brightness = kDefaultBrightness;
 uint8_t pendingSoundVolume = 20;
 uint32_t soundVolumeChangedAtMs = 0;
 bool soundVolumePending = false;
+gorkorientation::Direction orientation;
+gorkorientation::TripleB orientationGesture;
+uint32_t orientationHintUntil = 0, orientationTouchUntil = 0;
+bool orientationTouchNeedsRelease = false, orientationSaveFailed = false;
 GestureAxis gestureAxis = GestureAxis::None;
 bool gestureCommitted = false;
 
@@ -177,10 +183,20 @@ void drawDebugControls() {
   drawPanelButton(270, 248, 110, debugMode ? "ON" : "OFF");
 }
 
+void drawOrientationControl() {
+  drawDiagnosticLine(154, "倒挂模式", "", TFT_WHITE);
+  M5.Display.fillRoundRect(270, 150, 110, 28, 8, TFT_DARKGREY);
+  M5.Display.setTextColor(TFT_WHITE, TFT_DARKGREY);
+  M5.Display.setTextDatum(middle_center);
+  M5.Display.drawString(orientation.inverted() ? "ON" : "OFF", 325, 164);
+  M5.Display.setTextDatum(top_left);
+}
+
 void drawSettingsFrame() {
   drawPanelFrame("Settings");
   drawDiagnosticLine(102, "Firmware", kFirmwareVersion, TFT_LIGHTGREY);
   drawBatteryLine();
+  drawOrientationControl();
   drawBrightnessControls();
   drawDebugControls();
   drawPanelButton(75, 292, 140, "Sound");
@@ -309,8 +325,56 @@ void trigger(ExpressionId expression, uint32_t nowMs,
   Serial.printf("Expression: %s\n", avatar.activeName());
 }
 
+bool orientationTouchBlocked(uint32_t nowMs) {
+  if (orientationTouchNeedsRelease) {
+    if (M5.Touch.getDetail(0).isPressed()) return true;
+    orientationTouchNeedsRelease = false;
+  }
+  return orientationTouchUntil && !reached(nowMs, orientationTouchUntil);
+}
+
+bool setInverted(bool inverted, uint32_t nowMs) {
+  if (orientation.inverted() == inverted) return true;
+  if (!settingsReady || settings.putBool(kInvertedKey, inverted) != 1) {
+    orientationSaveFailed = true; orientationHintUntil = nowMs + 1200; avatar.invalidate();
+    Serial.println("Orientation preference could not be saved");
+    return false;
+  }
+  orientationSaveFailed = false;
+  orientation.setInverted(inverted);
+  M5.Display.setRotation(orientation.rotation());
+  // M5Unified Touch.update already uses Display.convertRawXY. Never invert
+  // touch coordinates again; just ignore the held finger across this change.
+  orientationTouchNeedsRelease = true;
+  orientationTouchUntil = nowMs + 200;
+  gestureAxis = GestureAxis::None; gestureCommitted = false;
+  avatar.releaseTouch(); avatar.releaseSwipe();
+  avatar.setTiltTarget(0, 0); avatar.setShakeTarget(0, 0, 0);
+  imuCalibrationCount = 0; neutralAccelX = neutralAccelY = 0;
+  filteredAccelX = filteredAccelY = 0;
+  previousAccelX = previousAccelY = previousAccelZ = 0;
+  if (shakeReactionActive) avatar.show(avatar.baseExpression(), nowMs, false);
+  shakeEnergy = 0; shakeReactionActive = false; shakeQuietStartedMs = 0;
+  resetShakeSequence();
+  orientationGesture.reset(nowMs);
+  M5.Display.fillScreen(TFT_BLACK); avatar.invalidate();
+  orientationHintUntil = menuOpen ? 0 : nowMs + 1200;
+  startVibration(125, 55);
+  if (menuOpen) drawSettingsFrame();
+  Serial.println(inverted ? "Orientation: inverted" : "Orientation: normal");
+  return true;
+}
+
+bool orientationIdle(uint32_t nowMs) {
+  return !menuOpen && !menuToggleLatched && !M5.BtnA.isPressed() &&
+      !M5.BtnA.wasClicked() && !M5.BtnB.pressedFor(500) &&
+      !M5.Touch.getDetail(0).isPressed() && !orientationTouchBlocked(nowMs) &&
+      audioProbe.orientationIdle(nowMs) && !soundControl.isPlaying() &&
+      avatar.orientationIdle();
+}
+
 void handleProductTouch(uint32_t nowMs) {
-  if (!M5.Touch.isEnabled()) return;
+  if (!M5.Touch.isEnabled() || orientationTouchBlocked(nowMs)) return;
   const auto touch = M5.Touch.getDetail(0);
 
   if (touch.wasPressed()) {
@@ -399,11 +463,11 @@ void handleImuInteraction(uint32_t nowMs) {
   // The official StopWatch demo swaps the BMI270 sensor's raw X/Y values to
   // obtain screen coordinates. Keep all avatar interaction in that same
   // coordinate system: X is screen-left/right and Y is screen-up/down.
-  const float screenAccelX = imu.accel.y;
-  const float screenAccelY = imu.accel.x;
+  const float screenAccelX = orientation.axis(imu.accel.y);
+  const float screenAccelY = orientation.axis(imu.accel.x);
   const float screenAccelZ = imu.accel.z;
-  const float screenGyroX = imu.gyro.y;
-  const float screenGyroY = imu.gyro.x;
+  const float screenGyroX = orientation.axis(imu.gyro.y);
+  const float screenGyroY = orientation.axis(imu.gyro.x);
   constexpr float kFilterAmount = 0.32f;
   if (imuCalibrationCount == 0) {
     filteredAccelX = screenAccelX;
@@ -708,8 +772,9 @@ void renderAvatarWithAudioHint(uint32_t nowMs) {
   static uint8_t lastHintKind=0;
   const uint8_t left=audioProbe.recordSecondsLeft(nowMs);
   const bool preparing=audioProbe.preparing(nowMs);
-  const bool showHint=left||preparing||audioProbe.busy();
-  const uint8_t hintKind=left?1:preparing?2:3;
+  const bool directionHint=orientationHintUntil&&!reached(nowMs,orientationHintUntil);
+  const bool showHint=left||preparing||audioProbe.busy()||directionHint;
+  const uint8_t hintKind=left?1:preparing?2:audioProbe.busy()?3:4;
   // Restore the avatar once when an actual hint ends. Idle frames must not
   // paint a blank black rectangle over the avatar's partial refresh.
   if(!showHint&&hintVisible){avatar.invalidate();hintVisible=false;}
@@ -720,6 +785,7 @@ void renderAvatarWithAudioHint(uint32_t nowMs) {
   char hint[72];
   if(left)snprintf(hint,sizeof(hint),"REC %us / click A to send / B cancel",left);
   else if(preparing)snprintf(hint,sizeof(hint),"Preparing / click A to cancel");
+  else if(!audioProbe.busy()&&directionHint)snprintf(hint,sizeof(hint),orientationSaveFailed?"Orientation save failed":orientation.inverted()?"Inverted 180 deg":"Normal orientation");
   else snprintf(hint,sizeof(hint),"%.54s",audioProbe.message());
   M5.Display.setTextDatum(middle_center);
   M5.Display.setTextColor(left?TFT_RED:TFT_LIGHTGREY,TFT_BLACK);
@@ -733,8 +799,8 @@ void refreshDiagnosticSensors() {
   if (M5.Imu.update()) {
     const auto imu = M5.Imu.getImuData();
     char values[64];
-    snprintf(values, sizeof(values), "H %.2f  V %.2f  Z %.2f", imu.accel.y,
-             imu.accel.x, imu.accel.z);
+    snprintf(values, sizeof(values), "H %.2f  V %.2f  Z %.2f", orientation.axis(imu.accel.y),
+             orientation.axis(imu.accel.x), imu.accel.z);
     drawDiagnosticLine(146, "IMU", values, TFT_GREEN);
   } else {
     drawDiagnosticLine(146, "IMU", "no data", TFT_RED);
@@ -754,6 +820,7 @@ void refreshDiagnosticSensors() {
 
 void setMenuOpen(bool enabled) {
   audioProbe.leave();
+  orientationGesture.reset(millis()); orientationHintUntil = 0;
   menuOpen = enabled;
   stopVibration();
   if (menuOpen) {
@@ -826,9 +893,13 @@ void processNetworkCommands(uint32_t now){
 }
 
 void handleSettingsInput(uint32_t nowMs) {
+  if (orientationTouchBlocked(nowMs)) return;
   const auto touch = M5.Touch.getDetail(0);
   if (touch.wasPressed()) {
-    if (touch.y >= 178 && touch.y < 225) {
+    if (touch.y >= 150 && touch.y < 178 && touch.x >= 250 && touch.x < 390) {
+      if (!setInverted(!orientation.inverted(), nowMs)) drawDiagnosticLine(154, "倒挂模式", "保存失败", TFT_RED);
+      return;
+    } else if (touch.y >= 178 && touch.y < 225) {
       if (touch.x >= 245 && touch.x < 315) adjustBrightness(-1);
       if (touch.x >= 320 && touch.x < 390) adjustBrightness(1);
     } else if (touch.y >= 242 && touch.y < 290 &&
@@ -978,7 +1049,6 @@ void setup() {
   stopStopWatchSpeaker();
   Serial.begin(115200);
 
-  M5.Display.setRotation(0);
   settingsReady = settings.begin("gorkbot", false);
   bool bleEnabled = false;
   bool bleBound = false;
@@ -987,6 +1057,7 @@ void setup() {
   if (settingsReady) {
     brightness = settings.getUChar("brightness", kDefaultBrightness);
     debugMode = settings.getBool("debug", false);
+    orientation.setInverted(settings.getBool(kInvertedKey, false));
     bleEnabled = settings.getBool(kBleEnabledKey, false);
     bleBound = settings.getBool(kBleBoundKey, false);
     soundVolume = settings.getUChar(kSoundVolumeKey, 20);
@@ -996,6 +1067,7 @@ void setup() {
       settings.putBool(kBleBoundKey, false);
     }
   }
+  M5.Display.setRotation(orientation.rotation());
   brightness = std::max<uint8_t>(kMinimumBrightness, brightness);
   M5.Display.setBrightness(brightness);
   M5.Touch.setHoldThresh(650);
@@ -1045,6 +1117,7 @@ void loop() {
   processBleCommands(nowMs);
   networkControl.update(nowMs,audioProbe.busy());
   processNetworkCommands(nowMs);
+  const bool orientationWasIdle = orientationIdle(nowMs);
   audioProbe.update(nowMs);
   const bool connectionAudioBlocked = (menuOpen && panelPage == PanelPage::Audio) ||
       audioProbe.busy() || audioProbe.preparing(nowMs);
@@ -1076,6 +1149,7 @@ void loop() {
   if(settingsReady&&soundVolumePending&&nowMs-soundVolumeChangedAtMs>=800){settings.putUChar(kSoundVolumeKey,pendingSoundVolume);soundVolumePending=false;}
 
   if (menuOpen) {
+    orientationGesture.reset(nowMs);
     if (panelPage == PanelPage::Settings) {
       handleSettingsInput(nowMs);
     } else if (panelPage == PanelPage::Bluetooth) {
@@ -1100,9 +1174,14 @@ void loop() {
       avatar.previous(nowMs);
       startVibration(125, 35);
     }
-    if (M5.BtnB.wasClicked() && !soundControl.takeButtonBConsumed()&&!audioProbe.takeBConsumed()&&!menuToggleLatched) {
-      avatar.next(nowMs);
-      startVibration(125, 35);
+    const bool bClicked = M5.BtnB.wasClicked() && !menuToggleLatched;
+    const bool bConsumed = bClicked && (soundControl.takeButtonBConsumed() | audioProbe.takeBConsumed());
+    const auto direction = orientationGesture.update(nowMs,
+        orientationWasIdle && orientationIdle(nowMs),
+        bClicked, !bConsumed);
+    if (direction.flip) setInverted(!orientation.inverted(), nowMs);
+    for (uint8_t i = 0; i < direction.browse; ++i) {
+      avatar.next(nowMs); startVibration(125, 35);
     }
     handleProductTouch(nowMs);
     handleImuInteraction(nowMs);

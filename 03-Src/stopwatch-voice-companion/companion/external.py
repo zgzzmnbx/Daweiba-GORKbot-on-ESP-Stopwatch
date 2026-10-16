@@ -17,6 +17,7 @@ from .motion import watch_token
 from .task_monitor import _pc_dynamic_speech
 from .speech_cache import cacheable_text
 from .voice import VoiceError
+from .voice_volume import scale_speech_wav
 
 ID = r'^[A-Za-z0-9_.:-]{1,100}$'
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,6 +114,23 @@ class ClientRegistry:
         except (OSError, ValueError, TypeError, KeyError):
             return {}  # unreadable configuration never grants access
 
+    def notifications_paused(self):
+        try:
+            return json.loads(self.path.read_text(encoding='utf-8')).get('notifications_paused') is True
+        except (OSError, ValueError, TypeError, AttributeError):
+            return False
+
+    def set_notifications_paused(self, paused):
+        from .external_setup import write_private
+        try:
+            data = json.loads(self.path.read_text(encoding='utf-8')) if self.path.exists() else {'clients': {}}
+            if not isinstance(data, dict) or not isinstance(data.get('clients'), dict):
+                raise ValueError('invalid settings')
+            data['notifications_paused'] = bool(paused)
+            write_private(self.path, data)
+        except (OSError, ValueError, TypeError) as error:
+            raise VoiceError(503, 'EXTERNAL_SETTINGS_UNAVAILABLE', '通知设置暂时无法保存，请稍后重试') from error
+
     def enabled(self, source):
         return self.clients().get(source, {}).get('enabled') is True
 
@@ -130,7 +148,7 @@ class ClientRegistry:
         token = secrets.token_urlsafe(32) if create else None
         clients[source] = {**policy.model_dump(), 'token_sha256': hashlib.sha256(token.encode()).hexdigest()
                            if token else clients[source]['token_sha256']}
-        write_private(self.path, {'clients': clients})
+        write_private(self.path, {'clients': clients, 'notifications_paused': self.notifications_paused()})
         result = {'source': source, **policy.model_dump()}
         if token:
             result['token'] = token  # one-time local owner response; never GET/list/log
@@ -162,7 +180,7 @@ class ExternalNotifications:
         self.watch_generation = None
         self.watch_identity = None
         self.audio_key = None
-        self.paused = False
+        self.paused = registry.notifications_paused()
 
     def start(self):
         self.database()
@@ -276,7 +294,7 @@ class ExternalNotifications:
                 raise VoiceError(409, 'EXTERNAL_EVENT_CONFLICT', '相同 event_id 的内容不可修改')
             return {**json.loads(row[1]), 'duplicate': True}, 200
         if self.paused:
-            raise VoiceError(409, 'EXTERNAL_PAUSED', '停止全部已暂停外部通知，需在Gork恢复')
+            raise VoiceError(409, 'EXTERNAL_PAUSED', '通知哨兵已暂停，请在Gork顶栏通知图标或哨兵页恢复')
         self.policy_check(source, payload)
         now = time.time()
         tombstone = db.execute('SELECT expires FROM cancelled WHERE source=? AND task_id=? AND attempt=?', (source,payload.task_id,payload.attempt)).fetchone()
@@ -496,7 +514,7 @@ class ExternalNotifications:
                         audio=await self.control.synthesize_auto_speech(speech.text,valid)
                     if valid():
                         if speech_target=='pc':
-                            record['delivery']['speech']=await asyncio.to_thread(_pc_dynamic_speech,audio,valid)
+                            record['delivery']['speech']=await asyncio.to_thread(lambda: _pc_dynamic_speech(scale_speech_wav(audio, getattr(self.control, 'pc_voice_volume', 100)), valid))
                         else:
                             record['delivery']['speech']=await self.control.robot.auto_speech(audio,text if payload.display_target in ('watch','both') else None,valid,command if payload.display_target in ('watch','both') else None)
                 except VoiceError as exc:record['delivery']['speech']=exc.code.lower()

@@ -2,17 +2,20 @@ const path = require('node:path');
 
 // All dimensions are DIP. Keep text readable even with a 25% avatar.
 const BUBBLE_POSITIONS = ['above', 'below', 'left', 'right'];
-function bubblePlacement(avatar, area, text = '', preferred = 'above') {
+function bubblePlacement(avatar, area, text = '', preferred = 'above', indicators=null) {
   const lines = String(text).split('\n').reduce((sum, line) => sum + Math.max(1, Math.ceil(Array.from(line).length / 18)), 0);
   const width = Math.min(328, area.width), height = Math.min(264, Math.max(160, 132 + lines * 25), area.height);
   const gap = 6, cx = avatar.x + avatar.width / 2, cy = avatar.y + avatar.height / 2;
   if (!BUBBLE_POSITIONS.includes(preferred)) preferred = 'above';
   const opposite = {above:'below',below:'above',left:'right',right:'left'};
+  const left=Math.min(avatar.x,indicators?.x??avatar.x),top=Math.min(avatar.y,indicators?.y??avatar.y);
+  const right=Math.max(avatar.x+avatar.width,indicators?indicators.x+indicators.width:avatar.x+avatar.width);
+  const bottom=Math.max(avatar.y+avatar.height,indicators?indicators.y+indicators.height:avatar.y+avatar.height);
   const choices = {
-    above:{x:cx-width/2,y:avatar.y-height-gap},
-    below:{x:cx-width/2,y:avatar.y+avatar.height+gap},
-    left:{x:avatar.x-width-gap,y:cy-height/2},
-    right:{x:avatar.x+avatar.width+gap,y:cy-height/2},
+    above:{x:cx-width/2,y:top-height-gap},
+    below:{x:cx-width/2,y:bottom+gap},
+    left:{x:left-width-gap,y:cy-height/2},
+    right:{x:right+gap,y:cy-height/2},
   };
   const fits = side => ['above','below'].includes(side)
     ? choices[side].y >= area.y && choices[side].y + height <= area.y + area.height
@@ -25,16 +28,17 @@ function bubblePlacement(avatar, area, text = '', preferred = 'above') {
   return {bounds:{x,y,width,height},side,anchor};
 }
 
-function createBubbleWindow({BrowserWindow, screen, avatar, preferences, getPosition = () => 'above'}) {
+function createBubbleWindow({BrowserWindow, screen, avatar, preferences, getPosition = () => 'above', onLayout=()=>{},getIndicatorBounds=()=>null}) {
   let win, ready = false, current = '', dismissOnClick = false, dismissed = false, revision = -1, disposed = false;
   function sync() {
     if (!win || win.isDestroyed() || !ready) return;
-    if (!current || dismissed || avatar.isDestroyed() || !avatar.isVisible()) { win.hide(); return; }
-    const place = bubblePlacement(avatar.getBounds(), screen.getDisplayMatching(avatar.getBounds()).workArea, current, getPosition());
+    if (!current || dismissed || avatar.isDestroyed() || !avatar.isVisible()) { win.hide(); onLayout(); return; }
+    const place = bubblePlacement(avatar.getBounds(), screen.getDisplayMatching(avatar.getBounds()).workArea, current, getPosition(),getIndicatorBounds());
     win.setBounds(place.bounds);
     win.setAlwaysOnTop(avatar.isAlwaysOnTop());
     win.webContents.send('gork:bubble', {text:current, side:place.side, anchor:place.anchor, dismissOnClick});
     if (!win.isVisible()) win.showInactive();
+    onLayout();
   }
   function update(character = {}) {
     if (disposed) return;
@@ -53,7 +57,7 @@ function createBubbleWindow({BrowserWindow, screen, avatar, preferences, getPosi
     }
     sync();
   }
-  return {update, sync, owns:sender => Boolean(win && !win.isDestroyed() && sender === win.webContents),
+  return {update, sync, visibleBounds:()=>win&&!win.isDestroyed()&&win.isVisible()?win.getBounds():null, owns:sender => Boolean(win && !win.isDestroyed() && sender === win.webContents),
     dismiss() { dismissed = true; sync(); },
     hide() { if (win && !win.isDestroyed()) win.hide(); },
     destroy() { disposed = true; if (win && !win.isDestroyed()) win.destroy(); win = null; ready = false; }};

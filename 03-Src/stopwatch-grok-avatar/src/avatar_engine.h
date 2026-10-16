@@ -139,6 +139,7 @@ class AvatarEngine {
   const char* activeName() const;
   const char* activeProtocolName() const;
   bool ready() const { return ready_; }
+  bool orientationIdle() const { return targetExpression_ == ExpressionId::Idle && !motion_.enabled() && !bubbleActive_; }
 
  private:
   struct DirtyRect {

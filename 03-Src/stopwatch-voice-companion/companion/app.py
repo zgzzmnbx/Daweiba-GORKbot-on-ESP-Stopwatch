@@ -15,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from . import __version__
+from .voice_volume import VoiceVolume
+from .traffic import TrafficMonitor
 from .motion import MotionStore, MotionLibrary, Conflict
 from .control import Controller, BLE_EXPRESSIONS
 from .answer import AnswerClient
@@ -32,6 +34,10 @@ from .voice import VoiceClient, VoiceError
 from .external import ClientRegistry, ExternalNotifications, Notification, CancelTask, Heartbeat, ClientPolicy, RegisterClient
 
 ROOT = Path(__file__).resolve().parents[1]
+
+class PCVoiceVolume(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    volume: int = Field(ge=0, le=100, strict=True)
 
 class AnswerSetup(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -71,6 +77,10 @@ class NetworkAddress(Payload):
 
 class WatchEnabled(Payload):
     enabled:bool
+
+
+class TrafficEnabled(Payload):
+    enabled: bool
 
 
 class Generation(Payload):
@@ -127,7 +137,7 @@ class MonitorSettings(Payload):
 
 
 class CodexSettings(Payload):
-    enabled: bool = False
+    enabled: bool = True
     mode: Literal['auto', 'specific'] = 'auto'
     thread_id: str = Field(default='', max_length=100, pattern=r'^[A-Za-z0-9_-]*$')
     target: Literal['desktop', 'watch', 'both'] = 'desktop'
@@ -212,7 +222,9 @@ def _codex_preferences(path):
         values = CodexSettings.model_validate(saved).model_dump()
     except (FileNotFoundError, OSError, ValueError):
         values = CodexSettings().model_dump()
-    values['enabled'] = False  # startup always requires a fresh, explicit opt-in
+    # Each backend start enables observation; manual off lasts for this run.
+    # Keep all saved task/output preferences and leave the saved file untouched.
+    values['enabled'] = True
     return values
 
 
@@ -257,6 +269,11 @@ def create_app(config=None, controller=None, cost_client=None, astra_client=None
             config.get("answer_api_key_env", "GORK_ANSWER_API_KEY"), config.get("request_timeout", 60),api_key=answer_store.key,
             system_prompt=answer_store.system_prompt,max_chars=answer_store.max_chars),
         config.get("answer_history_turns", 4))
+    traffic_path = config.get('traffic_data_dir', None if controller is not None else
+                              str(Path(os.environ.get('LOCALAPPDATA', str(ROOT))) / 'GorkRobot' / 'traffic'))
+    traffic = TrafficMonitor(traffic_path)
+    pc_volume = VoiceVolume(config.get('voice_volume_path', None if controller is not None else ROOT / 'voice-volume.local.json'))
+    control.pc_voice_volume = pc_volume.value
     astra_cost = astra_client or CostClient('http://127.0.0.1:5189', expected_service='zhisuan-astra')
     monitor_sources = {'legacy': cost, 'astra': astra_cost}
     monitor_source = 'legacy'
@@ -294,6 +311,7 @@ def create_app(config=None, controller=None, cost_client=None, astra_client=None
         await monitor.configure(**initial)
         await codex.configure(codex_initial)
         external.start()
+        await traffic.start()
         async def prewarm():
             while True:
                 if (control.owner and control.owner==control.voice_owner and control.voice.session
@@ -312,6 +330,7 @@ def create_app(config=None, controller=None, cost_client=None, astra_client=None
             if warmup_task:
                 warmup_task.cancel()
                 await asyncio.gather(warmup_task,return_exceptions=True)
+            await traffic.close()
             await external.close()
             await monitor.stop()
             await codex.stop()
@@ -375,6 +394,7 @@ def create_app(config=None, controller=None, cost_client=None, astra_client=None
     app.state.motion_store = motion_store
     app.state.motion_library = motion_library
     app.state.control = control
+    app.state.traffic = traffic
     app.state.cost = cost
     app.state.task_monitor = monitor
     app.state.codex_monitor = codex
@@ -444,6 +464,32 @@ def create_app(config=None, controller=None, cost_client=None, astra_client=None
     async def external_heartbeat(payload: Heartbeat, request: Request):
         return await external.heartbeat(external_source(request), payload)
 
+    @app.get('/api/traffic')
+    async def traffic_snapshot(details: bool = False):
+        return traffic.snapshot(details)
+
+    @app.put('/api/traffic')
+    async def traffic_configure(payload: TrafficEnabled, request: Request):
+        control.renew_workspace(owner(request))
+        try:
+            return await traffic.configure(payload.enabled)
+        except (OSError, ValueError):
+            raise VoiceError(503, 'TRAFFIC_UNAVAILABLE', '流量监测暂时无法启动或保存，请稍后重试')
+
+    @app.get('/api/voice/volume')
+    async def get_voice_volume():
+        return {'volume': control.pc_voice_volume}
+
+    @app.put('/api/voice/volume')
+    async def set_voice_volume(payload: PCVoiceVolume, request: Request):
+        control.renew_workspace(owner(request))
+        try:
+            pc_volume.save(payload.volume)
+        except OSError as error:
+            raise VoiceError(503, 'VOICE_VOLUME_SAVE_FAILED', '语音音量暂时无法保存，请稍后重试') from error
+        control.pc_voice_volume = pc_volume.value
+        return {'volume': control.pc_voice_volume}
+
     @app.get('/api/external/protocol')
     async def external_protocol():
         return FileResponse(PROJECT_ROOT / '00-docs/接口/Gork机器人通用输出接口-v1.0.0-【codex】.md', media_type='text/markdown; charset=utf-8')
@@ -490,10 +536,20 @@ def create_app(config=None, controller=None, cost_client=None, astra_client=None
         control.output_target=payload['target']
         return {'target':control.output_target}
 
+    @app.post('/api/external/pause')
+    async def external_pause(request: Request):
+        control.renew_workspace(owner(request))
+        async with sentinel_config_lock:
+            external_registry.set_notifications_paused(True)
+            await external.stop()
+        return {'paused': True}
+
     @app.post('/api/external/resume')
     async def external_resume(request: Request):
         control.renew_workspace(owner(request))
-        external.paused = False
+        async with sentinel_config_lock:
+            external_registry.set_notifications_paused(False)
+            external.paused = False
         return {'paused': False}
 
     @app.exception_handler(VoiceError)
@@ -535,7 +591,8 @@ def create_app(config=None, controller=None, cost_client=None, astra_client=None
         result['interaction_expression']=control.interaction_motion()
         result['speech_output']={'route':control.routing['tts'],
             'applied':{key:control.speech[key] for key in ('speaker_id','cloud_voice','speed') if control.speech and key in control.speech},
-            'last':control.last_speech_output}
+            'last':control.last_speech_output,
+            'observation':getattr(control.voice,'tts_observation',None)}
         result['fixed_speech_cache']={'hits':control.fixed_speech_hits,'misses':control.fixed_speech_misses,
                                     'warmup':dict(control.fixed_speech_warmup)}
         result['answer_setup'] = answer_store.snapshot()

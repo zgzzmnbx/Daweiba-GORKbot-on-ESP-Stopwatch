@@ -2,6 +2,7 @@
 import os
 from urllib.parse import urlsplit
 import uuid
+import time
 
 import httpx
 
@@ -24,6 +25,7 @@ class AnswerClient:
         self.model = model.strip()
         self.key_env = key_env.strip()
         self.api_key = api_key
+        self.observation = None
         self.timeout = timeout
         self.system_prompt = system_prompt
         self.max_chars = max_chars
@@ -53,9 +55,18 @@ class AnswerClient:
         remote = parsed.hostname not in ("127.0.0.1", "localhost", "::1")
         if remote and not (self.api_key or os.environ.get(self.key_env)):
             return {"enabled": False, "reason": f"缺少凭据环境变量 {self.key_env}"}
-        return {"enabled": True, "reason": "已配置", "model": self.model, "remote": remote}
+        return {"enabled": True, "reason": "已配置", "model": self.model, "remote": remote, "observation": self.observation}
 
     async def complete(self, text, history, *, short=False):
+        try:
+            result = await self._complete(text, history, short=short)
+        except VoiceError:
+            self.observation = {"state": "error", "at": time.time()}
+            raise
+        self.observation = {"state": "success", "at": time.time()}
+        return result
+
+    async def _complete(self, text, history, *, short=False):
         state = self.capability()
         if not state["enabled"]:
             raise VoiceError(503, "ANSWER_UNAVAILABLE", state["reason"])

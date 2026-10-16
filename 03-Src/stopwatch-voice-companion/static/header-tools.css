@@ -1,0 +1,31 @@
+.header-tools{display:flex;align-items:center;gap:6px;margin-left:auto;flex:none}
+.app-header .global-status{flex:initial;margin-right:auto}
+.app-header .header-tools button,.app-header .header-tools summary{position:relative;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:36px;min-width:36px;height:36px;padding:0;border:1px solid var(--line,#d5e0db);border-radius:10px;background:transparent;color:inherit;cursor:pointer;list-style:none}
+.header-tools summary::-webkit-details-marker{display:none}
+.app-header .header-tools button:hover,.app-header .header-tools summary:hover{background:color-mix(in srgb,currentColor 8%,transparent)}
+.app-header .header-tools button:focus-visible,.app-header .header-tools summary:focus-visible{outline:2px solid var(--accent,#16876a);outline-offset:3px}
+.app-header .header-tools button:disabled{opacity:.45;cursor:wait}
+.app-header .header-tools button[role=switch][aria-checked=true]{color:var(--accent,#16876a);border-color:color-mix(in srgb,currentColor 42%,transparent);background:color-mix(in srgb,currentColor 10%,transparent)}
+.header-tools .ph-icon{display:block;width:19px;height:19px;background:currentColor;mask:var(--ph-icon) center/contain no-repeat;flex:none}
+.ph-icon[data-icon=bell]{--ph-icon:url('/static/icons/phosphor/bell.svg')}
+.ph-icon[data-icon=robot]{--ph-icon:url('/static/icons/phosphor/robot.svg')}
+.ph-icon[data-icon=palette]{--ph-icon:url('/static/icons/phosphor/palette.svg')}
+.ph-icon[data-icon=graph]{--ph-icon:url('/static/icons/phosphor/graph.svg')}
+.ph-icon[data-icon=speaker-high]{--ph-icon:url('/static/icons/phosphor/speaker-high.svg')}
+.header-tools .header-volume{display:flex;align-items:center;gap:7px;width:152px;margin:0 8px 0 0;color:inherit;cursor:default}
+.header-volume input[type=range]{width:86px;min-width:0;height:24px;padding:0;margin:0;accent-color:var(--accent,#16876a);cursor:pointer;flex:1}
+.header-volume output{width:34px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:inherit}
+.header-volume input:focus-visible{outline:2px solid var(--accent,#16876a);outline-offset:3px;border-radius:4px}
+[data-icon=moon]>.ph-icon,[data-icon=moon] .ph-icon{--ph-icon:url('/static/icons/phosphor/moon.svg')}
+[data-icon=sun]>.ph-icon,[data-icon=sun] .ph-icon{--ph-icon:url('/static/icons/phosphor/sun.svg')}
+.header-tools .tool-state,.header-tools .theme-color-current{position:absolute;right:4px;bottom:4px;width:5px;height:5px;border-radius:50%;background:#85958e;border:1px solid var(--header-bg,#1b3034);margin:0;pointer-events:none}
+.header-tools [aria-checked=true] .tool-state{background:currentColor}
+.header-tools .theme-color-current{background:var(--accent,#16876a)}
+.header-tools .tool-label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.header-tools .theme-color-menu{position:relative;margin:0}
+.header-tools .theme-color-panel{right:0;left:auto;z-index:100}
+.message-heading{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-bottom:8px}
+.message-heading small{margin:0}
+.message-source-tag{display:inline-block;padding:2px 7px;border-radius:5px;background:var(--soft,#edf2ef);color:var(--muted,#68766f);font-size:11px;font-weight:500;line-height:1.6}
+@media(max-width:700px){.header-tools{gap:4px}.app-header .header-tools button,.app-header .header-tools summary{width:30px;min-width:30px;height:30px;border-radius:8px}.header-tools .ph-icon{width:17px;height:17px}.app-header .global-status{margin:0;flex:1}.header-tools .theme-color-panel{position:fixed;right:12px;top:56px;max-width:calc(100vw - 24px)}}
+@media(max-width:700px){.app-header{height:88px!important;min-height:88px;flex-wrap:nowrap;align-items:center}.app-header .global-status{display:none}.header-tools{display:grid;grid-template-columns:repeat(5,30px);column-gap:4px;row-gap:3px}.header-tools .header-volume{grid-column:1/-1;width:166px;margin:0}.header-volume input[type=range]{height:23px}.header-tools .theme-color-panel{top:86px}}

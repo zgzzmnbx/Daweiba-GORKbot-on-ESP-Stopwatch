@@ -1,0 +1,48 @@
+{
+  "version": "v0.11.11-dev",
+  "started_at": "2026-10-15T15:21:27+08:00",
+  "completed_at": "2026-10-15T15:23:27+08:00",
+  "candidate_sha256": "bfebe1051fc13fabc11d91f948c8a802545e3f9313bc9cb5095b6e7d74b958ce",
+  "candidate_bytes": 2324320,
+  "chip": "ESP32-S3",
+  "psram_mb": 8,
+  "flash_mb": 16,
+  "app_address": 65536,
+  "app_capacity": 6553600,
+  "erase_end_exclusive": 2392064,
+  "ota_sequences": [
+    1
+  ],
+  "old_versions": [
+    "v0.11.9-dev"
+  ],
+  "flashed": true,
+  "verified": true,
+  "protected_prefix_unchanged": true,
+  "reset_requested": true,
+  "usb_reenumerated": true,
+  "boot_observed": true,
+  "runtime_query": {
+    "observed_at": "2026-10-15T15:26:07+08:00",
+    "device": "StopWatch-Gork",
+    "firmware": "v0.11.11-dev",
+    "protocol": 1,
+    "network_configured": true,
+    "network_policy": 0,
+    "network_authenticated": false
+  },
+  "pc_health": {
+    "version": "0.20.43-dev",
+    "voice_ready": true,
+    "watch_connected": true,
+    "watch_dialogue_enabled": true,
+    "watch_stage": "ready"
+  },
+  "user_acceptance": {
+    "confirmed": true,
+    "text": "好了，测试好了",
+    "recorded_at": "2026-10-15T15:28:43+08:00",
+    "scope": "本轮蓝键三连、倒挂开关与原录音取消功能",
+    "quantified_performance_or_endurance": false
+  }
+}

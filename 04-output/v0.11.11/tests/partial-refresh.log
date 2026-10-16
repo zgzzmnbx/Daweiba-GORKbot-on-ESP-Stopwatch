@@ -1,0 +1,6 @@
+466px: frames=3530 legacy_to_motion=104 mismatched=0 stale_pixels=0
+audio_hint_frames=200 active_rects=5 restored_transitions=2 idle_strip_writes=0
+
+468px: frames=3530 legacy_to_motion=104 mismatched=0 stale_pixels=0
+audio_hint_frames=200 active_rects=5 restored_transitions=2 idle_strip_writes=0
+

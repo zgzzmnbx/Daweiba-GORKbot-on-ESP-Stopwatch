@@ -4,20 +4,21 @@
 import {toPCM16} from './pcm.js';
 
 export class WavPlayer {
-  constructor(createContext = () => new AudioContext()) { this.createContext = createContext; this.context = null; this.source = null; }
+  constructor(createContext = () => new AudioContext()) { this.createContext = createContext; this.context = null; this.source = null; this.volume = 100; this.gain = null; }
   get playing() { return Boolean(this.source); }
+  setVolume(value) { this.volume = Math.max(0,Math.min(100,value)); if(this.gain)this.gain.gain.value = this.volume / 100; }
   async play(bytes, onended = () => {}) {
     this.stop();
     const context = this.createContext(); this.context = context;
     await context.resume();
     const buffer = await context.decodeAudioData(bytes);
     if (this.context !== context) return false;
-    const source = context.createBufferSource(); this.source = source; source.buffer = buffer; source.connect(context.destination);
-    source.onended = () => { if (this.source !== source) return; this.source = null; this.context = null; context.close().catch(() => {}); onended(); };
+    const source = context.createBufferSource(); this.source = source; source.buffer = buffer; this.gain = context.createGain(); this.gain.gain.value = this.volume / 100; source.connect(this.gain); this.gain.connect(context.destination);
+    source.onended = () => { if (this.source !== source) return; this.source = null; this.context = null; this.gain = null; context.close().catch(() => {}); onended(); };
     source.start(); return true;
   }
   stop() {
-    const source = this.source; this.source = null;
+    const source = this.source; this.source = null; this.gain = null;
     if (source) { source.onended = null; try { source.stop(); } catch {} source.disconnect(); }
     const context = this.context; this.context = null;
     if (context && context.state !== 'closed') context.close().catch(() => {});

@@ -1,0 +1,15 @@
+{
+  "version": "0.21.6-dev",
+  "date": "2026-10-16",
+  "backend": {
+    "passed": 282,
+    "seconds": 48.35
+  },
+  "frontend": {
+    "passed": 125
+  },
+  "ui_build": true,
+  "ui_check": true,
+  "production_restarted": false,
+  "watch_changed": false
+}

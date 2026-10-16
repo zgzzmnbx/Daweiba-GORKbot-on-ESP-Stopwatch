@@ -1,0 +1,58 @@
+{
+  "result": "PASS",
+  "before": {
+    "x": 1658,
+    "y": 166,
+    "width": 229,
+    "height": 38
+  },
+  "checks": [
+    {
+      "hover": 0,
+      "after": {
+        "x": 1658,
+        "y": 166,
+        "width": 229,
+        "height": 38
+      },
+      "detail": {
+        "x": 1634,
+        "y": 212,
+        "width": 277,
+        "height": 220
+      }
+    },
+    {
+      "hover": 1,
+      "after": {
+        "x": 1658,
+        "y": 166,
+        "width": 229,
+        "height": 38
+      },
+      "detail": {
+        "x": 1634,
+        "y": 212,
+        "width": 277,
+        "height": 454
+      }
+    },
+    {
+      "hover": 2,
+      "after": {
+        "x": 1658,
+        "y": 166,
+        "width": 229,
+        "height": 38
+      },
+      "detail": {
+        "x": 1634,
+        "y": 212,
+        "width": 277,
+        "height": 220
+      }
+    }
+  ],
+  "errors": [],
+  "acceptance": "native Electron coordinates, hover/expand/collapse/traffic updates/leave keep numeric strip unchanged; detail card clears it"
+}

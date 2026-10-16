@@ -437,6 +437,21 @@ DEFAULTS = {'enabled': True, 'mode': 'auto', 'thread_id': '', 'target': 'desktop
             'sound': False, 'sound_target': 'pc', 'threshold': 20, 'bucket_id': '', 'ring_mode': 'visible'}
 
 
+@pytest.mark.parametrize('content', [None, '{invalid', '[]', '{}', '{"enabled":false}'])
+def test_codex_startup_defaults_on_without_saving_or_replaying(tmp_path, content):
+    saved = tmp_path / 'codex.json'
+    if content is not None:
+        saved.write_text(content, encoding='utf-8')
+    values = _codex_preferences(saved)
+    assert values['enabled'] is True
+    assert values['mode'] == 'auto' and values['sound'] is False
+    assert values['target'] == 'desktop'
+    if content is None:
+        assert not saved.exists()
+    else:
+        assert saved.read_text(encoding='utf-8') == content
+
+
 def test_quota_ring_defaults_hidden_and_legacy_checkbox_does_not_enable_it(tmp_path):
     assert CodexSettings().ring_mode == 'hidden'
     assert CodexSettings(ring_mode='hover').ring_mode == 'hover'
@@ -445,7 +460,7 @@ def test_quota_ring_defaults_hidden_and_legacy_checkbox_does_not_enable_it(tmp_p
     saved = tmp_path / 'codex.json'
     saved.write_text(json.dumps({'enabled': True, 'target': 'watch', 'show_ring': True}), encoding='utf-8')
     preferences = _codex_preferences(saved)
-    assert preferences['enabled'] is False
+    assert preferences['enabled'] is True
     assert preferences['target'] == 'watch'
     assert preferences['ring_mode'] == 'hidden'
     assert 'show_ring' not in preferences
@@ -561,7 +576,8 @@ def test_coordinator_cancel_queued_token_and_manual_priority():
     asyncio.run(run())
 
 
-def test_codex_api_is_off_each_start_and_owner_protects_changes(tmp_path):
+@pytest.mark.parametrize('saved_enabled', [False, True])
+def test_codex_api_starts_on_preserves_settings_and_owner_protects_changes(tmp_path, saved_enabled):
     import httpx
     class Cost:
         async def monitor_feed(self):
@@ -573,6 +589,14 @@ def test_codex_api_is_off_each_start_and_owner_protects_changes(tmp_path):
                   'codex_jsonl_root': tmp_path / 'sessions',
                   'codex_hook_queue': tmp_path / 'hooks'}
         (tmp_path / 'cost.json').write_text('{"enabled":false}', encoding='utf-8')
+        saved = {**DEFAULTS, 'enabled': saved_enabled, 'mode': 'specific',
+                 'thread_id': THREAD, 'threshold': 31, 'drop_step': 4}
+        config['codex_state_path'].write_text(json.dumps(saved), encoding='utf-8')
+        folder = config['codex_jsonl_root'] / datetime.now(timezone.utc).strftime('%Y/%m/%d')
+        folder.mkdir(parents=True)
+        (folder / f'rollout-old-{THREAD}.jsonl').write_text(
+            line('task_started', 'old', stamp='2026-01-01T00:00:00Z')
+            + line('task_complete', 'old', stamp='2026-01-01T00:01:00Z'), encoding='utf-8')
         control = Controller(FakeVoice(), FakeRobot())
         app = create_app(config, controller=control, cost_client=Cost())
         app.state.codex_monitor.rpc = RPC()
@@ -580,21 +604,46 @@ def test_codex_api_is_off_each_start_and_owner_protects_changes(tmp_path):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),
                     base_url='http://127.0.0.1:8766',
                     headers={'X-Companion-Client': str(uuid.uuid4())}) as client:
-                assert not (await client.get('/api/codex/sentinel')).json()['enabled']
+                state = (await client.get('/api/codex/sentinel')).json()
+                assert state['enabled']
+                for key in ('mode', 'thread_id', 'threshold', 'drop_step', 'sound', 'target'):
+                    assert state[key] == saved[key]
+                assert control.owner is None
+                assert not state['history'] and not control.notifications.queue
+                assert json.loads(config['codex_state_path'].read_text()) == saved
+                await asyncio.sleep(.05)
+                state = (await client.get('/api/codex/sentinel')).json()
+                assert state['task_status'] == 'available'
+                assert app.state.codex_monitor.rpc.calls >= 1
+                assert not state['history'] and not control.notifications.queue
+                assert control.owner is None and control.voice_owner is None
                 settings = dict(DEFAULTS)
                 assert (await client.put('/api/codex/sentinel', json=settings)).status_code == 401
                 assert (await client.post('/api/workspace', json={})).status_code == 200
                 assert (await client.put('/api/codex/sentinel', json=settings)).status_code == 200
                 assert (await client.get('/api/codex/sentinel')).json()['enabled']
+                assert (await client.put('/api/codex/sentinel', json={**settings, 'enabled': False})).status_code == 200
+                for _ in range(2):
+                    assert not (await client.get('/api/codex/sentinel')).json()['enabled']
+                assert (await client.put('/api/codex/sentinel', json=settings)).status_code == 200
                 assert (await client.put('/api/codex/sentinel', json={**settings, 'threshold': 100})).status_code == 422
                 assert (await client.post('/api/codex/quota/refresh')).status_code == 200
                 assert (await client.get('/api/desktop/state')).json()['codex']['enabled']
                 assert (await client.get('/api/codex/sentinel', headers={'Origin': 'https://evil.example'})).status_code == 403
                 assert (await client.post('/api/desktop/stop')).status_code == 200
                 assert not (await client.get('/api/codex/sentinel')).json()['enabled']
+                # A saved manual disable applies until the next backend start.
+                assert (await client.put('/api/codex/sentinel', json={**saved, 'enabled': False})).status_code == 200
+        assert app.state.codex_monitor.worker is None
+        assert app.state.codex_monitor.quota_task is None
         next_app = create_app(config, controller=Controller(FakeVoice(), FakeRobot()), cost_client=Cost())
+        next_app.state.codex_monitor.rpc = RPC()
         async with next_app.router.lifespan_context(next_app):
-            assert not next_app.state.codex_monitor.enabled
+            assert next_app.state.codex_monitor.enabled
+            assert next_app.state.codex_monitor.threshold == 31
+            assert next_app.state.codex_monitor.thread_id == THREAD
+        assert next_app.state.codex_monitor.worker is None
+        assert next_app.state.codex_monitor.quota_task is None
     asyncio.run(run())
 
 

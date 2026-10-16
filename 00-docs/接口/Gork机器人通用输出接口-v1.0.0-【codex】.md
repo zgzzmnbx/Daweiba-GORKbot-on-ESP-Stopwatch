@@ -43,7 +43,9 @@ if client.receipt(request['event_id'])['status'] in ('active', 'dispatching', 'p
 | POST /heartbeat | 状态续期，不重新播放、不复活失效状态 |
 | POST /cancel | 取消本来源 task_id + attempt；24小时拒绝该轮次晚到事件 |
 
-控制台所有者专用：GET /overview，POST /clients，PUT /clients/{source}，POST /owner-cancel，PATCH /output，POST /resume。需当前工作台 X-Companion-Client，并校验所有权；外部令牌不能调用这些操作。全局停止通过已有 `/api/desktop/stop`：清队列、停止输出并暂停外部通知，需用户在哨兵页恢复；恢复不会重播旧事件。
+控制台所有者专用：GET /overview，POST /clients，PUT /clients/{source}，POST /owner-cancel，PATCH /output，POST /pause、POST /resume。需当前工作台 X-Companion-Client，并校验所有权；外部令牌不能调用这些操作。全局停止通过已有 `/api/desktop/stop`：清队列、停止输出并暂停外部通知，可在顶栏通知图标或哨兵页恢复；恢复不会重播旧事件。顶栏暂停/恢复接口返回 `{ "paused": true/false }`，保存显式选择，保留来源令牌与显示/声音权限；暂停会取消在途程序通知与状态租约，不影响语音会话及旧兼容轮询。关闭程序时的临时停止不覆盖保存选择。
+
+控制台取得本窗口工作台控制权后，以2.5秒间隔只读GET /overview，把最近最多30条已有文本回执显示在聊天页；隐藏页面停止轮询。相同来源/事件ID更新原消息，显示回执不追加播报或写入AI回答上下文，新会话忽略清空前的回执。
 
 ## 请求字段
 

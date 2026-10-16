@@ -102,6 +102,7 @@ inline void*heap_caps_calloc(size_t n,size_t s,int){return calloc(n,s);}inline v
 #include "audio_probe.h"
 #undef private
 #include "audio_timing.h"
+#include "watch_orientation.h"
 constexpr uint32_t kLeaseMs=15000,kBlockSamples=320,kRecordBytes=320000;
 constexpr uint16_t kOpusHelloId=0xf00d;
 uint16_t get16(const uint8_t*p){return p[0]|uint16_t(p[1])<<8;}uint32_t get32(const uint8_t*p){return get16(p)|uint32_t(get16(p+2))<<16;}
@@ -177,13 +178,28 @@ int main(){
    a.enter(false);packet(a,AudioProbe::Hello,1,37000);sounds.playing=true;sounds.announcing=false;
    put32(p.bytes+4,a.epoch_);a.process(p,37001);assert(a.lastError_==2&&sounds.playing);sounds.stopNow();a.leave();
  }
+ // Keep the exact production B cancellation path while observing idle releases.
+ a.leave();a.enter(false);a.networkRoute_=true;gorkorientation::TripleB triple;
+ for(unsigned i=0;i<3;i++){
+   unsigned now=40000+i*120;clockNow=now;
+   M5.BtnB.down=true;auto eventsBefore=net.events.size();a.update(now);
+   assert(net.events.size()==eventsBefore+1&&net.events.back()==2);M5.BtnB.clear();
+   clockNow=now+30;M5.BtnB.clicked=M5.BtnB.released=true;
+   bool idle=a.orientationIdle(clockNow);a.update(clockNow);bool consumed=a.takeBConsumed();
+   auto action=triple.update(clockNow,idle&&a.orientationIdle(clockNow),true,!consumed);
+   assert(action.flip==(i==2)&&action.browse==0&&!M5.Mic.running);M5.BtnB.clear();
+ }
+ // A still starts immediately; B still stops a live microphone on its press.
+ a.leave();a.enter(false);a.networkRoute_=true;begin(a,42000);
+ assert(!a.orientationIdle(42003));clockNow=42004;M5.BtnB.down=true;a.update(clockNow);
+ assert(!M5.Mic.running&&replies.back().flag==AudioProbe::Cancel);M5.BtnB.clear();a.leave();
  std::cout<<"PASS production AudioProbe: REC waits for 500ms completed PCM, all prefix samples retained, two-slot sample continuity and drain, cold-task delay/failure/cancel, click/start, released capture, click/send, pending cancel/expiry and late Arm, blue/combo/settings, drop/revoke, watchdog, 10s limit, short audio, mic failure, diagnostic hold/release, warm HELLO, PCM/Opus preempt connection speech only\n";
 }
 '''
 
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
-    for name in ('avatar_engine.h','avatar_engine.cpp','grok_bot_catalog.inc','grok_renderer.h','grok_renderer.cpp','grok_geometry.h','motion_scene.h','motion_scene.cpp','motion_config.h','custom_expressions.h','motion_draw.h','motion_draw.cpp','audio_probe.h','product_recorder.h','audio_task_core.h','audio_timing.h'):
+    for name in ('avatar_engine.h','avatar_engine.cpp','grok_bot_catalog.inc','grok_renderer.h','grok_renderer.cpp','grok_geometry.h','motion_scene.h','motion_scene.cpp','motion_config.h','custom_expressions.h','motion_draw.h','motion_draw.cpp','audio_probe.h','product_recorder.h','watch_orientation.h','audio_task_core.h','audio_timing.h'):
         shutil.copyfile(FW/name,OUT/name)
     stub=STUB.replace('struct DisplayStub {',r'''struct DisplayStub {
  void fillRect(int x,int y,int w,int h,uint16_t c){for(int yy=y;yy<y+h;yy++)for(int xx=x;xx<x+w;xx++)pixel(xx,yy,c);}
@@ -218,10 +234,10 @@ using portMUX_TYPE=int;
     mount=['docker','run','--rm','--network','none','-v',f'{OUT}:/work','-w','/work','--entrypoint']
     logs=[]
     for name,files in (('avatar',['avatar_test.cpp','avatar_engine.cpp','grok_renderer.cpp','motion_scene.cpp','motion_draw.cpp']),('audio',['audio_test.cpp'])):
-        compiled=subprocess.run(mount+['g++',IMAGE,'-std=c++17','-O2','-I.',*files,'-o',name],capture_output=True,text=True)
+        compiled=subprocess.run(mount+['g++',IMAGE,'-std=c++17','-O2','-I.',*files,'-o',name],capture_output=True,text=True,encoding="utf-8",errors="replace")
         (OUT/f'{name}-compile.log').write_text(compiled.stdout+compiled.stderr,encoding='utf-8')
         if compiled.returncode:raise RuntimeError(compiled.stderr[-4000:])
-        result=subprocess.run(mount+['/work/'+name,IMAGE],capture_output=True,text=True)
+        result=subprocess.run(mount+['/work/'+name,IMAGE],capture_output=True,text=True,encoding="utf-8",errors="replace")
         logs.append(result.stdout+result.stderr)
         (OUT/'result.log').write_text(''.join(logs),encoding='utf-8')
         print(logs[-1])

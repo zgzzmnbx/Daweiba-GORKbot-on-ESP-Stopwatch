@@ -1,12 +1,20 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('gorkDesktop', Object.freeze({
+  indicatorDrag:value=>ipcRenderer.invoke('gork:indicator-drag',value),
+  getIndicatorSettings:()=>ipcRenderer.invoke('gork:indicator-settings'),
+  setIndicatorSettings:value=>ipcRenderer.invoke('gork:set-indicator-settings',value),
+  onIndicators:callback=>{const listener=(_e,value)=>callback(value);ipcRenderer.on('gork:indicators',listener);return ()=>ipcRenderer.removeListener('gork:indicators',listener);},
   setTokenHover: enabled => ipcRenderer.invoke('gork:token-hover', enabled),
   setTokenHeight: height => ipcRenderer.invoke('gork:token-height', height),
   hideTokenCard: () => ipcRenderer.invoke('gork:hide-token-card'),
   onTokenReset: callback => {
     const listener=()=>callback();ipcRenderer.on('gork:token-reset',listener);
     return ()=>ipcRenderer.removeListener('gork:token-reset',listener);
+  },
+  onTraffic: callback => {
+    const listener=(_event,value)=>callback(value);ipcRenderer.on('gork:traffic',listener);
+    return ()=>ipcRenderer.removeListener('gork:traffic',listener);
   },
   onTokenUsage: callback => {
     const listener=(_event,value)=>callback(value);ipcRenderer.on('gork:token-usage',listener);

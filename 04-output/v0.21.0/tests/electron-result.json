@@ -1,0 +1,139 @@
+{
+  "result": "PASS",
+  "layouts": [
+    {
+      "theme": "mantine-dark",
+      "width": 1181,
+      "overflow": false,
+      "button": {
+        "x": 991,
+        "right": 1027,
+        "y": 13,
+        "bottom": 49
+      },
+      "panel": {
+        "x": 352,
+        "right": 1153
+      },
+      "height": 821
+    },
+    {
+      "theme": "mantine-dark",
+      "width": 801,
+      "overflow": false,
+      "button": {
+        "x": 621,
+        "right": 657,
+        "y": 13,
+        "bottom": 49
+      },
+      "panel": {
+        "x": 290,
+        "right": 781
+      },
+      "height": 821
+    },
+    {
+      "theme": "mantine-light",
+      "width": 1181,
+      "overflow": false,
+      "button": {
+        "x": 991,
+        "right": 1027,
+        "y": 13,
+        "bottom": 49
+      },
+      "panel": {
+        "x": 352,
+        "right": 1153
+      },
+      "height": 821
+    },
+    {
+      "theme": "mantine-light",
+      "width": 801,
+      "overflow": false,
+      "button": {
+        "x": 621,
+        "right": 657,
+        "y": 13,
+        "bottom": 49
+      },
+      "panel": {
+        "x": 290,
+        "right": 781
+      },
+      "height": 821
+    },
+    {
+      "theme": "classic",
+      "width": 1181,
+      "overflow": false,
+      "button": {
+        "x": 995,
+        "right": 1031,
+        "y": 9.5,
+        "bottom": 45.5
+      },
+      "panel": {
+        "x": 374.5,
+        "right": 1150.5
+      },
+      "height": 821
+    },
+    {
+      "theme": "classic",
+      "width": 801,
+      "overflow": false,
+      "button": {
+        "x": 621,
+        "right": 657,
+        "y": 9.5,
+        "bottom": 45.5
+      },
+      "panel": {
+        "x": 314,
+        "right": 785
+      },
+      "height": 821
+    },
+    {
+      "avatar": true,
+      "width": 240,
+      "height": 280,
+      "x": 66.421875,
+      "y": 170.65625,
+      "right": 173.5625,
+      "bottom": 220.34375,
+      "hidden": false
+    },
+    {
+      "avatar": true,
+      "width": 144,
+      "height": 168,
+      "x": 31.34375,
+      "y": 135.40625,
+      "right": 112.65625,
+      "bottom": 162.1875,
+      "hidden": false
+    },
+    {
+      "avatar": true,
+      "width": 60,
+      "height": 71,
+      "x": 1.203125,
+      "y": 42.203125,
+      "right": 58.796875,
+      "bottom": 61.796875,
+      "hidden": false
+    }
+  ],
+  "errors": [],
+  "checks": [
+    "production console DOM/modules and desktop preload IPC",
+    "three themes at two desktop widths",
+    "switch on/off and Windows history view",
+    "three avatar sizes; ordinary state updates preserve badge",
+    "no voice, device or cloud calls"
+  ]
+}

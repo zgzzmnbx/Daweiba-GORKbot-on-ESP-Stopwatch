@@ -34,6 +34,9 @@ test('avatar visibility IPC accepts only the console sender and boolean state', 
   const sent = [];
   const avatar = {getBounds:()=>bounds,setBounds:value=>{bounds=value;},isDestroyed:()=>false,isVisible:()=>visible,showInactive:()=>{visible=true;},hide:()=>{visible=false;},isAlwaysOnTop:()=>alwaysOnTop,setAlwaysOnTop:value=>{alwaysOnTop=value;},webContents:{send:(...args)=>sent.push(args)}};
   scope.module.exports.setWindows({webContents:consoleContents},avatar);
+  const drag=handlers.get('gork:indicator-drag');
+  assert.throws(()=>drag({sender:consoleContents},{phase:'start',id:1}),/Only indicators/);
+  assert.throws(()=>drag({sender:outsider},{phase:'start',id:1}),/Only indicators/);
   const tokenHover = handlers.get('gork:token-hover');
   assert.throws(()=>tokenHover({sender:outsider},true),/Invalid token hover/);
   assert.throws(()=>tokenHover({sender:consoleContents},true),/Invalid token hover/);
@@ -59,6 +62,17 @@ test('avatar visibility IPC accepts only the console sender and boolean state', 
   assert.equal(look.id,'kirby');assert.equal(look.bodyColor,'#123456');
   assert.equal(savedSizes.at(-1).appearance.id,'kirby');
   assert.equal(sent.at(-1)[1].appearance.id,'kirby');
+  const getIndicators=handlers.get('gork:indicator-settings'),setIndicators=handlers.get('gork:set-indicator-settings');
+  assert.throws(()=>getIndicators({sender:outsider}),/Only the console/);
+  assert.throws(()=>setIndicators({sender:outsider},{mode:'bubbles',items:[]}),/Invalid/);
+  assert.throws(()=>setIndicators({sender:consoleContents},{mode:'bubbles',items:['wrong']}),/Invalid/);
+  setIndicators({sender:consoleContents},{mode:'menu',items:['vpn','tokens']});
+  assert.equal(savedSizes.at(-1).indicatorSettings.mode,'menu');
+  assert.equal(savedSizes.at(-1).indicatorSettings.items.join(','),'vpn,tokens');
+  vm.runInContext("globalThis.originalSaveState=saveState;saveState=()=>{throw Error('disk unavailable')}",scope);
+  assert.throws(()=>setIndicators({sender:consoleContents},{mode:'bubbles',items:[]}),/disk unavailable/);
+  assert.equal(getIndicators({sender:consoleContents}).mode,'menu');
+  vm.runInContext("saveState=globalThis.originalSaveState",scope);
   const getPosition=handlers.get('gork:bubble-position'), setPosition=handlers.get('gork:set-bubble-position');
   assert.equal(getPosition({sender:consoleContents}),'above');
   assert.throws(()=>getPosition({sender:outsider}),/Only the console/);
@@ -136,7 +150,7 @@ test('avatar restores disabled always-on-top from the saved window state', () =>
   const scope = {module:{exports:{}},exports:{},__dirname:desktop,process,Buffer,URL,console,
     require(name){
       if(name==='electron') return electron;
-      if(name==='node:fs') return {...fs,readFileSync:()=>JSON.stringify({x:100,y:100,width:180,height:210,alwaysOnTop:false,pointerFollow:false,bubblePosition:'below',appearance:{id:'freddy',bodyColor:'#123456'}})};
+      if(name==='node:fs') return {...fs,readFileSync:()=>JSON.stringify({x:100,y:100,width:180,height:210,alwaysOnTop:false,pointerFollow:false,indicatorSettings:{mode:'menu',items:[]},indicatorOffset:{x:-80,y:140},bubblePosition:'below',appearance:{id:'freddy',bodyColor:'#123456'}})};
       if(name==='./backend-manager') return {};
       if(name==='./window-state') return require('../window-state');
       if(name==='./bubble-window') return require('../bubble-window');
@@ -145,8 +159,9 @@ test('avatar restores disabled always-on-top from the saved window state', () =>
       return require(name.startsWith('./')?path.join(desktop,name):name);
     },
   };
-  vm.runInNewContext(fs.readFileSync(path.join(desktop,'main.js'),'utf8')+'\nmodule.exports.createAvatar = createAvatar; module.exports.position = () => bubblePosition; module.exports.look = () => appearance; module.exports.pointer = () => pointerFollow;',scope);
+  vm.runInNewContext(fs.readFileSync(path.join(desktop,'main.js'),'utf8')+'\nmodule.exports.createAvatar = createAvatar; module.exports.position = () => bubblePosition; module.exports.look = () => appearance; module.exports.pointer = () => pointerFollow; module.exports.indicators = () => indicatorSettings;',scope);
   scope.module.exports.createAvatar();
+  assert.equal(scope.module.exports.indicators().mode,'menu');assert.equal(scope.module.exports.indicators().items.length,0);
   assert.equal(options[0].alwaysOnTop,false);
   assert.equal(options[0].width,180);
   assert.equal(scope.module.exports.position(),'below');

@@ -20,7 +20,7 @@
     doc.documentElement.dataset.consoleScheme=scheme;
     doc.documentElement.dataset.mantineColorScheme=doc.documentElement.dataset.consoleTheme==='mantine'?scheme:'light';
     const button=doc.getElementById('color-scheme-toggle');
-    if(button){button.textContent=scheme==='dark'?'浅色模式':'暗色模式';button.setAttribute('aria-label',`切换为${scheme==='dark'?'浅色':'暗色'}模式`);button.setAttribute('aria-pressed',String(scheme==='dark'));}
+    if(button){const label=button.querySelector('.tool-label');if(label)label.textContent=scheme==='dark'?'浅色模式':'暗色模式';else button.textContent=scheme==='dark'?'浅色模式':'暗色模式';button.dataset.icon=scheme==='dark'?'sun':'moon';button.title=`切换为${scheme==='dark'?'浅色':'暗色'}模式`;button.setAttribute('aria-label',`切换为${scheme==='dark'?'浅色':'暗色'}模式`);button.setAttribute('aria-pressed',String(scheme==='dark'));}
     if(remember)try{root.localStorage.setItem(schemeKey,scheme);}catch{}
     return scheme;
   }

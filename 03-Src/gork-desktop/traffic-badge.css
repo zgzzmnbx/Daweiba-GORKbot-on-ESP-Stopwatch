@@ -1,0 +1,9 @@
+.traffic-badge { display:grid;gap:2px;width:100%;border:0;border-top:1px solid #dfe7e2;border-radius:0;padding:6px 9px;text-align:left;color:#41564d;font:10px/14px "Segoe UI","Microsoft YaHei UI",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap; }
+.traffic-badge span { display:block; }
+.traffic-badge small { font:inherit;color:#74847c; }
+.avatar[data-traffic="true"] .face-wrap { width:min(88vw,calc(100vh - 112px)); }
+@media(max-height:180px) {
+  .avatar[data-traffic="true"] .face-wrap { width:min(90vw,90vh); }
+}
+
+.avatar[data-display="bubbles"][data-traffic] .face-wrap {width:min(88vw,90vh)}

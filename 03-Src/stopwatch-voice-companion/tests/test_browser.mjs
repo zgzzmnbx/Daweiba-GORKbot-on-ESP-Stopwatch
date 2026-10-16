@@ -8,6 +8,7 @@ import {createDebugConsole} from '../static/debug-console.js';
 import {createExpressionMenu} from '../static/expression-menu.js';
 import {createAppearancePicker} from '../static/appearance-picker.js';
 import {createWatchChat} from '../static/watch-chat.js';
+import {createNoticeChat} from '../static/notice-chat.js';
 const catalogScope = {window:{}};
 vm.runInNewContext(fs.readFileSync(new URL('../static/gork-catalog.js',import.meta.url),'utf8'),catalogScope);
 
@@ -54,10 +55,11 @@ function workbench(saved = {}, uiOptions = {}) {
     constructor(){this.state='running';}
     async resume(){} async suspend(){} async close(){this.state='closed';}
     async decodeAudioData(){return {};}
+    createGain(){return {gain:{value:1},connect(){}};}
     createBufferSource(){const player={stopped:false,connect(){},disconnect(){},start(){played.push(this);},stop(){this.stopped=true;}};return player;}
   }
   const context = vm.createContext({
-    toPCM16,Epoch,AbortController,AbortSignal,DOMException,ArrayBuffer,TextEncoder,performance,AudioContext,createDebugConsole,createExpressionMenu,createAppearancePicker,createWatchChat,
+    toPCM16,Epoch,AbortController,AbortSignal,DOMException,ArrayBuffer,TextEncoder,performance,AudioContext,createDebugConsole,createExpressionMenu,createAppearancePicker,createWatchChat,createNoticeChat,
     Recorder:class{async start(){requests.push({url:'recorder:start'});return true;}finish(){return new ArrayBuffer(44);}stop(){}},
     WavPlayer:class{constructor(){this.playing=false;}async play(_bytes,onended){this.playing=true;this.onended=onended;return true;}stop(){this.playing=false;}},
     Option:class{constructor(label,value){this.label=label;this.value=value;}},
@@ -118,6 +120,19 @@ function workbench(saved = {}, uiOptions = {}) {
   return {element,waiting,played,requests,pages,tabs,location,events,avatarStates,saved,previewMounts,context};
 }
 const settle = () => new Promise(resolve=>setImmediate(resolve));
+
+test('Codex status follows backend startup and manual off without enabling during refresh', async()=>{
+  let enabled=true;
+  const ui=workbench({}, {onRequest:async url=>url==='/api/codex/sentinel' ? {ok:true,json:async()=>({enabled,mode:'auto',target:'desktop',sound:false,sound_target:'pc',threshold:20,threads:[],history:[],quota:{buckets:{}}})}:null});
+  await settle();
+  await vm.runInContext('refreshCodex()',ui.context);
+  assert.equal(ui.element('codex-enable').checked,true);
+  enabled=false;
+  for(let i=0;i<2;i++) await vm.runInContext('refreshCodex()',ui.context);
+  assert.equal(ui.element('codex-enable').checked,false);
+  assert.match(ui.element('codex-status').textContent,/下次启动默认开启/);
+  assert.equal(ui.requests.filter(r=>r.url==='/api/codex/sentinel'&&r.body).length,0);
+});
 
 test('header follows the selected Watch route through switching and disconnects', async()=>{
   const ui=workbench();await settle();
@@ -863,7 +878,7 @@ test('expression pending locks repeated sends and late result cannot restart des
   const scenes=[];const ui=workbench({}, {delayExpression:true,desktop:{setAvatarScene:async scene=>scenes.push(scene)}});await settle();
   const tiles=openExpressions(ui);const pending=tiles[1].onclick();await settle();
   await tiles[2].onclick();assert.equal(ui.requests.filter(r=>r.url==='/api/character').length,1);
-  await ui.element('global-stop').onclick();scenes.length=0;
+  await ui.element('cost-stop').onclick();scenes.length=0;
   ui.waiting.shift()();await pending;
   assert.equal(scenes.some(s=>s.expression==='happy'),false);
   assert.match(ui.element('expression-feedback').textContent,/取消/);

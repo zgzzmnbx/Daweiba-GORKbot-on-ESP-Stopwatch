@@ -27,7 +27,7 @@ function convert(n){
   if(n.nodeName==='#text')return n.value;
   if(!n.tagName||n.tagName==='script')return null;
   const a=attrs(n),p=props(n),tag=n.tagName;
-  if(tag==='input'){if(a.type==='range'||a.type==='color')return h(Input,{...p,defaultValue:a.value,value:undefined,className:'native-'+a.type});if((a.id?.startsWith('external-')&&!['checkbox','radio'].includes(a.type))||a.id?.startsWith('network-')||a.id?.startsWith('answer-setup-'))return h(TextInput,{...p,type:a.type||'text',defaultValue:a.value,value:undefined,size:'sm',radius:'md'});return h('input',{...p,value:undefined,defaultValue:a.value,defaultChecked:'checked'in a});}
+  if(tag==='input'){if(a.type==='range'||a.type==='color')return h(Input,{...p,defaultValue:a.value,value:undefined,className:'native-'+a.type});if((a.id?.startsWith('external-')&&!['checkbox','radio'].includes(a.type))||a.id?.startsWith('network-')||a.id?.startsWith('answer-setup-')||a.id==='traffic-search')return h(TextInput,{...p,type:a.type||'text',defaultValue:a.value,value:undefined,size:'sm',radius:'md'});return h('input',{...p,value:undefined,defaultValue:a.value,defaultChecked:'checked'in a});}
   if(tag==='label'&&['switch-row','consent'].includes(a.class)){
     const input=n.childNodes.find(c=>c.tagName==='input'),label=n.childNodes.find(c=>c.tagName==='span'),ip=props(input);
     const labelText=label.childNodes.filter(c=>c.nodeName==='#text').map(c=>c.value).join('').trim();
@@ -75,6 +75,10 @@ const output=`<!doctype html>
 <link rel="stylesheet" href="/static/console-colors.css">
 <link rel="stylesheet" href="/static/architecture-viewer.css">
 <link rel="stylesheet" href="/static/console-dark.css">
+<link rel="stylesheet" href="/static/header-tools.css">
+<link rel="stylesheet" href="/static/console-shell.css">
+<link rel="stylesheet" href="/static/traffic-ui.css">
+<link rel="stylesheet" href="/static/indicator-settings.css">
 <script src="/static/console-theme.js"></script></head><body>${markup}
 ${scripts}</body></html>\n`;
 const vendorPath=require.resolve('@mantine/core/styles.css');

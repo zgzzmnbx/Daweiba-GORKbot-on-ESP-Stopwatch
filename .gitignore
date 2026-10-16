@@ -60,3 +60,9 @@ Codex-Temp/
 04-output/**/tests/verify-old.log
 04-output/**/tests/write.log
 04-output/**/tests/flash-*.log
+
+# Local volume preferences and traffic accounting stay on this machine.
+**/voice-volume.local.json*
+**/traffic.sqlite3*
+**/windows-history.json
+**/collector.lock

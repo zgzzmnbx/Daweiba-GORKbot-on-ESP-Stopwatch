@@ -1,0 +1,76 @@
+{
+  "result": "PASS",
+  "before": {
+    "x": 877,
+    "y": 591,
+    "width": 229,
+    "height": 38
+  },
+  "checks": [
+    {
+      "hover": 0,
+      "after": {
+        "x": 877,
+        "y": 591,
+        "width": 229,
+        "height": 38
+      },
+      "detail": {
+        "x": 1114,
+        "y": 397,
+        "width": 277,
+        "height": 220
+      }
+    },
+    {
+      "hover": 1,
+      "after": {
+        "x": 877,
+        "y": 591,
+        "width": 229,
+        "height": 38
+      },
+      "detail": {
+        "x": 1114,
+        "y": 280,
+        "width": 277,
+        "height": 454
+      }
+    },
+    {
+      "hover": 2,
+      "after": {
+        "x": 877,
+        "y": 591,
+        "width": 229,
+        "height": 38
+      },
+      "detail": {
+        "x": 1114,
+        "y": 397,
+        "width": 277,
+        "height": 220
+      }
+    }
+  ],
+  "spoken": {
+    "x": 827,
+    "y": 635,
+    "width": 329,
+    "height": 161
+  },
+  "dragged": {
+    "x": 977,
+    "y": 526,
+    "width": 229,
+    "height": 38
+  },
+  "offset": {
+    "x": 100.5,
+    "y": 19.5
+  },
+  "saves": 1,
+  "opens": 1,
+  "errors": [],
+  "acceptance": "native Electron hover/speech keep strip fixed; ten pointer moves preserve native size; drag saves once without console click; normal click opens console"
+}

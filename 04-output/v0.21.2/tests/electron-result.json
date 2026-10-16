@@ -1,0 +1,189 @@
+{
+  "result": "PASS",
+  "layouts": [
+    {
+      "theme": "mantine-dark",
+      "width": 1181,
+      "overflow": false,
+      "button": {
+        "x": 991,
+        "right": 1027,
+        "y": 13,
+        "bottom": 49
+      },
+      "panel": {
+        "x": 0,
+        "right": 0
+      },
+      "height": 821
+    },
+    {
+      "theme": "mantine-dark",
+      "width": 801,
+      "overflow": false,
+      "button": {
+        "x": 621,
+        "right": 657,
+        "y": 13,
+        "bottom": 49
+      },
+      "panel": {
+        "x": 0,
+        "right": 0
+      },
+      "height": 821
+    },
+    {
+      "theme": "mantine-light",
+      "width": 1181,
+      "overflow": false,
+      "button": {
+        "x": 991,
+        "right": 1027,
+        "y": 13,
+        "bottom": 49
+      },
+      "panel": {
+        "x": 0,
+        "right": 0
+      },
+      "height": 821
+    },
+    {
+      "theme": "mantine-light",
+      "width": 801,
+      "overflow": false,
+      "button": {
+        "x": 621,
+        "right": 657,
+        "y": 13,
+        "bottom": 49
+      },
+      "panel": {
+        "x": 0,
+        "right": 0
+      },
+      "height": 821
+    },
+    {
+      "theme": "classic",
+      "width": 1181,
+      "overflow": false,
+      "button": {
+        "x": 995,
+        "right": 1031,
+        "y": 9.5,
+        "bottom": 45.5
+      },
+      "panel": {
+        "x": 0,
+        "right": 0
+      },
+      "height": 821
+    },
+    {
+      "theme": "classic",
+      "width": 801,
+      "overflow": false,
+      "button": {
+        "x": 621,
+        "right": 657,
+        "y": 9.5,
+        "bottom": 45.5
+      },
+      "panel": {
+        "x": 0,
+        "right": 0
+      },
+      "height": 821
+    },
+    {
+      "avatar": true,
+      "width": 240,
+      "height": 280,
+      "x": 9,
+      "y": 213.5,
+      "right": 231,
+      "bottom": 272.5,
+      "hidden": false
+    },
+    {
+      "avatar": true,
+      "width": 144,
+      "height": 168,
+      "x": 0,
+      "y": 0,
+      "right": 0,
+      "bottom": 0,
+      "hidden": false
+    },
+    {
+      "avatar": true,
+      "width": 60,
+      "height": 71,
+      "x": 0,
+      "y": 0,
+      "right": 0,
+      "bottom": 0,
+      "hidden": false
+    }
+  ],
+  "errors": [],
+  "pills": [
+    {
+      "text": "1.00GB",
+      "title": "今日 VPN / 代理累计收发量 · Gork 监测到的 Clash 代理增量，非套餐总用量；K/M/G 按 1024 换算。",
+      "x": 40,
+      "right": 93,
+      "bottom": 24,
+      "overflow": false
+    },
+    {
+      "text": "84%",
+      "title": "Codex 剩余额度 · 7天；多个窗口显示最低剩余比例。7天: 84%",
+      "x": 97,
+      "right": 136,
+      "bottom": 24,
+      "overflow": false
+    },
+    {
+      "text": "66.1M",
+      "title": "Codex 今日 token · CC Switch 本机统计，含缓存；K/M/G 按 1000 换算。",
+      "x": 141,
+      "right": 190,
+      "bottom": 24,
+      "overflow": false
+    },
+    {
+      "text": "2.05M/s",
+      "title": "普通网速（整机物理网卡，含代理） · 收发合计；下载 2.00MB/s，上传 50.0KB/s。K/M/G 按 1024 换算。",
+      "x": 55,
+      "right": 113,
+      "bottom": 50,
+      "overflow": false
+    },
+    {
+      "text": "1.01M/s",
+      "title": "代理网速 · 收发合计；下载 1.00MB/s，上传 12.0KB/s。K/M/G 按 1024 换算。",
+      "x": 117,
+      "right": 175,
+      "bottom": 50,
+      "overflow": false
+    }
+  ],
+  "indicatorSettings": {
+    "mode": "bubbles",
+    "items": [
+      "quota",
+      "tokens",
+      "proxy"
+    ]
+  },
+  "checks": [
+    "production console DOM/modules and desktop preload IPC",
+    "three themes at two desktop widths",
+    "switch on/off and Windows history view",
+    "three avatar sizes; ordinary state updates preserve badge",
+    "no voice, device or cloud calls"
+  ]
+}

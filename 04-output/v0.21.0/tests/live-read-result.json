@@ -1,0 +1,16 @@
+{
+  "physical_status": "available",
+  "interface_count": 1,
+  "clash_status": "available",
+  "clash_connection_count": 47,
+  "windows_history_status": "available",
+  "windows_rows": 105,
+  "network_up_Bps": 73274.84376853454,
+  "network_down_Bps": 2716.6759951015247,
+  "proxy_up_Bps": 69255.1216687767,
+  "proxy_down_Bps": 155.8279938947194,
+  "python_cpu_seconds": 0.078,
+  "elapsed_seconds": 7.048,
+  "stopped_tasks": 0,
+  "ledger_closed": true
+}
